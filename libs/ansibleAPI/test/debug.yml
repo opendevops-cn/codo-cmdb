@@ -1,0 +1,9 @@
+---
+
+- name: Test the plabybook API.
+  hosts: all
+  remote_user: root
+  gather_facts: yes
+  tasks:
+   - name: exec uptime
+     shell: uptime

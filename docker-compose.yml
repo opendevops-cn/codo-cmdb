@@ -1,0 +1,9 @@
+auto_cmdb:
+  restart: unless-stopped
+  image: cmdb_image
+  volumes:
+    - /var/log/supervisor/:/var/log/supervisor/
+    - /sys/fs/cgroup:/sys/fs/cgroup
+  ports:
+    - "8000:80"
+  hostname: cmdb-exec01
