@@ -83,3 +83,8 @@ location /api/cmdb/ {
 
 #### 录像回放
 ![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/07.png)
+
+
+## License
+
+Everything is [GPL v3.0](https://www.gnu.org/licenses/gpl-3.0.html).
