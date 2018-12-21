@@ -63,3 +63,19 @@ location /api/cmdb/ {
         proxy_pass http://cmdb;
 }
 ```
+
+## 六 前台展示
+#### 主机管理
+![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/01.png)
+
+#### WebTerminal
+![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/04.png)
+
+#### 授权规则
+![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/02.png)
+![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/03.png)
+
+#### 登录日志,命令统计,录像回放
+![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/05.png)
+![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/06.png)
+![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/07.png)
