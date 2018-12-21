@@ -75,7 +75,11 @@ location /api/cmdb/ {
 ![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/02.png)
 ![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/03.png)
 
-#### 登录日志,命令统计,录像回放
+#### 登录日志
 ![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/05.png)
+
+#### 命令统计
 ![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/06.png)
+
+#### 录像回放
 ![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/07.png)
