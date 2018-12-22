@@ -1,8 +1,9 @@
 cmdb:
   restart: unless-stopped
-  image: cmdb_image
+  image: cmdb:latest
   volumes:
     - /var/log/supervisor/:/var/log/supervisor/
+    - /var/www/CMDB/:/var/www/CMDB/
     - /sys/fs/cgroup:/sys/fs/cgroup
   ports:
     - "8002:80"
@@ -10,4 +11,4 @@ cmdb:
 
   # docker-compose up -d
   # docker-compose down
-  # 接口测试: http://k8s.yangmv.com:8001/v1/k8s/publish/
+  # 接口测试: http://cmdb.opendevops.cn:8002/v1/cmdb/server/

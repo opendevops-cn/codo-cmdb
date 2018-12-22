@@ -7,7 +7,7 @@ ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # 1. 安装基本依赖
-RUN yum update -y && yum install epel-release -y && yum update -y && yum install wget unzip epel-release nginx  xz gcc automake zlib-devel openssl-devel supervisor  net-tools groupinstall development  libxslt-devel libxml2-devel libcurl-devel git -y
+RUN yum update -y && yum install epel-release -y && yum update -y && yum install wget unzip epel-release nginx  xz gcc automake zlib-devel openssl-devel supervisor  net-tools mariadb-devel groupinstall development  libxslt-devel libxml2-devel libcurl-devel git -y
 
 # 2. 准备python
 RUN wget https://www.python.org/ftp/python/3.6.6/Python-3.6.6.tar.xz
@@ -19,11 +19,11 @@ ADD . /var/www/CMDB/
 
 # 4. 安装pip依赖
 RUN pip3 install --user --upgrade pip
-RUN pip3 install -r /var/www/SuperCMDB/requirements.txt
+RUN pip3 install -r /var/www/CMDB/requirements.txt
 
 # 5. 数据初始化
-RUN python3 /var/www/SuperCMDB/manage.py makemigrations
-RUN python3 /var/www/SuperCMDB/manage.py migrate
+RUN python3 /var/www/CMDB/manage.py makemigrations
+RUN python3 /var/www/CMDB/manage.py migrate
 
 # 6. 日志
 VOLUME /var/log/
