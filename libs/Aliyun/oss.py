@@ -60,10 +60,10 @@ class OSSApi():
 if __name__ == '__main__':
     oss_config = {
         "STORAGE_REGION":"cn-shanghai",
-        "STORAGE_NAME":"shinezone-opendevops",
+        "STORAGE_NAME":"xx",
         "STORAGE_PATH":"record",
-        "STORAGE_KEY_ID":"LTAIRiWZ3L2W7NQc",
-        "STORAGE_KEY_SECRET":"vjUr6a6YcWlUqKO8WEJFLdINCdG42e"
+        "STORAGE_KEY_ID":"",
+        "STORAGE_KEY_SECRET":""
     }
 
     data = '{"name":"yangmv","age":18}'

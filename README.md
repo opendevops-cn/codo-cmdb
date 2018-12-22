@@ -34,15 +34,18 @@ python3 manage.py migrate
 ```
 cat >> /etc/supervisord.conf <<EOF
 [program:cmdb]
-process_name=cmdb
-command=python3 run_server.py
-directory=/var/www/CMDB
+command=python3 startup.py --port=80%(process_num)02d
+process_name=%(program_name)s_%(process_num)02d
+numprocs=3
+directory=/var/www/SuperCMDB
 user=root
+autostart=true
 autorestart=true
 redirect_stderr=true
-stdout_logfile=/var/log/cmdb.log
+stdout_logfile=/var/log/supervisor/cmdb.log
 loglevel=info
 logfile_maxbytes=100MB
+logfile_backups=3
 EOF
 
 supervisorctl update
@@ -52,7 +55,13 @@ supervisorctl reload
 #### 五 Nginx配置
 ```
 upstream  cmdb{
-        server  127.0.0.1:8000;
+    server  127.0.0.1:9000;
+    server  127.0.0.1:9001;
+    server  127.0.0.1:9002;
+}
+
+location /static {
+        alias /var/www/CMDB/static;
 }
 
 location /api/cmdb/ {

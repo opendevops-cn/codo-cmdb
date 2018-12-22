@@ -164,7 +164,7 @@ class WsTest(tornado.web.RequestHandler):
 
 ws_urls = [
     ('/ws/test', WsTest),
-    ('/ws/terminal', WebTerminalHandler)
+    ('/v1/cmdb/ws/terminal', WebTerminalHandler)
 ]
 
 

@@ -1,9 +1,13 @@
-auto_cmdb:
+cmdb:
   restart: unless-stopped
   image: cmdb_image
   volumes:
     - /var/log/supervisor/:/var/log/supervisor/
     - /sys/fs/cgroup:/sys/fs/cgroup
   ports:
-    - "8000:80"
+    - "8002:80"
   hostname: cmdb-exec01
+
+  # docker-compose up -d
+  # docker-compose down
+  # 接口测试: http://k8s.yangmv.com:8001/v1/k8s/publish/
