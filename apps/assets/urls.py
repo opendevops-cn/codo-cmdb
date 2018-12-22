@@ -13,9 +13,6 @@ from assets.views.server import *
 app_name = 'assets'
 
 router = DefaultRouter()
-# books用Viewset+Router模式
-# 相当于生成了﻿ 'books/' 'books/<int:pk>/'
-router.register('books',BookViewSet)
 router.register('server',ServerViewSet)
 router.register('server_group',ServerGroupViewSet)
 router.register('server_auth',ServerAuthViewSet)

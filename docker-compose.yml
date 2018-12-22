@@ -3,7 +3,7 @@ cmdb:
   image: cmdb:latest
   volumes:
     - /var/log/supervisor/:/var/log/supervisor/
-    - /var/www/CMDB/:/var/www/CMDB/
+    - /var/www/SuperCMDB/:/var/www/CMDB/
     - /sys/fs/cgroup:/sys/fs/cgroup
   ports:
     - "8002:80"

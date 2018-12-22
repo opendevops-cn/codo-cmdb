@@ -1,9 +1,5 @@
 from django.contrib import admin
-from assets.models.book import *
 from assets.models.server import *
-
-admin.site.register(Publisher)
-admin.site.register(Book)
 
 admin.site.register(Server)
 admin.site.register(ServerGroup)
