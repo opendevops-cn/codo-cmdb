@@ -7,7 +7,6 @@
 '''
 from django.urls import path,include
 from rest_framework.routers import DefaultRouter
-from assets.views.book import *
 from assets.views.server import *
 
 app_name = 'assets'
@@ -23,8 +22,6 @@ router.register('adm_user',AdminUserViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('publishers/',PublisherList.as_view(),name='publisher-list'),
-    path('publishers/<int:pk>/', PublisherDetail.as_view(),name='publisher-detail'),
     path('server_list/',ServerList.as_view(),name='server_list'),  #给ss发布用
     path('server_update/',ServerUpdate.as_view(),name='server_update'),  #资产更新
     path('server_publickey/',ServerPublicKey.as_view(),name='server_publickey'),  #推送公钥

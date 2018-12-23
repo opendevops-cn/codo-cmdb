@@ -84,7 +84,6 @@ class WebTerminalHandler(tornado.websocket.WebSocketHandler):
         self.term.input_mode = True
         if data in ['\r', '\n', '\r\n']:       #如果用户按了回车
             # print('self.term.data=======>',self.term.data)
-            #result = self.term.deal_command(self.term.data)[0:200]  #获取用户输入的完整指令,比如输入了 l s \r ,那么得到命令ls
             result = self.term.data
             # print('result_len--->',len(result))
             if len(result) > 0:
