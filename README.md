@@ -35,7 +35,7 @@ python3 manage.py migrate
 ```
 cat >> /etc/supervisord.conf <<EOF
 [program:cmdb]
-command=python3 startup.py --port=80%(process_num)02d
+command=python3 startup.py --port=90%(process_num)02d
 process_name=%(program_name)s_%(process_num)02d
 numprocs=3
 directory=/var/www/CMDB
