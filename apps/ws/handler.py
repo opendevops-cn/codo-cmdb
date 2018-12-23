@@ -145,17 +145,17 @@ class WsTest(tornado.web.RequestHandler):
         json_data = json.dumps(
             dict(
                 username='yangmingwei',
-                password='AF6LFjaEsXz2ZVyNX2hyWm',
-                dynamic='940940'
+                password='123456',
+                dynamic=''
             )
         )
-        response = await http_client.fetch('http://gw.shinezone.net.cn/accounts/login/',raise_error=False,method='POST',body=json_data,headers=self.request.headers)
+        response = await http_client.fetch('http://gw.aaa.net.cn/accounts/login/',raise_error=False,method='POST',body=json_data,headers=self.request.headers)
         print(response.body)
         auth_key = json.loads(response.body).get('auth_key')
         self.set_cookie("auth_key","%s"%auth_key)
         print(self.request.headers)
 
-        response = await http_client.fetch('http://gw.shinezone.net.cn/mg/v2/sysconfig/settings/STORAGE/', raise_error=False,headers=self.request.headers)
+        response = await http_client.fetch('http://gw.aaa.net.cn/mg/v2/sysconfig/settings/STORAGE/', raise_error=False,headers=self.request.headers)
         print(1111)
         print(response.body)
         ret = {'status':True,'message':None}
