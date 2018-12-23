@@ -61,8 +61,15 @@ upstream  cmdb{
     server  127.0.0.1:9002;
 }
 
-location /static {
-        alias /var/www/CMDB/static;
+location /v1/cmdb/ws/ {
+        #proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Scheme $scheme;
+        proxy_pass http://cmdb;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
 }
 
 location /api/cmdb/ {
