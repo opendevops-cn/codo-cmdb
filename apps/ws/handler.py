@@ -6,12 +6,13 @@ import tornado.websocket
 from tornado.websocket import WebSocketClosedError
 import json
 import threading
-from apps.ws.cores.web_tty import Tty,Server,TermLogRecorder
+from apps.ws.cores.webcon import Tty,Server,TermLogRecorder
 from apps.ws.cores.api import get_object
 import select
 import sys
 import datetime
 from assets.models.server import Log,TtyLog
+import jwt
 
 class MyThread(threading.Thread):
     def __init__(self, *args, **kwargs):
@@ -53,14 +54,20 @@ class WebTerminalHandler(tornado.websocket.WebSocketHandler):
 
         asset = get_object(Server, id=asset_id)
         #print('asset---->',asset)
-        # username = self.get_cookie('token')   #获取不到
-        username = 'yangmv'
+
+        auth_key = self.get_cookie('auth_key', None)
+        user_info = jwt.decode(auth_key, verify=False)
+        username = user_info['data']['nickname'] if 'data' in user_info else 'yangmv'
 
         self.term = WebTty(asset)
         self.ssh = self.term.get_connection(self)
+
         if self.ssh:
-            remote_ip = self.request.headers.get("X-Real-IP")
-            if not remote_ip:
+            remote_ip_list = self.request.headers.get("X-Forwarded-For")
+            #remote_ip_real = self.request.headers.get("X-Real-IP")
+            if remote_ip_list:
+                remote_ip = remote_ip_list.split(',')[0]
+            else:
                 remote_ip = self.request.remote_ip
             self.log = Log(user=username, host=asset.hostname, remote_ip=remote_ip, login_type='web')
             self.log.save()

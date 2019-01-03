@@ -43,6 +43,17 @@ class Server(models.Model):
     group = models.ManyToManyField('ServerGroup', null=True, blank=True)
     tag = models.ManyToManyField('Tag', null=True, blank=True)
     public_key = models.BooleanField(default=False,null=True, blank=True)
+
+    def model_to_dict(self):
+        info = {
+            'id': self.id,
+            'hostname': self.hostname,
+            'ip': self.ip,
+            'port': self.port,
+            'username': self.admin_user.username if self.admin_user else self.username
+        }
+        return info
+    
     def __str__(self):
         return self.hostname
     class Meta:

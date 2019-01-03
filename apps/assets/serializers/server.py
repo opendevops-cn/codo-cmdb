@@ -7,6 +7,7 @@
 '''
 from rest_framework import serializers
 from assets.models.server import *
+from assets.models.db import *
 import time
 
 class ServerSerializer(serializers.ModelSerializer):
@@ -43,7 +44,26 @@ class ServerSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ServerGroupSerializer(serializers.ModelSerializer):
-    server_set = serializers.StringRelatedField(many=True)  #反向查询该Group被哪些Server做了关联
+    server_set = serializers.PrimaryKeyRelatedField(many=True,queryset=Server.objects.all())  #反向查询该Group被哪些Server做了关联,读写
+    # server_set = serializers.StringRelatedField(many=True)  #反向查询该Group被哪些Server做了关联,只读
+    dbserver_set = serializers.PrimaryKeyRelatedField(many=True,queryset=DBServer.objects.all())
+
+    def get_server_name(self,obj):
+        try:
+            return [item.hostname for item in obj]
+        except Exception as e:
+            return []
+    def get_db_name(self,obj):
+        try:
+            return [item.host for item in obj]
+        except Exception as e:
+            return []
+    def to_representation(self, instance):
+        ret = super(ServerGroupSerializer, self).to_representation(instance)
+        ret['server_set_name'] = self.get_server_name(instance.server_set.all())
+        ret['dbserver_set_name'] = self.get_db_name(instance.dbserver_set.all())
+        return ret
+
     class Meta:
         model = ServerGroup
         fields = '__all__'
@@ -100,6 +120,8 @@ class ServerRecordLogSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class TagSerializer(serializers.ModelSerializer):
+    server_set = serializers.PrimaryKeyRelatedField(many=True,queryset=Server.objects.all())
+    dbserver_set = serializers.PrimaryKeyRelatedField(many=True,queryset=DBServer.objects.all())
     class Meta:
         model = Tag
         fields = '__all__'
@@ -124,11 +146,17 @@ class ServerListSerializer(serializers.ModelSerializer):
             return [item.name for item in obj]
         except Exception as e:
             return {}
+    def get_group_name(self,obj):
+        try:
+            return [item.name for item in obj]
+        except Exception as e:
+            return {}
     def to_representation(self, instance):
         ret = super(ServerListSerializer, self).to_representation(instance)
         ret['tag'] = self.get_tag_name(instance.tag.all())
+        ret['group'] = self.get_group_name(instance.group.all())
         ret['username'] = self.get_adm_user(instance)
         return ret
     class Meta:
         model = Server
-        fields = ('hostname','ip','port','username','tag')
+        fields = ('hostname','ip','port','username','tag','group')

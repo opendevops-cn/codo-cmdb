@@ -18,13 +18,9 @@ from libs.cores import initOSS_obj
 
 class Tty(object):
     def __init__(self, asset):
-        self.ip = None
-        self.port = 22
         self.ssh = None
         self.channel = None
         self.asset = asset
-        self.vim_flag = False
-        self.vim_end_pattern = re.compile(r'\x1b\[\?1049', re.X)
         self.vim_data = ''
         self.stream = None
         self.screen = None

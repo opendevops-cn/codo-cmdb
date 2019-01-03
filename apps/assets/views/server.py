@@ -7,32 +7,19 @@
 '''
 from rest_framework import permissions
 from assets.models import server as models
+from assets.models.db import DBServer
 from assets.serializers import server as serializers
 from rest_framework import viewsets
 from rest_framework import generics
 from django.db.models.query import QuerySet
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
 from apps.assets.cores.server import getHostData,rsyncHostData,rsyncPublicKey,multiAddServer
 import json
+import jwt
 from libs.cores import initOSS_obj
-
-from rest_framework.pagination import PageNumberPagination
-class CustPagination(PageNumberPagination):
-    '''自定义分页'''
-    def get_paginated_response(self, data):
-        return Response({
-            'data': data,
-            'count': self.page.paginator.count,
-        })
-    page_size_query_param = 'pageSize'
-    page_query_param = 'pageNum'
-
-def paramsInit(params):
-    '''params参数处理'''
-    params.pop('pageNum',None)
-    params.pop('pageSize',None)
-    return params
+from assets.cores.common import CustPagination,paramsInit
 
 class ServerViewSet(viewsets.ModelViewSet):
     '''主机Server API'''
@@ -54,6 +41,8 @@ class ServerGroupViewSet(viewsets.ModelViewSet):
     queryset = models.ServerGroup.objects.all()
     serializer_class = serializers.ServerGroupSerializer
     permission_classes = (permissions.AllowAny,)
+    filter_backends = (DjangoFilterBackend,)    # 使用过滤器
+    filter_fields = ('name',)
 
 class ServerAuthViewSet(viewsets.ModelViewSet):
     '''主机授权规则'''
@@ -118,6 +107,7 @@ class ServerRecordLog(APIView):
         return Response(ret)
 
 class ServerMultiAdd(APIView):
+    '''批量添加主机'''
     def post(self,request, format=None):
         ret = dict(status=False,msg=None,data=None)
         if request.data and type(request.data) == list:
@@ -155,6 +145,8 @@ class TagViewSet(viewsets.ModelViewSet):
     queryset = models.Tag.objects.all()
     serializer_class = serializers.TagSerializer
     permission_classes = (permissions.AllowAny,)
+    filter_backends = (DjangoFilterBackend,)    # 使用过滤器
+    filter_fields = ('name',)
 
 class AdminUserViewSet(viewsets.ModelViewSet):
     queryset = models.AdminUser.objects.all()
@@ -166,9 +158,12 @@ class ServerList(generics.ListCreateAPIView):   #ListCreateAPIView get and post
     def get_queryset(self):
         #重写get_queryset函数,这里要自定义加一些参数
         group_name = self.request.query_params.get('group')
+        tag_name = self.request.query_params.get('tag')
         queryset = self.queryset
         if group_name and isinstance(queryset, QuerySet):
             queryset = queryset.filter(group__name=group_name)
+        elif tag_name and isinstance(queryset, QuerySet):
+            queryset = queryset.filter(tag__name=tag_name)
         else:
             #queryset = queryset.all()
             queryset = []
@@ -177,6 +172,32 @@ class ServerList(generics.ListCreateAPIView):   #ListCreateAPIView get and post
     queryset = models.Server.objects.all()
     serializer_class = serializers.ServerListSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)   #只读
+
+
+class AllServerList(APIView):
+    '''根据 tag或group查询所有Server包含DBServer'''
+    def get(self, request):
+        ret = dict(status='-1',msg=None,data=None)
+        group = request.GET.get('group')
+        tag = request.GET.get('tag')
+        if group or tag:
+            if group:
+                server_obj = models.Server.objects.filter(group__name=group)
+                db_obj = DBServer.objects.filter(group__name=group)
+            else:
+                server_obj = models.Server.objects.filter(tag__name=group)
+                db_obj = DBServer.objects.filter(tag__name=group)
+            server_list = [item.model_to_dict() for item in server_obj]
+            db_list = [item.model_to_dict() for item in db_obj]
+            ret['data'] = {
+                'server_list': server_list,
+                'db_list': db_list
+            }
+            ret['status'] = 0
+            ret['msg'] = '数据获取成功'
+        else:
+            ret['msg'] = '请输入必要参数'
+        return Response(ret)
 
 class ServerUpdate(APIView):
     '''资产更新'''
@@ -232,11 +253,16 @@ class ServerPublicKey(APIView):
 class ServerCheckAuth(APIView):
     '''主机登录认证'''
     def get(self, request ,format=None):
-        username = request.query_params.get('username') #当前登录用户
-        username = 'yangmingwei' if username == 'yangmv' else username
         sid = request.query_params.get('sid')           #要登录的资产ID
         ret = dict(status=False,msg=None,data=None)
-        if username and sid:
+        if sid:
+            # username = request.query_params.get('username')
+            # username = 'yangmingwei' if username == 'yangmv' else username
+            # 改用后端验证登录用户信息
+            auth_key = request.COOKIES.get('auth_key', None)
+            if not auth_key:return Response('未登陆',status=401)
+            user_info = jwt.decode(auth_key, verify=False)
+            username = user_info['data']['username'] if 'data' in user_info else 'guest'
             rule_obj = models.ServerAuthRule.objects.filter(user__contains=username)
             for rule in rule_obj:
                 server_obj = rule.server.filter(id=sid)
@@ -251,4 +277,5 @@ class ServerCheckAuth(APIView):
                         break
         else:
             ret['msg'] = 'args is None, Please Check!'
+        print(ret)
         return Response(ret)

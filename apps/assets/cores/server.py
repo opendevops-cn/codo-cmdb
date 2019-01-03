@@ -162,16 +162,13 @@ class multiAddServer():
     def start(self):
         for line in self.data:
             data = line.strip().split(' ')
-            print(data)
             if len(data) == 4:
-                print('关联管理用户')
                 try:
                     models.Server.objects.create(hostname=data[0],ip=data[1],port=data[2],admin_user=models.AdminUser.objects.get(name=data[3]))
                 except Exception as e:
                     print(e)
                     self.Error_list[data[0]] = str(e)
             elif len(data) == 5:
-                print('不关联管理用户')
                 try:
                     models.Server.objects.create(hostname=data[0],ip=data[1],port=data[2],username=data[3],password=data[4])
                 except Exception as e:
