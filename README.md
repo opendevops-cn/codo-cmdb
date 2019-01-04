@@ -27,8 +27,7 @@ pip3 install -r requirements.txt
 #### 三 同步数据库
 ```
 mysql -h 127.0.0.1 -u root -p123456 -e "create database cmdb default character set utf8mb4 collate utf8mb4_unicode_ci;"
-python3 manage.py makemigrations
-python3 manage.py migrate
+mysql -h 127.0.0.1 -u root -p123456 cmdb < docs/cmdb.sql
 ```
 
 #### 四 Supervisor
