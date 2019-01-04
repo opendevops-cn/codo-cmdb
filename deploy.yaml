@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codo-cmdb
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: codo-cmdb
+  template:
+    metadata:
+      labels:
+        app: codo-cmdb
+    spec:
+      containers:
+      - name: codo-cmdb
+        image: harbor-k8s.shinezone.com/ops/codo-cmdb:<BUILD_TAG>
+        imagePullPolicy: IfNotPresent
+#        lifecycle:
+#          postStart:
+#            exec:
+#              command: ['/bin/sh', '-c', 'sed -i "s/s_hostname/$(hostname)/" /data1/www/templates/app.html']
+        ports:
+        - name: http
+          containerPort: <PORT>
+        volumeMounts:
+            - name: cmdbconf
+              mountPath: /var/www/CMDB/
+              readOnly: true
+      volumes:
+        - name: cmdbconf
+          configMap:
+            name: cmdb-conf
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: codo-cmdb
+  labels:
+    app: codo-cmdb
+spec:
+  selector:
+    app: codo-cmdb
+  #type: NodePort
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: codo-cmdb-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: <DOMAIN>
+    http:
+      paths:
+      - path:
+        backend:
+          serviceName: codo-cmdb
+          servicePort: 80

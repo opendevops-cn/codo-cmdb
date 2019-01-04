@@ -21,14 +21,17 @@ ADD . /var/www/CMDB/
 RUN pip3 install --user --upgrade pip
 RUN pip3 install -r /var/www/CMDB/requirements.txt
 
-# 5. 数据初始化
+# 5.准备配置文件
+RUN cp  /var/www/CMDB/cmdb-example.conf /var/www/CMDB/cmdb.conf
+
+# 6. 数据初始化
 RUN python3 /var/www/CMDB/manage.py makemigrations
 RUN python3 /var/www/CMDB/manage.py migrate
 
-# 6. 日志
+# 7. 日志
 VOLUME /var/log/
 
-# 7. 准备文件
+# 8. 准备文件
 COPY docs/supervisor_cmdb.conf  /etc/supervisord.conf
 COPY docs/nginx_cmdb.conf /etc/nginx/conf.d/
 
