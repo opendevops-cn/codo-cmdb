@@ -1,7 +1,7 @@
 node('haimaxy-jnlp') {
     stage('Clone') {
         echo "1.Clone 代码"
-        git url: "$(git_url)"
+        git url: "${git_url}"
         script {
             build_tag = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
         }
