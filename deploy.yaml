@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: codo-cmdb
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: codo-cmdb
@@ -22,7 +22,7 @@ spec:
 #              command: ['/bin/sh', '-c', 'sed -i "s/s_hostname/$(hostname)/" /data1/www/templates/app.html']
         ports:
         - name: http
-          containerPort: <PORT>
+          containerPort: 80
         volumeMounts:
             - name: cmdbconf
               mountPath: /var/www/CMDB/
@@ -30,7 +30,7 @@ spec:
       volumes:
         - name: cmdbconf
           configMap:
-            name: cmdb-conf
+            name: cmdb-conf   #configmap要提前创建好
 
 ---
 apiVersion: v1

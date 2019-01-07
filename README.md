@@ -23,6 +23,9 @@ pip3 install -r requirements.txt
 #### 二 配置
 - 配置文件 cmdb.conf
 - 配置数据库信息
+```
+cp /var/www/CMDB/cmdb-example.conf /var/www/CMDB/cmdb.conf
+```
 
 #### 三 同步数据库
 ```
