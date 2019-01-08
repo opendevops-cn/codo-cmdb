@@ -25,12 +25,21 @@ spec:
           containerPort: 80
         volumeMounts:
             - name: cmdbconf
-              mountPath: /var/www/CMDB/
+              mountPath: /var/www/CMDB/cmdb.conf
+              subPath: cmdb.conf  #以文件的形式挂载
               readOnly: true
+            - name: cmdbnginx
+              mountPath: /etc/nginx/conf.d/nginx_cmdb.conf
+              subPath: nginx_cmdb.conf
+              readOnly: true
+
       volumes:
         - name: cmdbconf
           configMap:
-            name: cmdb-conf   #configmap要提前创建好
+            name: cmdb-conf   #configmap要提前创建好  kubectl create configmap cmdb-conf --from-file=./cmdb.conf -n qa
+        - name: cmdbnginx
+          configMap:
+            name: cmdb-nginx-conf  # kubectl create configmap cmdb-nginx-conf --from-file=./cmdb-nginx-conf -n qa
 
 ---
 apiVersion: v1
