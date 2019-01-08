@@ -29,9 +29,7 @@ spec:
               subPath: cmdb.conf  #以文件的形式挂载
               readOnly: true
             - name: cmdbnginx
-              mountPath: /etc/nginx/conf.d/nginx_cmdb.conf
-              subPath: nginx_cmdb.conf
-              readOnly: true
+              mountPath: /etc/nginx/conf.d/
 
       volumes:
         - name: cmdbconf
@@ -39,13 +37,13 @@ spec:
             name: cmdb-conf   #configmap要提前创建好  kubectl create configmap cmdb-conf --from-file=./cmdb.conf -n qa
         - name: cmdbnginx
           configMap:
-            name: cmdb-nginx-conf  # kubectl create configmap cmdb-nginx-conf --from-file=./cmdb-nginx-conf -n qa
+            name: cmdb-nginx-conf  # kubectl create configmap cmdb-nginx-conf --from-file=./nginx_cmdb.conf -n qa
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: codo-cmdb
+  name: codo-cmdb       #k8s内网对应的域名为 codo-cmdb.qa.svc.cluster.local
   labels:
     app: codo-cmdb
 spec:
@@ -59,18 +57,19 @@ spec:
     targetPort: 80
 
 ---
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: codo-cmdb-ingress
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-spec:
-  rules:
-  - host: <DOMAIN>
-    http:
-      paths:
-      - path:
-        backend:
-          serviceName: codo-cmdb
-          servicePort: 80
+# api不需要通过ingress反代到外网
+#apiVersion: extensions/v1beta1
+#kind: Ingress
+#metadata:
+#  name: codo-cmdb-ingress
+#  annotations:
+#    kubernetes.io/ingress.class: "nginx"
+#spec:
+#  rules:
+#  - host: <DOMAIN>
+#    http:
+#      paths:
+#      - path:
+#        backend:
+#          serviceName: codo-cmdb
+#          servicePort: 80

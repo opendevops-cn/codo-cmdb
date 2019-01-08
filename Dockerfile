@@ -14,7 +14,6 @@ RUN wget https://www.python.org/ftp/python/3.6.6/Python-3.6.6.tar.xz
 RUN xz -d Python-3.6.6.tar.xz && tar xvf Python-3.6.6.tar && cd Python-3.6.6 && ./configure && make && make install
 
 # 3. 复制代码
-#RUN mkdir -p /var/www/
 ADD . /var/www/CMDB/
 WORKDIR /var/www/CMDB/
 
