@@ -34,6 +34,7 @@ class DBServer(models.Model):
     password = models.CharField(max_length=128,null=True, blank=True)
 
     idc = models.CharField('云厂商',max_length=16, choices=IDC_CHOICES, default='other')
+    region = models.CharField('区域',max_length=16, blank=True, null=True)
     db_type = models.CharField('数据库类型',max_length=32, choices=TYPE_CHOICES, default='MySQL')
     db_version = models.CharField('数据库版本', max_length=32, null=True, blank=True)
     comment = models.CharField('备注',max_length=128, blank=True, null=True)
@@ -47,7 +48,9 @@ class DBServer(models.Model):
         info = {
             'db_type': self.db_type,
             'db_role': self.role,
-            'db_info': base64.b64encode(db_info.encode('utf-8'))
+            'db_info': base64.b64encode(db_info.encode('utf-8')),
+            'db_idc': self.idc,
+            'db_region': self.region
         }
         return info
 

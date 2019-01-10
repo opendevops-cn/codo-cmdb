@@ -17,6 +17,7 @@ class Server(models.Model):
         ('qcloud', '腾讯云'),
         ('aliyun', '阿里云'),
         ('aws', 'AWS'),
+        ('internal', '内网'),
         ('other', '其他')
     )
     hostname = models.CharField(unique=True, max_length=128)
@@ -24,6 +25,7 @@ class Server(models.Model):
     port = models.IntegerField(blank=True, null=True)
 
     idc = models.CharField('云厂商',max_length=16, choices=IDC_CHOICES, default='other')
+    region = models.CharField('区域',max_length=16, blank=True, null=True)
     cpu = models.CharField('CPU',max_length=32, blank=True, null=True)
     memory = models.CharField('内存',max_length=32, blank=True, null=True)
     disk = models.CharField('硬盘',max_length=32, blank=True, null=True)
@@ -50,7 +52,9 @@ class Server(models.Model):
             'hostname': self.hostname,
             'ip': self.ip,
             'port': self.port,
-            'username': self.admin_user.username if self.admin_user else self.username
+            'username': self.admin_user.username if self.admin_user else self.username,
+            'idc': self.idc,
+            'region': self.region
         }
         return info
     
