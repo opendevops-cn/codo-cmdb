@@ -235,14 +235,17 @@ class ServerPublicKey(APIView):
         if request.data and type(request.data) == list:
             hosts = models.Server.objects.filter(id__in=request.data)
             obj = rsyncPublicKey(hosts)
-            rsync = obj.start()
-            if rsync:
-                ret['msg'] = json.dumps(rsync,ensure_ascii=False)
+            if obj.check_rsa:
+                rsync = obj.start()
+                if rsync:
+                    ret['msg'] = json.dumps(rsync,ensure_ascii=False)
+                else:
+                    models.Server.objects.filter(id__in=request.data).update(public_key=True)
+                    ret['status'] = True
+                    ret['msg'] = 'Success'
+                    ret['data'] = request.data
             else:
-                models.Server.objects.filter(id__in=request.data).update(public_key=True)
-                ret['status'] = True
-                ret['msg'] = 'Success'
-                ret['data'] = request.data
+                ret['msg'] = '秘钥对生成失败,请手工生成秘钥对'
         else:
             ret['msg'] = 'args is None, Please Check!'
         return Response(ret)

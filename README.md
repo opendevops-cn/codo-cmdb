@@ -16,6 +16,7 @@
 
 #### 一 安装依赖
 ```
+yum -y install $(cat rpm_requirements.txt) 
 pip3 install --upgrade pip
 pip3 install -r requirements.txt
 ```

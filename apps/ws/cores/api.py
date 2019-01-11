@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #encoding:utf-8
 
-
 def get_object(model, **kwargs):
     """
     use this function for query

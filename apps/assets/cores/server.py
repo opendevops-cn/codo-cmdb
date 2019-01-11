@@ -9,12 +9,11 @@ from libs.ansibleAPI.runner import Runner
 from ops.settings import BASE_DIR
 from assets.models import server as models
 from apps.ws.cores.api import get_asset_info
-from libs.common import remoteUpfile_Exec,remoteUpfile_Exec_KEY,getKeyFile
+from libs.common import remoteUpfile_Exec,remoteUpfile_Exec_KEY,getKeyFile,exec_shell
 from ops.settings import PUBLIC_KEY
 import json
 import os
 import threading
-from django.core import exceptions
 
 def rsyncHostData(data):
     '''更新获取到的资产信息入库CMDB'''
@@ -39,8 +38,44 @@ class rsyncPublicKey():
         self.hosts = hosts
         self.lock = threading.Lock()
         self.Error = {}
+        self.rsa_dir = os.path.dirname(PUBLIC_KEY)
+
+    @property
+    def check_rsa(self):
+        '''检查CMDB Server端秘钥对配置'''
+        obj = models.Configs.objects.filter(name='cmdb').first()
+        if not obj:
+            id_rsa_exists = os.path.exists('%s/id_rsa'%self.rsa_dir)
+            # 如果本地有，则无需重新生成
+            if not id_rsa_exists:
+                check_rsa = self.initRsa()
+                if not check_rsa:
+                    return False
+            self.saveConf()
+            return True
+        else:
+            return True
+
+    def initRsa(self):
+        '''Server端生成秘钥对，并写入配置'''
+        cmd = 'ssh-keygen -t rsa -P "" -f %s/id_rsa'%self.rsa_dir
+        code,ret = exec_shell(cmd)
+        if code == 0:
+            return True
+        else:
+            return False
+
+    def saveConf(self):
+        '''把读取或者生成的秘钥信息保存到SQL'''
+        with open('%s/id_rsa'%self.rsa_dir,'r') as id_rsa,open('%s/id_rsa.pub'%self.rsa_dir,'r') as id_rsa_pub:
+            models.Configs.objects.get_or_create(
+                name = 'cmdb',
+                id_rsa = id_rsa.read(),
+                id_rsa_pub = id_rsa_pub.read()
+            )
 
     def start(self):
+        '''批量下发server端公钥到client端'''
         threads = [threading.Thread(target=self.exec, args=(host,)) for host in self.hosts]
         for start_t in threads:
             start_t.start()
@@ -92,7 +127,7 @@ class getHostData_SSH():
     pass
 
 class getHostData():
-    '''通过AnsibleAPI 批量获取主机资产信息'''
+    '''通过AnsibleAPI 批量获取主机资产信息（容器环境不支持）'''
     def __init__(self,hosts):
         self.host_list = hosts
         self.Error_host = []

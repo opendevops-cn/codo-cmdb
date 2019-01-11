@@ -160,3 +160,12 @@ class RecorderLog(models.Model):
     class Meta:
         verbose_name = '回放日志'
         verbose_name_plural = '回放日志'
+
+
+class Configs(models.Model):
+    name = models.CharField(unique=True, max_length=16)
+    id_rsa = models.TextField(max_length=4096, blank=True, null=True)       #私钥
+    id_rsa_pub = models.TextField(max_length=4096, blank=True, null=True)   #公钥
+    class Meta:
+        verbose_name = 'CMDB配置表'
+        verbose_name_plural = 'CMDB配置表'
