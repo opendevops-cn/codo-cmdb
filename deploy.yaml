@@ -20,6 +20,13 @@ spec:
 #          postStart:
 #            exec:
 #              command: ['/bin/sh', '-c', 'sed -i "s/s_hostname/$(hostname)/" /data1/www/templates/app.html']
+        resources:
+          limits:
+            cpu: 0.5
+            memory: 512Mi
+          requests:
+            cpu: 0.3
+            memory: 256Mi
         ports:
         - name: http
           containerPort: 80

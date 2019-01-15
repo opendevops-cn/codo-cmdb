@@ -9,6 +9,7 @@
 import oss2
 import datetime
 import shortuuid
+import json
 
 class OSSApi():
     def __init__(self,key,secret,region,bucket_name,base_dir):
@@ -42,20 +43,20 @@ class OSSApi():
         except Exception as e:
             print(e)
 
-    def getObj(self,filename):
+    def getObj(self,filename,record_date):
         '''获取str对象'''
         try:
-            object_stream = self.bucket.get_object('%s/%s/%s'%(self.base_dir,self.date,filename))
+            object_stream = self.bucket.get_object('%s/%s/%s'%(self.base_dir,record_date,filename))
             #print('[Success] Get obj success!')
             return object_stream.read().decode()
         except oss2.exceptions.NoSuchKey as e:
-            print('[Error] 文件不存在!')
+            return json.dumps({'0.0029790401458740234':'[Error] OSS录像文件不存在!'})
         except oss2.exceptions.ServerError as e:
-            print('[Error] 服务器拒绝, 请检查[KEY][SECRET][存储桶]是否正确!')
+            return json.dumps({'0.0029790401458740234':'[Error] 请检查[KEY][SECRET][存储桶]是否正确!'})
         except oss2.exceptions.AccessDenied as e:
-            print('[Error] 操作拒绝,请检查key是否有权限上传!')
+            return json.dumps({'0.0029790401458740234':'[Error] 操作拒绝,请检查key是否有权限上传!'})
         except Exception as e:
-            print(e)
+            return json.dumps({'0.0029790401458740234':'[Error]--->%s'%e})
 
 if __name__ == '__main__':
     oss_config = {

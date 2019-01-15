@@ -91,7 +91,8 @@ class ServerRecordLog(APIView):
                 # 从OSS获取
                 oss_obj = initOSS_obj()
                 if oss_obj:
-                    data = oss_obj.getObj(log.record_name)
+                    record_date = log.start_time.strftime('%Y%m%d')
+                    data = oss_obj.getObj(log.record_name,record_date)
                     ret['data'] = data
             else:
                 # 从Mysql获取
@@ -260,12 +261,12 @@ class ServerCheckAuth(APIView):
         ret = dict(status=False,msg=None,data=None)
         if sid:
             # username = request.query_params.get('username')
-            # username = 'yangmingwei' if username == 'yangmv' else username
             # 改用后端验证登录用户信息
             auth_key = request.COOKIES.get('auth_key', None)
             if not auth_key:return Response('未登陆',status=401)
             user_info = jwt.decode(auth_key, verify=False)
             username = user_info['data']['username'] if 'data' in user_info else 'guest'
+            username = 'yangmingwei' if username == 'yangmv' else username
             rule_obj = models.ServerAuthRule.objects.filter(user__contains=username)
             for rule in rule_obj:
                 server_obj = rule.server.filter(id=sid)
