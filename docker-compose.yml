@@ -4,7 +4,7 @@ cmdb:
   volumes:
     - /var/log/supervisor/:/var/log/supervisor/
     - /var/www/SuperCMDB/:/var/www/CMDB/
-    # - /root/.ssh/:/root/.ssh/
+    - /root/.ssh/:/root/.ssh/
     - /sys/fs/cgroup:/sys/fs/cgroup
   ports:
     - "8002:80"

@@ -263,6 +263,7 @@ class ServerCheckAuth(APIView):
             # username = request.query_params.get('username')
             # 改用后端验证登录用户信息
             auth_key = request.COOKIES.get('auth_key', None)
+            # print(auth_key)
             if not auth_key:return Response('未登陆',status=401)
             user_info = jwt.decode(auth_key, verify=False)
             username = user_info['data']['username'] if 'data' in user_info else 'guest'
