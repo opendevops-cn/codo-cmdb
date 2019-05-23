@@ -137,6 +137,20 @@ def remote_upload_file(ip,user,ssh_key,cmd,local_file,remote_file,port=22):
 
 
 
+def remote_exec_cmd(ip,user,ssh_key,cmd,port=22):
+    '''ssh上传并执行bash for key'''
+    private_key = paramiko.RSAKey.from_private_key_file(ssh_key)
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(hostname=ip,port=port,username=user, pkey=private_key, timeout=10)
+    stdin, stdout, stderr = ssh.exec_command(cmd)
+    show_log = stdout.read().decode('utf-8').strip()
+    err_log = stderr.read().decode('utf-8').strip()
+    #print(show_log,err_log)
+    ssh.close()
+    return show_log, err_log
+
+
 def check_ip(ip_address):
     compile_ip=re.compile('^(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|[1-9])\.(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)\.(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)\.(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)$')
     if compile_ip.match(ip_address):

@@ -16,7 +16,7 @@
 
 #### 截图
 
-- 放一些简单示例图片，详细的使用可参考[部署文档](http://docs.opendevops.cn/zh/latest/codo-cmdb.html)、[Demo体验](https://demo.opendevops.cn/login)、视频示例  
+- 放一些简单示例图片，详细的使用可参考[部署文档](http://docs.opendevops.cn/zh/latest/codo-cmdb.html)、[Demo体验](https://demo.opendevops.cn/login)、[视频示例](https://v.youku.com/v_show/id_XNDE5MzEyNTY5Ng==.html?spm=a2hzp.8244740.0.0) 
 
 ![](./static/images/cmdb_host_list.png)  
 
@@ -60,9 +60,8 @@ docker-compose up -d
 
 ```
 #若是在本地执行需要安装很多SDK包的依赖，建议进入容器执行
-docker exec -ti <CONTAINER ID> /bin/bash 
-cd /var/www/codo-cmdb/
-python3 db_sync.py
+#cmdb_codo_cmdb_1:是你的容器名称
+docker exec -ti cmdb_codo_cmdb_1 /usr/local/bin/python3 /var/www/codo-cmdb/db_sync.py
 ```
 
 **日志文件**

@@ -10,7 +10,7 @@
 import os
 import paramiko
 from settings import PUBLIC_KEY
-from models.server import SSHConfigs,model_to_dict
+from models.server import SSHConfigs
 from libs.db_context import DBContext
 from libs.web_logs import ins_log
 from libs.common import remote_upload_file, get_key_file, exec_shell, exec_thread
