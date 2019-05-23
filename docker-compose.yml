@@ -1,15 +1,9 @@
-cmdb:
+codo_cmdb:
   restart: unless-stopped
-  image: cmdb:latest
+  image: codo_cmdb:latest
   volumes:
     - /var/log/supervisor/:/var/log/supervisor/
-    - /var/www/SuperCMDB/:/var/www/CMDB/
-    - /root/.ssh/:/root/.ssh/
     - /sys/fs/cgroup:/sys/fs/cgroup
   ports:
-    - "8002:80"
-  hostname: cmdb-exec01
-
-  # docker-compose up -d
-  # docker-compose down
-  # 接口测试: http://cmdb.opendevops.cn:8002/v1/cmdb/server/
+    - "8050:80"
+  hostname: codo-cmdb

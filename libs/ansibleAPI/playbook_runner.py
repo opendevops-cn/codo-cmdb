@@ -11,7 +11,7 @@ import ansible.constants as C
 from ansible.errors import AnsibleError
 from ansible.utils.vars import load_extra_vars
 from ansible.utils.vars import load_options_vars
-from myinventory import MyInventory
+from .myinventory import MyInventory
 
 
 __all__ = ['PlaybookRunner']

@@ -1,110 +1,108 @@
-## CMDB 介绍
-
-- 资产录入,查询,管理
-- 资产信息自动搜集
-- Web Terminal登录
-- 操作审计,录像回放
-
-## 组件栈
-- python3.7
-- Tornado4.5
-- DRF3.9
-- MYSQL
+### 资产管理
 
 
-## 部署
+**前言**
+>  简单说明下，Beta0.3版本CMDB进行了重构，后端使用Tornado ，老版Django资产管理代码没有删除，在Tag里面，后续CMDB将持续更新支持跳板审计的功能
 
-#### 一 安装依赖
+
+**目前功能**  
+
+- 支持主机记录
+- 支持数据库记录
+- 支持从主机列表系统获取信息（定时、手动）
+- 支持从AWS/阿里云/腾讯云自动获取数据(可选、定时)
+- 支持主表和详情表分离，可不影响数据的情况下进行扩展
+- 众多功能我们一直在开发中，请耐心等待
+
+#### 截图
+
+- 放一些简单示例图片，详细的使用可参考[部署文档](http://docs.opendevops.cn/zh/latest/codo-cmdb.html)、[Demo体验](https://demo.opendevops.cn/login)、视频示例  
+
+![](./static/images/cmdb_host_list.png)  
+
+![](./static/images/cmdb_server_detail.png)  
+
+![](./static/images/cmdb_asset_config.png)
+
+#### 部署文档
+
+> Docker部署方式
+
+**创建数据库**
+
 ```
-yum -y install $(cat rpm_requirements.txt) 
-pip3 install --upgrade pip
-pip3 install -r requirements.txt
+create database `codo_cmdb` default character set utf8mb4 collate utf8mb4_unicode_ci;
 ```
+**修改配置**
 
-#### 二 配置
-- 配置文件 cmdb.conf
-- 配置数据库信息
-```
-cp /var/www/CMDB/cmdb-example.conf /var/www/CMDB/cmdb.conf
-```
+- 修改`settings.py`配置信息
+  - 注意：需要修改的信息在`settings.py`里面已经标注
+  - 请确保你`settings`信息里面`mysql redis`等配置信息的准确性
+- `docs/nginx_ops.conf`文件
+   - 建议保持默认，毕竟都是内部通信，用什么域名都无所谓，到时候只修改前端访问的域名即可
+   - 若你这里修改了，后面DNS、网关都要记得跟着修改为这个域名
 
-#### 三 同步数据库
-```
-mysql -h 127.0.0.1 -u root -p123456 -e "create database cmdb default character set utf8mb4 collate utf8mb4_unicode_ci;"
-mysql -h 127.0.0.1 -u root -p123456 cmdb < docs/cmdb.sql
-```
 
-#### 四 Supervisor
-```
-cat >> /etc/supervisord.conf <<EOF
-[program:cmdb]
-command=python3 startup.py --port=90%(process_num)02d
-process_name=%(program_name)s_%(process_num)02d
-numprocs=3
-directory=/var/www/CMDB
-user=root
-autostart=true
-autorestart=true
-redirect_stderr=true
-stdout_logfile=/var/log/supervisor/cmdb.log
-loglevel=info
-logfile_maxbytes=100MB
-logfile_backups=3
-EOF
 
-supervisorctl update
-supervisorctl reload
+**打包镜像**
+
+```
+docker build . -t codo_cmdb
 ```
 
-#### 五 Nginx配置
+**启动Docker**
+
 ```
-upstream  cmdb{
-    server  127.0.0.1:9000;
-    server  127.0.0.1:9001;
-    server  127.0.0.1:9002;
+docker-compose up -d
+```
+
+**初始化表结构**
+
+```
+#若是在本地执行需要安装很多SDK包的依赖，建议进入容器执行
+docker exec -ti <CONTAINER ID> /bin/bash 
+cd /var/www/codo-cmdb/
+python3 db_sync.py
+```
+
+**日志文件**
+- 服务日志：`/var/log/supervisor/cmdb.log`  #主程序日志
+- 定时日志：`/var/log/supervisor/cmdb_cron.log` #一些后端守护自动运行的日志
+
+**接口测试**
+
+- 可查看日志看是否有报错
+- 默认端口：8050，可直接测试Are you ok?
+```
+#返回200
+ curl -I -X GET -m 10 -o /dev/null -s -w %{http_code} http://cmdb2.opendevops.cn:8050/are_you_ok/
+```
+
+
+
+### 服务注册
+
+>  由于我们每个模板都是单独部署的，微服务需要在API网关进行注册
+
+**示例**
+
+```
+rewrite_conf = {
+    [gw_domain_name] = {
+        rewrite_urls = {
+            {
+                uri = "/cmdb2",
+                rewrite_upstream = "cmdb2.opendevops.cn:8050"  #nginx配置的域名
+            },
+            {
+                uri = "/mg",
+                rewrite_upstream = "mg.opendevops.cn:8010"
+            },
+            {
+                uri = "/accounts",
+                rewrite_upstream = "mg.opendevops.cn:8010"
+            },
+        }
+    }
 }
-
-location /v1/cmdb/ws/ {
-        #proxy_set_header Host $http_host;
-        proxy_redirect off;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Scheme $scheme;
-        proxy_pass http://cmdb;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-}
-
-location /api/cmdb/ {
-        proxy_set_header Host $http_host;
-        proxy_redirect off;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Scheme $scheme;
-        proxy_pass http://cmdb;
-}
 ```
-
-## 六 前台展示
-#### 主机管理
-![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/01.png)
-
-#### WebTerminal
-![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/04.png)
-
-#### 授权规则
-![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/02.png)
-![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/03.png)
-
-#### 登录日志
-![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/05.png)
-
-#### 命令统计
-![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/06.png)
-
-#### 录像回放
-![image](https://raw.githubusercontent.com/yangmv/SuperCMDB/master/static/images/07.png)
-
-
-## License
-
-Everything is [GPL v3.0](https://www.gnu.org/licenses/gpl-3.0.html).

@@ -1,0 +1,6 @@
+opssdk
+pycryptodome
+boto3==1.9.5
+ansible==2.7.10
+paramiko==2.4.1
+aliyun_python_sdk_ecs==4.16.10

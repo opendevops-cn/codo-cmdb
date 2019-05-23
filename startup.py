@@ -1,49 +1,33 @@
 #!/usr/bin/env python
-#encoding:utf-8
-'''
-@author: yangmv
-@file: startup.py
-@time: 18/11/26上午9:44
-'''
-import tornado.web
-import tornado.wsgi
-from tornado.options import define
-import os
+# -*- coding: utf-8 -*-
+# @Time    : 2019/4/17 9:52
+# @Author  : Fred Yangxiaofei
+# @File    : startup.py
+# @Role    : 启动脚本
+
+
 import fire
-from apps.ws.handler import ws_urls
-from ops.settings import DEBUG
-from libs.tornado_libs.application import Application as myapplication
-from django.core.wsgi import get_wsgi_application
-os.environ['DJANGO_SETTINGS_MODULE'] = 'ops.settings'
+from tornado.options import define
+from websdk.program import MainProgram
+from settings import settings as app_settings
+from biz.applications import Application as CmdbApp
+from biz.crontab_app import Application as CronApp
 
-class Application(myapplication):
-    def __init__(self,**settings):
-        wsgi_app = get_wsgi_application()
-        container = tornado.wsgi.WSGIContainer(wsgi_app)
-        urls = []
-        #urls.extend(ws_urls)
-        urls.extend([
-            ("/static/(.*)", tornado.web.StaticFileHandler,dict(path=os.path.join(os.path.dirname(__file__), "static"))),
-            ('.*', tornado.web.FallbackHandler, dict(fallback=container))
-        ])
-        super(Application,self).__init__(urls,**settings)
-
-class WsApplication(myapplication):
-    def __init__(self,**settings):
-        urls = []
-        urls.extend(ws_urls)
-        super(WsApplication,self).__init__(urls,**settings)
 
 define("service", default='api', help="start service flag", type=str)
-settings = {'debug' : DEBUG}
 
-class My():
-    def __init__(self,service):
+
+class MyProgram(MainProgram):
+    def __init__(self, service='cmdb_api', progress_id='cmdb'):
+        self.__app = None
+        settings = app_settings
         if service == 'cmdb':
-            self.app = Application(**settings)
-        elif service == 'ws':
-            self.app = WsApplication(**settings)
-        self.app.start_server()
+            self.__app = CmdbApp(**settings)
+        elif service == 'cron_app':
+            self.__app = CronApp(**settings)
+        super(MyProgram, self).__init__(progress_id)
+        self.__app.start_server()
+
 
 if __name__ == '__main__':
-    fire.Fire(My)
+    fire.Fire(MyProgram)
