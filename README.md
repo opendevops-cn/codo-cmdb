@@ -16,7 +16,7 @@
 
 #### 截图
 
-- 放一些简单示例图片，详细的使用可参考[部署文档](http://docs.opendevops.cn/zh/latest/codo-cmdb.html)、[Demo体验](https://demo.opendevops.cn/login)、[视频示例](https://v.youku.com/v_show/id_XNDE5MzEyNTY5Ng==.html?spm=a2hzp.8244740.0.0) 
+- 放一些简单示例图片，详细的使用可参考[部署文档](http://docs.opendevops.cn/zh/latest/codo-cmdb.html)、[Demo体验](https://demo.opendevops.cn/login)、[视频示例](https://www.bilibili.com/video/av53408299/) 
 
 ![](./static/images/cmdb_host_list.png)  
 
@@ -74,7 +74,7 @@ docker exec -ti cmdb_codo_cmdb_1 /usr/local/bin/python3 /var/www/codo-cmdb/db_sy
 - 默认端口：8050，可直接测试Are you ok?
 ```
 #返回200
- curl -I -X GET -m 10 -o /dev/null -s -w %{http_code} http://cmdb2.opendevops.cn:8050/are_you_ok/
+ curl -I -X GET -m 10 -o /dev/null -s -w %{http_code} http://${cmdb_domain}:8050/are_you_ok/
 ```
 
 
