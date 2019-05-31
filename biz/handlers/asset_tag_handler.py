@@ -20,7 +20,12 @@ class TagAuthority(BaseHandler):
         tag_list = []
 
         with DBContext('r') as session:
-            the_tags = session.query(Tag).order_by(Tag.id).all()
+            if self.is_superuser:
+                # TODO 超管看所有
+                the_tags = session.query(Tag).order_by(Tag.id).all()
+            else:
+                # TODO 普通用户看有权限的TAG
+                the_tags = session.query(Tag).order_by(Tag.id).filter(Tag.users.like('%{}%'.format(nickname)))
 
         for msg in the_tags:
             data_dict = model_to_dict(msg)
@@ -34,6 +39,7 @@ class TagAuthority(BaseHandler):
 
 class TAGHandler(BaseHandler):
     def get(self, *args, **kwargs):
+        nickname = self.get_current_nickname()
         key = self.get_argument('key', default=None, strip=True)
         value = self.get_argument('value', default=None, strip=True)
         page_size = self.get_argument('page', default=1, strip=True)
@@ -149,7 +155,6 @@ class TAGHandler(BaseHandler):
             server_list, new_server_list, del_server_list = [], [], []
             in_server_tags = session.query(Server.id).outerjoin(ServerTag, ServerTag.server_id == Server.id).filter(
                 ServerTag.tag_id == tag_id).all()
-
 
             for i in in_server_tags:
                 i = i[0]

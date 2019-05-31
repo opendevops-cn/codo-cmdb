@@ -22,9 +22,9 @@ import datetime
 from websdk.base_handler import LivenessProbe
 
 
-
 class ServerHandler(BaseHandler):
     def get(self, *args, **kwargs):
+        nickname = self.get_current_nickname()
         key = self.get_argument('key', default=None, strip=True)
         value = self.get_argument('value', default=None, strip=True)
         page_size = self.get_argument('page', default=1, strip=True)
@@ -56,23 +56,56 @@ class ServerHandler(BaseHandler):
 
             ### 监听搜索
             if key and key != 'tag_name' and not value:
-                count = session.query(Server).filter(or_(Server.hostname.like('%{}%'.format(key)),
-                                                         Server.ip.like('%{}%'.format(key)),
-                                                         Server.public_ip.like('%{}%'.format(key)),
-                                                         Server.admin_user.like('%{}%'.format(key)),
-                                                         Server.port.like('%{}%'.format(key)),
-                                                         Server.idc.like('%{}%'.format(key)),
-                                                         Server.region.like('%{}%'.format(key)),
-                                                         Server.state.like('%{}%'.format(key)))).count()
-                server_info = session.query(Server).filter(or_(Server.hostname.like('%{}%'.format(key)),
-                                                               Server.ip.like('%{}%'.format(key)),
-                                                               Server.public_ip.like('%{}%'.format(key)),
-                                                               Server.admin_user.like('%{}%'.format(key)),
-                                                               Server.port.like('%{}%'.format(key)),
-                                                               Server.idc.like('%{}%'.format(key)),
-                                                               Server.region.like('%{}%'.format(key)),
-                                                               Server.state.like('%{}%'.format(key)))).order_by(
-                    Server.id)
+                if self.is_superuser:
+                    # TODO 超管做全局搜索
+                    count = session.query(Server).filter(or_(Server.hostname.like('%{}%'.format(key)),
+                                                             Server.ip.like('%{}%'.format(key)),
+                                                             Server.public_ip.like('%{}%'.format(key)),
+                                                             Server.admin_user.like('%{}%'.format(key)),
+                                                             Server.port.like('%{}%'.format(key)),
+                                                             Server.idc.like('%{}%'.format(key)),
+                                                             Server.region.like('%{}%'.format(key)),
+                                                             Server.state.like('%{}%'.format(key)))).count()
+                    server_info = session.query(Server).filter(or_(Server.hostname.like('%{}%'.format(key)),
+                                                                   Server.ip.like('%{}%'.format(key)),
+                                                                   Server.public_ip.like('%{}%'.format(key)),
+                                                                   Server.admin_user.like('%{}%'.format(key)),
+                                                                   Server.port.like('%{}%'.format(key)),
+                                                                   Server.idc.like('%{}%'.format(key)),
+                                                                   Server.region.like('%{}%'.format(key)),
+                                                                   Server.state.like('%{}%'.format(key)))).order_by(
+                        Server.id)
+                else:
+                    # TODO 普通用户做搜索
+                    server_id_list = []
+                    with DBContext('r') as session:
+                        the_servers = session.query(ServerTag.server_id).filter(ServerTag.tag_id.in_(
+                            session.query(Tag.id).filter(or_(Tag.users.like('%{}%'.format(nickname))))))
+                        for s in the_servers:
+                            server_id_list.append(s[0])
+                        # 去重下列表,万一有重复的呢
+                        set_server_id_list = set(server_id_list)
+                        # 获取主机详情
+                        count = session.query(Server).filter(Server.id.in_(set_server_id_list)).filter(
+                            or_(Server.hostname.like('%{}%'.format(key)),
+                                Server.ip.like('%{}%'.format(key)),
+                                Server.public_ip.like('%{}%'.format(key)),
+                                Server.admin_user.like('%{}%'.format(key)),
+                                Server.port.like('%{}%'.format(key)),
+                                Server.idc.like('%{}%'.format(key)),
+                                Server.region.like('%{}%'.format(key)),
+                                Server.state.like('%{}%'.format(key)))).count()
+                        server_info = session.query(Server).filter(Server.id.in_(set_server_id_list)).filter(
+                            or_(Server.hostname.like('%{}%'.format(key)),
+                                Server.ip.like('%{}%'.format(key)),
+                                Server.public_ip.like('%{}%'.format(key)),
+                                Server.admin_user.like('%{}%'.format(key)),
+                                Server.port.like('%{}%'.format(key)),
+                                Server.idc.like('%{}%'.format(key)),
+                                Server.region.like('%{}%'.format(key)),
+                                Server.state.like('%{}%'.format(key)))).order_by(
+                            Server.id)
+
                 # .offset(limit_start).limit(int(limit)) #这里加上分页的话，有时候有时候在别的页面进行全局搜可能会有点小问题
                 for msg in server_info:
                     tag_list = []
@@ -95,13 +128,38 @@ class ServerHandler(BaseHandler):
                 server_info = session.query(Server).order_by(Server.id).all()
             else:
                 ## 正常分页搜索
-                if key and value:
-                    count = session.query(Server).filter_by(**{key: value}).count()
-                    server_info = session.query(Server).filter_by(**{key: value}).order_by(Server.id).offset(
-                        limit_start).limit(int(limit))
+                # TODO 超级管理员查询所有
+                if self.is_superuser:
+                    if key and value:
+                        count = session.query(Server).filter_by(**{key: value}).count()
+                        server_info = session.query(Server).filter_by(**{key: value}).order_by(Server.id).offset(
+                            limit_start).limit(int(limit))
+                    else:
+                        count = session.query(Server).count()
+                        server_info = session.query(Server).order_by(Server.id).offset(limit_start).limit(int(limit))
                 else:
-                    count = session.query(Server).count()
-                    server_info = session.query(Server).order_by(Server.id).offset(limit_start).limit(int(limit))
+                    # TODO 普通用户只给有权限的主机,根据用户查Tagid, 根据Tagid查询出来关联的ServerID，根据ServerID返回主机详情
+                    server_id_list = []
+                    with DBContext('r') as session:
+                        # 子查询查出来server_id
+                        the_servers = session.query(ServerTag.server_id).filter(ServerTag.tag_id.in_(
+                            session.query(Tag.id).filter(or_(Tag.users.like('%{}%'.format(nickname))))))
+                        for s in the_servers:
+                            server_id_list.append(s[0])
+                        # 去重下列表,万一有重复的呢
+                        set_server_id_list = set(server_id_list)
+                    if key and value:
+                        # 根据Keyvalue获取
+                        count = session.query(Server).filter(Server.id.in_(set_server_id_list)).filter_by(
+                            **{key: value}).count()
+                        server_info = session.query(Server).filter(Server.id.in_(set_server_id_list)).filter_by(
+                            **{key: value}).order_by(Server.id).offset(
+                            limit_start).limit(int(limit))
+                    else:
+                        # 获取主机详情
+                        count = session.query(Server).filter(Server.id.in_(set_server_id_list)).count()
+                        server_info = session.query(Server).filter(Server.id.in_(set_server_id_list)).offset(
+                            limit_start).limit(int(limit))
 
             for msg in server_info:
                 tag_list = []
@@ -263,6 +321,7 @@ class ServerDetailHandler(BaseHandler):
 
 class TreeHandler(BaseHandler):
     def get(self, *args, **kwargs):
+        nickname = self.get_current_nickname()
         _tree = [{
             "expand": True,
             "title": 'root',
@@ -271,7 +330,12 @@ class TreeHandler(BaseHandler):
         }]
 
         with DBContext('r', None, True) as session:
-            db_tags = session.query(Tag).order_by(Tag.id).all()
+            if self.is_superuser:
+                # TODO 超管看所有Tag Tree
+                db_tags = session.query(Tag).order_by(Tag.id).all()
+            else:
+                # TODO 普通用户看有权限的TAG Tree
+                db_tags = session.query(Tag).order_by(Tag.id).filter(Tag.users.like('%{}%'.format(nickname)))
             for msg in db_tags:
                 server_dict = {}
                 data_dict = model_to_dict(msg)
@@ -319,23 +383,19 @@ class SyncServerTagTree(BaseHandler):
         msg = sync_tag_tree()
         return msg
 
-
-
     @gen.coroutine
     def get(self, *args, **kwargs):
         # msg = yield self.sync_task()
 
         try:
-            #超过120s 返回Timeout
+            # 超过120s 返回Timeout
             msg = yield gen.with_timeout(datetime.timedelta(seconds=120), self.sync_task(),
-                                                  quiet_exceptions=tornado.gen.TimeoutError)
+                                         quiet_exceptions=tornado.gen.TimeoutError)
             if msg:
                 return self.write(dict(code=-1, msg=msg))
         except gen.TimeoutError:
             return self.write(dict(code=-2, msg='TimeOut'))
         return self.write(dict(code=0, msg='同步TagTree完成, 详细的机器同步信息可查看后端日志'))
-
-
 
 
 asset_server_urls = [
