@@ -44,15 +44,31 @@ class EcsAPi():
         获取返回值
         :return:
         """
+
+        response_data = {}
+        err = None
         request = self.set_request()
         try:
-
             response = self.client.do_action_with_exception(request)
             response_data = json.loads(str(response, encoding="utf8"))
-            return response_data
         except Exception as e:
-            # print(e)
-            return e
+            err = e
+        return response_data, err
+
+    # def get_response(self):
+    #     """
+    #     获取返回值
+    #     :return:
+    #     """
+    #     request = self.set_request()
+    #     try:
+    #
+    #         response = self.client.do_action_with_exception(request)
+    #         response_data = json.loads(str(response, encoding="utf8"))
+    #         return response_data
+    #     except Exception as e:
+    #         # print(e)
+    #         return e
 
     # print(response_data)
 
@@ -61,25 +77,24 @@ class EcsAPi():
         获取机器总数
         :return:
         """
-
-        try:
-            response = self.get_response()
-            count = response['TotalCount']
-            return count
-        except TypeError as e:
-            print(e)
+        response_data, err = self.get_response()
+        if err != None:
+            ins_log.read_log('error', err)
             return False
+        count = response_data['TotalCount']
+        return count
 
     def get_server_info(self):
         """
         获取服务器信息
         :return:
         """
-        response = self.get_response()
-        if not response:
+        response_data, err = self.get_response()
+        if err != None:
+            ins_log.read_log('error', err)
             return False
         try:
-            ret = response['Instances']['Instance']
+            ret = response_data['Instances']['Instance']
         except (KeyError, TypeError):
             ins_log.read_log('error', '可能是因为SecretID/SecretKey配置错误，没法拿到配置，请检查下配置')
             # print('[Error]: 可能是因为SecretID/SecretKey配置错误，没法拿到配置，请检查下配置')
@@ -90,14 +105,14 @@ class EcsAPi():
             try:
                 asset_data['hostname'] = i.get('InstanceName')
             except(KeyError, TypeError):
-                asset_data['hostname'] = i.get('InstanceId')  #取不到给instance_id
+                asset_data['hostname'] = i.get('InstanceId')  # 取不到给instance_id
             asset_data['region'] = i.get('ZoneId')
             asset_data['instance_id'] = i.get('InstanceId')
             asset_data['instance_type'] = i.get('InstanceType')
             asset_data['instance_state'] = i.get('Status')
             asset_data['cpu_cores'] = i.get('Cpu')
             asset_data['memory'] = M2human(i.get('Memory'))
-            # 私钥IP
+            # 内网IP
             try:
 
                 asset_data['private_ip'] = i['VpcAttributes']['PrivateIpAddress']['IpAddress'][0]
@@ -110,7 +125,7 @@ class EcsAPi():
             except(KeyError, IndexError):
                 asset_data['public_ip'] = i['EipAddress']['IpAddress']
             except Exception:
-                asset_data['public_ip'] = 'Null'
+                asset_data['public_ip'] = asset_data['private_ip']
 
             asset_data['os_type'] = i.get('OSType')
             asset_data['os_name'] = i.get('OSName')
@@ -128,12 +143,12 @@ class EcsAPi():
         if not server_list:
             ins_log.read_log('info', 'Not fount server info')
             return False
-        with DBContext('r') as session:
+        with DBContext('w') as session:
             for server in server_list:
-                ip = server.get('public_ip', server.get('private_ip'))
+                ip = server.get('public_ip')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
-                if hostname == '':
+                if hostname == '' or not hostname:
                     hostname = instance_id
                 region = server.get('region', 'Null')
                 instance_type = server.get('instance_type', 'Null')
@@ -141,7 +156,7 @@ class EcsAPi():
                 cpu = server.get('cpu', 'Null')
                 cpu_cores = server.get('cpu_cores', 'Null')
                 memory = server.get('memory', 'Null')
-                disk = server.get('disk', 'Null')  # 阿里云接口里面没有disk信息
+                disk = server.get('disk', 'Null')  # 阿里云接口里面好像没有disk信息
                 os_type = server.get('os_type', 'Null')
                 os_name = server.get('os_name', 'Null')
                 os_kernel = server.get('os_kernel', 'Null')
@@ -213,8 +228,7 @@ class EcsAPi():
                 self.page_size = count
             else:
                 self.page_size = c + 100
-
-            # print('开始同步第{}--第{}台机器'.format(self.page_number, self.page_size))
+            ins_log.read_log('info', '开始同步第{}--第{}台机器'.format(self.page_number, self.page_size))
             self.sync_cmdb()
 
 
@@ -254,7 +268,7 @@ def main():
         default_admin_user = config.get('default_admin_user')
 
         obj = EcsAPi(access_id, access_key, region, default_admin_user)
-        obj.sync_cmdb()
+        obj.index()
 
 
 if __name__ == '__main__':

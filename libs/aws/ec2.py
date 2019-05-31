@@ -61,7 +61,7 @@ class Ec2Api():
                     asset_data['instance_type'] = i.get('InstanceType','Null')
                     asset_data['instance_state'] = i['State'].get('Name', '')
                     asset_data['private_ip'] = i.get('PrivateIpAddress','Null')
-                    asset_data['public_ip'] = i.get('PublicIpAddress', i.get('PrivateIpAddress','Null'))
+                    asset_data['public_ip'] = i.get('PublicIpAddress', asset_data['private_ip']) #没有公网就给私网IP
                     print(asset_data)
                     server_list.append(asset_data)
 
@@ -80,12 +80,14 @@ class Ec2Api():
             ins_log.read_log('info', 'Not fount server info...')
             # print('Not Fount Server Info')
             return False
-        with DBContext('r') as session:
+        with DBContext('w') as session:
             for server in server_list:
-                ip = server.get('public_ip', 'Null')
+                ip = server.get('public_ip')
+
+                #ip = server.get('public_ip', 'Null')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
-                if hostname == '':
+                if hostname == '' or not hostname:
                     hostname = instance_id
                 region = server.get('region', 'Null')
                 instance_type = server.get('instance_type', 'Null')
