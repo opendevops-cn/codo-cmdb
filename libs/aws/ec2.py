@@ -80,12 +80,15 @@ class Ec2Api():
             ins_log.read_log('info', 'Not fount server info...')
             # print('Not Fount Server Info')
             return False
-        with DBContext('r') as session:
+        with DBContext('w') as session:
             for server in server_list:
-                ip = server.get('public_ip', 'Null')
+                private_ip = server.get('private_ip')
+                if server.get('public_ip') == 'Null' or not server.get('public_ip'):
+                    ip = private_ip
+                #ip = server.get('public_ip', 'Null')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
-                if hostname == '':
+                if hostname == '' or not hostname:
                     hostname = instance_id
                 region = server.get('region', 'Null')
                 instance_type = server.get('instance_type', 'Null')

@@ -44,15 +44,31 @@ class EcsAPi():
         获取返回值
         :return:
         """
+
+        response_data = {}
+        err = None
         request = self.set_request()
         try:
-
             response = self.client.do_action_with_exception(request)
             response_data = json.loads(str(response, encoding="utf8"))
-            return response_data
         except Exception as e:
-            # print(e)
-            return e
+            err = e
+        return response_data, err
+
+    # def get_response(self):
+    #     """
+    #     获取返回值
+    #     :return:
+    #     """
+    #     request = self.set_request()
+    #     try:
+    #
+    #         response = self.client.do_action_with_exception(request)
+    #         response_data = json.loads(str(response, encoding="utf8"))
+    #         return response_data
+    #     except Exception as e:
+    #         # print(e)
+    #         return e
 
     # print(response_data)
 
@@ -61,25 +77,24 @@ class EcsAPi():
         获取机器总数
         :return:
         """
-
-        try:
-            response = self.get_response()
-            count = response['TotalCount']
-            return count
-        except TypeError as e:
-            print(e)
+        response_data, err = self.get_response()
+        if err != None:
+            ins_log.read_log('error', err)
             return False
+        count = response_data['TotalCount']
+        return count
 
     def get_server_info(self):
         """
         获取服务器信息
         :return:
         """
-        response = self.get_response()
-        if not response:
+        response_data, err = self.get_response()
+        if err != None:
+            ins_log.read_log('error', err)
             return False
         try:
-            ret = response['Instances']['Instance']
+            ret = response_data['Instances']['Instance']
         except (KeyError, TypeError):
             ins_log.read_log('error', '可能是因为SecretID/SecretKey配置错误，没法拿到配置，请检查下配置')
             # print('[Error]: 可能是因为SecretID/SecretKey配置错误，没法拿到配置，请检查下配置')
@@ -90,7 +105,7 @@ class EcsAPi():
             try:
                 asset_data['hostname'] = i.get('InstanceName')
             except(KeyError, TypeError):
-                asset_data['hostname'] = i.get('InstanceId')  #取不到给instance_id
+                asset_data['hostname'] = i.get('InstanceId')  # 取不到给instance_id
             asset_data['region'] = i.get('ZoneId')
             asset_data['instance_id'] = i.get('InstanceId')
             asset_data['instance_type'] = i.get('InstanceType')
@@ -110,7 +125,7 @@ class EcsAPi():
             except(KeyError, IndexError):
                 asset_data['public_ip'] = i['EipAddress']['IpAddress']
             except Exception:
-                asset_data['public_ip'] = 'Null'
+                asset_data['public_ip'] = asset_data['private_ip']
 
             asset_data['os_type'] = i.get('OSType')
             asset_data['os_name'] = i.get('OSName')
@@ -128,11 +143,9 @@ class EcsAPi():
         if not server_list:
             ins_log.read_log('info', 'Not fount server info')
             return False
-        with DBContext('r') as session:
+        with DBContext('w') as session:
             for server in server_list:
-                private_ip = server.get('private_ip')
-                if server.get('public_ip') == 'Null':
-                    ip = private_ip
+                ip = server.get('public_ip')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
                 if hostname == '' or not hostname:

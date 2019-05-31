@@ -3,7 +3,7 @@
 # @Time    : 2019/5/10 16:37
 # @Author  : Fred Yangxiaofei
 # @File    : ecs.py
-# @Role    : 说明脚本功能
+# @Role    : 获取腾讯云主机信息
 
 
 import time
@@ -60,7 +60,7 @@ class CVMApi():
         response = requests.get(result_url)
         result_data = json.loads(response.text)
         if result_data['Response'].get('Error'):
-            print(result_data['Response'])
+            ins_log.read_log('error','{}'.format(result_data['Response']))
             return False
         else:
             ret = result_data['Response']
@@ -109,7 +109,7 @@ class CVMApi():
             try:
                 public_ip = i['PublicIpAddresses'][0]
             except (KeyError, TypeError):
-                public_ip = 'Null'
+                public_ip = private_ip  #不存在公网就给私网IP
             os_type = i.get('OsName')
             region = i['Placement'].get('Zone')
             asset_data['region'] = region
@@ -141,9 +141,7 @@ class CVMApi():
 
         with DBContext('w') as session:
             for server in server_list:
-                private_ip  = server.get('private_ip')
-                if server.get('public_ip') == 'Null':
-                    ip = private_ip
+                ip = server.get('public_ip')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
                 if hostname == '' or not hostname:
