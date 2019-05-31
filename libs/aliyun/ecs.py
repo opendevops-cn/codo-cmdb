@@ -97,7 +97,7 @@ class EcsAPi():
             asset_data['instance_state'] = i.get('Status')
             asset_data['cpu_cores'] = i.get('Cpu')
             asset_data['memory'] = M2human(i.get('Memory'))
-            # 私钥IP
+            # 内网IP
             try:
 
                 asset_data['private_ip'] = i['VpcAttributes']['PrivateIpAddress']['IpAddress'][0]
@@ -110,7 +110,7 @@ class EcsAPi():
             except(KeyError, IndexError):
                 asset_data['public_ip'] = i['EipAddress']['IpAddress']
             except Exception:
-                asset_data['public_ip'] = None
+                asset_data['public_ip'] = 'Null'
 
             asset_data['os_type'] = i.get('OSType')
             asset_data['os_name'] = i.get('OSName')
@@ -131,7 +131,7 @@ class EcsAPi():
         with DBContext('r') as session:
             for server in server_list:
                 private_ip = server.get('private_ip')
-                if not server.get('public_ip'):
+                if server.get('public_ip') == 'Null':
                     ip = private_ip
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
@@ -215,8 +215,7 @@ class EcsAPi():
                 self.page_size = count
             else:
                 self.page_size = c + 100
-
-            # print('开始同步第{}--第{}台机器'.format(self.page_number, self.page_size))
+            ins_log.read_log('info', '开始同步第{}--第{}台机器'.format(self.page_number, self.page_size))
             self.sync_cmdb()
 
 

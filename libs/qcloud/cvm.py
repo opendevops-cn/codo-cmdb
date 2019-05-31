@@ -109,7 +109,7 @@ class CVMApi():
             try:
                 public_ip = i['PublicIpAddresses'][0]
             except (KeyError, TypeError):
-                public_ip = None
+                public_ip = 'Null'
             os_type = i.get('OsName')
             region = i['Placement'].get('Zone')
             asset_data['region'] = region
@@ -139,10 +139,10 @@ class CVMApi():
             print('Not Fount Server Info')
             return False
 
-        with DBContext('r') as session:
+        with DBContext('w') as session:
             for server in server_list:
                 private_ip  = server.get('private_ip')
-                if not server.get('public_ip'):
+                if server.get('public_ip') == 'Null':
                     ip = private_ip
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
@@ -220,7 +220,7 @@ class CVMApi():
                 self.limit = str(count)
             else:
                 self.limit = str(c + 100)
-
+            ins_log.read_log('info', '开始同步第{}--{}台机器'.format(self.offset, self.limit))
             self.sync_cmdb()
 
 
