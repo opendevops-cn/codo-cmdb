@@ -109,7 +109,7 @@ class CVMApi():
             try:
                 public_ip = i['PublicIpAddresses'][0]
             except (KeyError, TypeError):
-                public_ip = 'Null'
+                public_ip = None
             os_type = i.get('OsName')
             region = i['Placement'].get('Zone')
             asset_data['region'] = region
@@ -258,7 +258,7 @@ def main():
         default_admin_user = config.get('default_admin_user')
 
         obj = CVMApi(access_id, access_key, region, default_admin_user)
-        obj.sync_cmdb()
+        obj.index()
 
 
 

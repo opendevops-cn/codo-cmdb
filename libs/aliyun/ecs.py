@@ -110,7 +110,7 @@ class EcsAPi():
             except(KeyError, IndexError):
                 asset_data['public_ip'] = i['EipAddress']['IpAddress']
             except Exception:
-                asset_data['public_ip'] = 'Null'
+                asset_data['public_ip'] = None
 
             asset_data['os_type'] = i.get('OSType')
             asset_data['os_name'] = i.get('OSName')
@@ -141,7 +141,7 @@ class EcsAPi():
                 cpu = server.get('cpu', 'Null')
                 cpu_cores = server.get('cpu_cores', 'Null')
                 memory = server.get('memory', 'Null')
-                disk = server.get('disk', 'Null')  # 阿里云接口里面没有disk信息
+                disk = server.get('disk', 'Null')  # 阿里云接口里面好像没有disk信息
                 os_type = server.get('os_type', 'Null')
                 os_name = server.get('os_name', 'Null')
                 os_kernel = server.get('os_kernel', 'Null')
@@ -254,7 +254,7 @@ def main():
         default_admin_user = config.get('default_admin_user')
 
         obj = EcsAPi(access_id, access_key, region, default_admin_user)
-        obj.sync_cmdb()
+        obj.index()
 
 
 if __name__ == '__main__':
