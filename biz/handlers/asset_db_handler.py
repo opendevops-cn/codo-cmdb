@@ -14,8 +14,10 @@ from models.server import Tag
 from websdk.db_context import DBContext
 import tornado.web
 
+
 class DBHandler(BaseHandler):
     def get(self, *args, **kwargs):
+        nickname = self.get_current_nickname()
         key = self.get_argument('key', default=None, strip=True)
         value = self.get_argument('value', default=None, strip=True)
         page_size = self.get_argument('page', default=1, strip=True)
@@ -45,28 +47,66 @@ class DBHandler(BaseHandler):
 
             ### 监听搜索
             if key and key != 'tag_name' and not value:
-                count = session.query(DB).filter(or_(DB.db_code.like('%{}%'.format(key)),
-                                                     DB.db_host.like('%{}%'.format(key)),
-                                                     DB.db_user.like('%{}%'.format(key)),
-                                                     DB.db_pwd.like('%{}%'.format(key)),
-                                                     DB.proxy_host.like('%{}%'.format(key)),
-                                                     DB.db_type.like('%{}%'.format(key)),
-                                                     DB.db_version.like('%{}%'.format(key)),
-                                                     DB.db_mark.like('%{}%'.format(key)),
-                                                     DB.state.like('%{}%'.format(key)),
-                                                     DB.db_env.like('%{}%'.format(key)))).count()
+                # TODO 超管查所有
+                if self.is_superuser:
 
-                db_info = session.query(DB).filter(or_(DB.db_code.like('%{}%'.format(key)),
-                                                       DB.db_host.like('%{}%'.format(key)),
-                                                       DB.db_user.like('%{}%'.format(key)),
-                                                       DB.db_pwd.like('%{}%'.format(key)),
-                                                       DB.proxy_host.like('%{}%'.format(key)),
-                                                       DB.db_type.like('%{}%'.format(key)),
-                                                       DB.db_version.like('%{}%'.format(key)),
-                                                       DB.db_mark.like('%{}%'.format(key)),
-                                                       DB.state.like('%{}%'.format(key)),
-                                                       DB.db_env.like('%{}%'.format(key)))).order_by(DB.id).offset(
-                    limit_start).limit(int(limit))
+                    count = session.query(DB).filter(or_(DB.db_code.like('%{}%'.format(key)),
+                                                         DB.db_host.like('%{}%'.format(key)),
+                                                         DB.db_user.like('%{}%'.format(key)),
+                                                         DB.db_pwd.like('%{}%'.format(key)),
+                                                         DB.proxy_host.like('%{}%'.format(key)),
+                                                         DB.db_type.like('%{}%'.format(key)),
+                                                         DB.db_version.like('%{}%'.format(key)),
+                                                         DB.db_mark.like('%{}%'.format(key)),
+                                                         DB.state.like('%{}%'.format(key)),
+                                                         DB.db_env.like('%{}%'.format(key)))).count()
+
+                    db_info = session.query(DB).filter(or_(DB.db_code.like('%{}%'.format(key)),
+                                                           DB.db_host.like('%{}%'.format(key)),
+                                                           DB.db_user.like('%{}%'.format(key)),
+                                                           DB.db_pwd.like('%{}%'.format(key)),
+                                                           DB.proxy_host.like('%{}%'.format(key)),
+                                                           DB.db_type.like('%{}%'.format(key)),
+                                                           DB.db_version.like('%{}%'.format(key)),
+                                                           DB.db_mark.like('%{}%'.format(key)),
+                                                           DB.state.like('%{}%'.format(key)),
+                                                           DB.db_env.like('%{}%'.format(key)))).order_by(DB.id).offset(
+                        limit_start).limit(int(limit))
+
+                else:
+                    # TODO 普通用户只能看到有权限的
+                    db_id_list = []
+                    with DBContext('r') as session:
+                        the_dbs = session.query(DBTag.db_id).filter(DBTag.tag_id.in_(
+                            session.query(Tag.id).filter(or_(Tag.users.like('%{}%'.format(nickname))))))
+                        for s in the_dbs:
+                            db_id_list.append(s[0])
+                        # 去重下列表,万一有重复的呢
+                        set_db_id_list = set(db_id_list)
+                        count = session.query(DB).filter(DB.id.in_(set_db_id_list)).filter(
+                            or_(DB.db_code.like('%{}%'.format(key)),
+                                DB.db_host.like('%{}%'.format(key)),
+                                DB.db_user.like('%{}%'.format(key)),
+                                DB.db_pwd.like('%{}%'.format(key)),
+                                DB.proxy_host.like('%{}%'.format(key)),
+                                DB.db_type.like('%{}%'.format(key)),
+                                DB.db_version.like('%{}%'.format(key)),
+                                DB.db_mark.like('%{}%'.format(key)),
+                                DB.state.like('%{}%'.format(key)),
+                                DB.db_env.like('%{}%'.format(key)))).count()
+
+                        db_info = session.query(DB).filter(DB.id.in_(set_db_id_list)).filter(
+                            or_(DB.db_code.like('%{}%'.format(key)),
+                                DB.db_host.like('%{}%'.format(key)),
+                                DB.db_user.like('%{}%'.format(key)),
+                                DB.db_pwd.like('%{}%'.format(key)),
+                                DB.proxy_host.like('%{}%'.format(key)),
+                                DB.db_type.like('%{}%'.format(key)),
+                                DB.db_version.like('%{}%'.format(key)),
+                                DB.db_mark.like('%{}%'.format(key)),
+                                DB.state.like('%{}%'.format(key)),
+                                DB.db_env.like('%{}%'.format(key)))).order_by(DB.id).offset(
+                            limit_start).limit(int(limit))
 
                 for msg in db_info:
                     tag_list = []
@@ -86,13 +126,38 @@ class DBHandler(BaseHandler):
                 count = session.query(DB).count()
                 db_info = session.query(DB).order_by(DB.id).all()
             else:
-                if key and value:
-                    count = session.query(DB).filter_by(**{key: value}).count()
-                    db_info = session.query(DB).filter_by(**{key: value}).order_by(DB.id).offset(limit_start).limit(
-                        int(limit))
+                # TODO 超管查所有
+                if self.is_superuser:
+                    if key and value:
+                        count = session.query(DB).filter_by(**{key: value}).count()
+                        db_info = session.query(DB).filter_by(**{key: value}).order_by(DB.id).offset(limit_start).limit(
+                            int(limit))
+                    else:
+                        count = session.query(DB).count()
+                        db_info = session.query(DB).order_by(DB.id).offset(limit_start).limit(int(limit))
                 else:
-                    count = session.query(DB).count()
-                    db_info = session.query(DB).order_by(DB.id).offset(limit_start).limit(int(limit))
+                    # TODO 普通用户只给有权限的DB,根据用户查Tagid, 根据Tagid查询出来关联的DBID，根据DBID返回主机详情
+                    db_id_list = []
+                    with DBContext('r') as session:
+                        # 子查询查出来server_id
+                        the_dbs = session.query(DBTag.db_id).filter(DBTag.tag_id.in_(
+                            session.query(Tag.id).filter(or_(Tag.users.like('%{}%'.format(nickname))))))
+                        for d in the_dbs:
+                            db_id_list.append(d[0])
+                        # 去重下列表,万一有重复的呢
+                        set_db_id_list = set(db_id_list)
+                    if key and value:
+                        # 根据Keyvalue获取
+                        count = session.query(DB).filter(DB.id.in_(set_db_id_list)).filter_by(
+                            **{key: value}).count()
+                        db_info = session.query(DB).filter(DB.id.in_(set_db_id_list)).filter_by(
+                            **{key: value}).order_by(DB.id).offset(
+                            limit_start).limit(int(limit))
+                    else:
+                        # 获取主机详情
+                        count = session.query(DB).filter(DB.id.in_(set_db_id_list)).count()
+                        db_info = session.query(DB).filter(DB.id.in_(set_db_id_list)).offset(
+                            limit_start).limit(int(limit))
 
             for msg in db_info:
                 tag_list = []
@@ -127,14 +192,16 @@ class DBHandler(BaseHandler):
         with DBContext('r') as session:
             exist_id = session.query(DB.id).filter(DB.db_code == db_code, DB.db_host == db_host, DB.db_port == db_port,
                                                    DB.db_user == db_user, DB.db_env == db_env,
-                                                   DB.proxy_host == proxy_host, DB.db_type == db_type,db_version == db_version,
+                                                   DB.proxy_host == proxy_host, DB.db_type == db_type,
+                                                   db_version == db_version,
                                                    DB.db_mark == db_mark).first()
         if exist_id:
             return self.write(dict(code=-2, msg='不要重复记录'))
 
         with DBContext('w', None, True) as session:
             new_db = DB(db_code=db_code, db_host=db_host, db_port=db_port, db_user=db_user, db_pwd=db_pwd,
-                        db_env=db_env, proxy_host=proxy_host, db_type=db_type, db_version=db_version, db_mark=db_mark, db_detail=db_detail)
+                        db_env=db_env, proxy_host=proxy_host, db_type=db_type, db_version=db_version, db_mark=db_mark,
+                        db_detail=db_detail)
             session.add(new_db)
 
             all_tags = session.query(Tag.id).filter(Tag.tag_name.in_(tag_list)).order_by(Tag.id).all()
