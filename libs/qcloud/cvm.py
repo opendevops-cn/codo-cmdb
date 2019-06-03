@@ -21,7 +21,7 @@ import fire
 class CVMApi():
     def __init__(self, access_id, access_key, region, default_admin_user):
         self.offset = '0'  # 偏移量,这里拼接的时候必须是字符串
-        self.limit = '100'  # 官方默认是20，我们直接拿最大，小于100可以获取所有，大于100需要设置偏移量再次请求：offset=100,offset={机器总数}
+        self.limit = '100'  # 官方默认是20，大于100需要设置偏移量再次请求：offset=100,offset={机器总数}
         self.access_id = access_id
         self.access_key = access_key
         self.region = region
@@ -60,7 +60,7 @@ class CVMApi():
         response = requests.get(result_url)
         result_data = json.loads(response.text)
         if result_data['Response'].get('Error'):
-            ins_log.read_log('error','{}'.format(result_data['Response']))
+            ins_log.read_log('error', '{}'.format(result_data['Response']))
             return False
         else:
             ret = result_data['Response']
@@ -109,7 +109,7 @@ class CVMApi():
             try:
                 public_ip = i['PublicIpAddresses'][0]
             except (KeyError, TypeError):
-                public_ip = private_ip  #不存在公网就给私网IP
+                public_ip = private_ip  # 不存在公网就给私网IP
             os_type = i.get('OsName')
             region = i['Placement'].get('Zone')
             asset_data['region'] = region
@@ -125,7 +125,7 @@ class CVMApi():
             asset_data['os_type'] = os_type
             # print(asset_data)
             server_list.append(asset_data)
-
+            ins_log.read_log('info', asset_data)
         return server_list
 
     def sync_cmdb(self):
@@ -144,7 +144,7 @@ class CVMApi():
                 ip = server.get('public_ip')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
-                if hostname == '' or not hostname:
+                if not hostname.strip():
                     hostname = instance_id
                 region = server.get('region', 'Null')
                 instance_type = server.get('instance_type', 'Null')
@@ -180,19 +180,6 @@ class CVMApi():
 
             session.commit()
 
-    # def test(self):
-    #     count = int(450)
-    #     # count = self.get_server_count()
-    #     print('Tocal：{}'.format(count))
-    #     for c in range(0, count, 100):
-    #         self.offset = str(c)
-    #         if (c + 100) > count:
-    #             self.limit = str(count)
-    #         else:
-    #             self.limit = str(c + 100)
-    #
-    #         print('开始同步第{}--第{}台机器'.format(self.offset, self.limit))
-    #         print(f"offset:{self.offset},limit:{self.limit}")
     def test_auth(self):
         """
         测试下用户给的信息是否正确
@@ -218,7 +205,7 @@ class CVMApi():
                 self.limit = str(count)
             else:
                 self.limit = str(c + 100)
-            ins_log.read_log('info', '开始同步第{}--{}台机器'.format(self.offset, self.limit))
+            ins_log.read_log('info', '开始同步腾讯云的第{}--{}台机器'.format(self.offset, self.limit))
             self.sync_cmdb()
 
 
@@ -260,6 +247,10 @@ def main():
         obj = CVMApi(access_id, access_key, region, default_admin_user)
         obj.index()
 
+
+# def test():
+#     obj = CVMApi('','','ap-shanghai','')
+#     obj.index()
 
 
 if __name__ == '__main__':

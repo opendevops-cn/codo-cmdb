@@ -51,23 +51,22 @@ class Ec2Api():
         if ret:
             for r in ret:
                 for i in r['Instances']:
+                    print(i)
                     asset_data = dict()
                     try:
                         asset_data['hostname'] = i.get('Tags')[0].get('Value')
                     except (KeyError, TypeError):
-                        asset_data['hostname'] = i.get('InstanceId', 'Null')   #拿不到hostnameg给instance_id
-                    asset_data['region'] = i['Placement'].get('AvailabilityZone','Null')
+                        asset_data['hostname'] = i.get('InstanceId', 'Null')  # 拿不到hostnameg给instance_id
+                    asset_data['region'] = i['Placement'].get('AvailabilityZone', 'Null')
                     asset_data['instance_id'] = i.get('InstanceId', 'Null')
-                    asset_data['instance_type'] = i.get('InstanceType','Null')
+                    asset_data['instance_type'] = i.get('InstanceType', 'Null')
                     asset_data['instance_state'] = i['State'].get('Name', '')
-                    asset_data['private_ip'] = i.get('PrivateIpAddress','Null')
-                    asset_data['public_ip'] = i.get('PublicIpAddress', asset_data['private_ip']) #没有公网就给私网IP
-                    print(asset_data)
+                    asset_data['private_ip'] = i.get('PrivateIpAddress', 'Null')
+                    asset_data['public_ip'] = i.get('PublicIpAddress', asset_data['private_ip'])  # 没有公网就给私网IP
+                    # print(asset_data)
                     server_list.append(asset_data)
 
         return server_list
-
-
 
     def sync_cmdb(self):
         """
@@ -82,12 +81,11 @@ class Ec2Api():
             return False
         with DBContext('w') as session:
             for server in server_list:
+                print(server)
                 ip = server.get('public_ip')
-
-                #ip = server.get('public_ip', 'Null')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
-                if hostname == '' or not hostname:
+                if not hostname.strip():
                     hostname = instance_id
                 region = server.get('region', 'Null')
                 instance_type = server.get('instance_type', 'Null')
@@ -103,7 +101,7 @@ class Ec2Api():
 
                 exist_hostname = session.query(Server).filter(Server.hostname == hostname).first()
                 # exist_ip = session.query(Server).filter(Server.ip == ip).first()
-                if exist_hostname :
+                if exist_hostname:
                     session.query(Server).filter(Server.hostname == hostname).update(
                         {Server.ip: ip, Server.public_ip: ip, Server.idc: 'AWS', Server.region: region})
 
@@ -125,11 +123,6 @@ class Ec2Api():
                                                     sn=sn)
                     session.add(new_serve_detail)
             session.commit()
-
-
-
-
-
 
     def test_auth(self):
         """
@@ -179,9 +172,8 @@ def main():
         obj.sync_cmdb()
 
 
-#
-# def main(access_id, access_key, region):
-#     obj = Ec2Api(access_id, access_key, region)
+# def test():
+#     obj = Ec2Api('','','us-east-1', '')
 #     obj.sync_cmdb()
 
 

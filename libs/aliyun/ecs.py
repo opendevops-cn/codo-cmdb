@@ -55,23 +55,6 @@ class EcsAPi():
             err = e
         return response_data, err
 
-    # def get_response(self):
-    #     """
-    #     获取返回值
-    #     :return:
-    #     """
-    #     request = self.set_request()
-    #     try:
-    #
-    #         response = self.client.do_action_with_exception(request)
-    #         response_data = json.loads(str(response, encoding="utf8"))
-    #         return response_data
-    #     except Exception as e:
-    #         # print(e)
-    #         return e
-
-    # print(response_data)
-
     def get_server_count(self):
         """
         获取机器总数
@@ -97,7 +80,6 @@ class EcsAPi():
             ret = response_data['Instances']['Instance']
         except (KeyError, TypeError):
             ins_log.read_log('error', '可能是因为SecretID/SecretKey配置错误，没法拿到配置，请检查下配置')
-            # print('[Error]: 可能是因为SecretID/SecretKey配置错误，没法拿到配置，请检查下配置')
             return False
         server_list = []
         for i in ret:
@@ -114,7 +96,6 @@ class EcsAPi():
             asset_data['memory'] = M2human(i.get('Memory'))
             # 内网IP
             try:
-
                 asset_data['private_ip'] = i['VpcAttributes']['PrivateIpAddress']['IpAddress'][0]
             except KeyError:
                 asset_data['private_ip'] = 'Null'
@@ -126,11 +107,13 @@ class EcsAPi():
                 asset_data['public_ip'] = i['EipAddress']['IpAddress']
             except Exception:
                 asset_data['public_ip'] = asset_data['private_ip']
-
+            if 'public_ip' not in asset_data or not asset_data['public_ip'].strip():
+                asset_data['public_ip'] = asset_data['private_ip']
             asset_data['os_type'] = i.get('OSType')
             asset_data['os_name'] = i.get('OSName')
             server_list.append(asset_data)
-            print(asset_data)
+            # print(asset_data)
+            ins_log.read_log('info', asset_data)
         return server_list
 
     def sync_cmdb(self):
@@ -228,7 +211,7 @@ class EcsAPi():
                 self.page_size = count
             else:
                 self.page_size = c + 100
-            ins_log.read_log('info', '开始同步第{}--第{}台机器'.format(self.page_number, self.page_size))
+            ins_log.read_log('info', '开始同步阿里云的第{}--第{}台机器'.format(self.page_number, self.page_size))
             self.sync_cmdb()
 
 
@@ -269,6 +252,11 @@ def main():
 
         obj = EcsAPi(access_id, access_key, region, default_admin_user)
         obj.index()
+
+
+# def test():
+#     obj = EcsAPi('', '', 'cn-shanghai', '')
+#     obj.index()
 
 
 if __name__ == '__main__':
