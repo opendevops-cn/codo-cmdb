@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2019/4/17 9:52
 # @Author  : Fred Yangxiaofei
-# @File    : ecs.py
+# @File    : server.py
 # @Role    : Server Models
 
 from sqlalchemy import Column, String, Integer, Text, DateTime, TIMESTAMP
@@ -44,7 +44,7 @@ class Server(Base):
 
     ### 服务器主要信息
     id = Column(Integer, primary_key=True, autoincrement=True)  # ID自增长
-    hostname = Column('hostname', String(50), unique=True, nullable=False)  # 主机名称
+    hostname = Column('hostname', String(100), unique=True, nullable=False)  # 主机名称
     ip = Column('ip', String(32), nullable=False)
     public_ip = Column('public_ip', String(50))  # 公网IP
     port = Column('port', Integer, nullable=False)  # 端口
@@ -143,7 +143,7 @@ class AssetErrorLog(Base):
 
 
 class AssetOperateLog(Base):
-    '''资产操作日志'''
+    '''资产操作日志,这是二期设计用的'''
     __tablename__ = 'asset_operate_log'
     id = Column('id', Integer, primary_key=True, autoincrement=True)  # ID自增长
     user = Column('user', String(20))
