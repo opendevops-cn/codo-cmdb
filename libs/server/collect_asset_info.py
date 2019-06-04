@@ -7,7 +7,7 @@
 
 
 from libs.ansibleAPI.runner import Runner
-from libs.common import M2human,exec_thread
+from libs.common import M2human
 
 
 
