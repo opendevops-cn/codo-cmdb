@@ -25,7 +25,9 @@ def get_host_info(server_list):
             module_args="",
             remote_user=user,
             pattern="all",
-            hosts=ip
+            hosts=ip,
+            timeout=10,
+            forks=10
         )
 
         result = runner.run()
@@ -116,18 +118,22 @@ def get_host_info(server_list):
             asset_data[ip]['os_type'] = os_type
             asset_data[ip]['os_kernel'] = os_kernel
 
-        print(asset_data)
+        # print(asset_data)
+        # print('ok')
         return asset_data
 
 
 def get_server_sysinfo(server_list):
-    """
-    多进程采集机器信息
-    :param server_list: 主机列表
-    :return:
-    """
-    #print(list(exec_thread(func=get_host_info, iterable1=server_list)))
-    return list(exec_thread(func=get_host_info, iterable1=server_list))
+    return get_host_info(server_list)
+
+# def get_server_sysinfo(server_list):
+#     """
+#     多进程采集机器信息
+#     :param server_list: 主机列表
+#     :return:
+#     """
+#     #print(list(exec_thread(func=get_host_info, iterable1=server_list)))
+#     return list(exec_thread(func=get_host_info, iterable1=server_list))
 
 
 if __name__ == '__main__':

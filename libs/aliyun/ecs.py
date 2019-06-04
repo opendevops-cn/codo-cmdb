@@ -3,7 +3,7 @@
 # @Time    : 2019/5/13 14:02
 # @Author  : Fred Yangxiaofei
 # @File    : ecs.py
-# @Role    :  获取Aliyun资产信息推送到CMDB
+# @Role    : 获取Aliyun资产信息推送到CMDB
 
 
 import json
@@ -113,7 +113,7 @@ class EcsAPi():
             asset_data['os_name'] = i.get('OSName')
             server_list.append(asset_data)
             # print(asset_data)
-            ins_log.read_log('info', asset_data)
+            ins_log.read_log('info', '资产信息:{}'.format(asset_data))
         return server_list
 
     def sync_cmdb(self):

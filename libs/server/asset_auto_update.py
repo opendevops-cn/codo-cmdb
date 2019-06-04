@@ -8,7 +8,6 @@
 
 from libs.db_context import DBContext
 from models.server import Server, ServerDetail, model_to_dict, AdminUser, AssetErrorLog
-# from libs.server_test import start_rsync, get_server_sysinfo, RsyncPublicKey
 from libs.server.sync_public_key import RsyncPublicKey, start_rsync
 from libs.server.collect_asset_info import get_server_sysinfo
 from libs.web_logs import ins_log
@@ -42,7 +41,7 @@ class AssetServerAUtoUpdate():
         id_list = self.check_server_state()
         if not id_list:
             ins_log.read_log('info', '[PASS]: No new server found, automatically skipping push public key')
-          #  print('[PASS]: No new server found, automatically skipping push public key')
+            #  print('[PASS]: No new server found, automatically skipping push public key')
 
             return
 
@@ -90,19 +89,6 @@ class AssetServerAUtoUpdate():
 
         return rsync_sucess_list
 
-    def get_host_info(self):
-        '''获取主机信息'''
-        id_list = self.check_server_state()
-        connect_server_list = []
-        with DBContext('r') as session:
-            for i in id_list:
-                connect_info = session.query(Server.ip, Server.port, AdminUser.system_user).outerjoin(AdminUser,
-                                                                                                      AdminUser.admin_user == Server.admin_user).filter(
-                    Server.id == i).all()
-                connect_server_list.append(connect_info)
-        res_data_list = get_server_sysinfo(connect_server_list)
-        return res_data_list
-
     def update_asset(self, host_info):
         """
         更新资产到数据库
@@ -110,63 +96,74 @@ class AssetServerAUtoUpdate():
         :return:
         """
         with DBContext('w') as session:
-            for host in host_info:
-                for k, v in host.items():
-                    try:
-                        if host[k].get('status'):
-                            _sn = v.get('sn', None)
-                            _hostname = v.get('host_name', None)
-                            _cpu = v.get('cpu', None)
-                            _cpu_cores = v.get('cpu_cores', None)
-                            _memory = v.get('memory', None)
-                            _disk = v.get('disk', None)
-                            _os_type = v.get('os_type', None)
-                            _os_kernel = v.get('os_kernel', None)
-                            # _instance_id = v.get('instance_id', None)
-                            # _instance_type = v.get('instance_type', None)
-                            # _instance_state = v.get('instance_state', None)
+            for k, v in host_info.items():
+                try:
+                    if host_info[k].get('status'):
+                        _sn = v.get('sn', None)
+                        _hostname = v.get('host_name', None)
+                        _cpu = v.get('cpu', None)
+                        _cpu_cores = v.get('cpu_cores', None)
+                        _memory = v.get('memory', None)
+                        _disk = v.get('disk', None)
+                        _os_type = v.get('os_type', None)
+                        _os_kernel = v.get('os_kernel', None)
+                        # _instance_id = v.get('instance_id', None)
+                        # _instance_type = v.get('instance_type', None)
+                        # _instance_state = v.get('instance_state', None)
 
-                            exist_detail = session.query(ServerDetail).filter(ServerDetail.ip == k).first()
-                            if not exist_detail:
-                                # 不存在就新建
-                                new_server_detail = ServerDetail(ip=k, sn=_sn, cpu=_cpu, cpu_cores=_cpu_cores,
-                                                                 memory=_memory, disk=_disk,
-                                                                 os_type=_os_type, os_kernel=_os_kernel)
-                                session.add(new_server_detail)
-                                session.commit()
-                                session.query(Server).filter(Server.ip == k).update(
-                                    {Server.hostname: _hostname, Server.state: 'true'})
-                                session.commit()
-                            else:
-                                # 存在就更新
-                                session.query(ServerDetail).filter(ServerDetail.ip == k).update({
-                                    ServerDetail.sn: _sn, ServerDetail.ip: k,
-                                    ServerDetail.cpu: _cpu, ServerDetail.cpu_cores: _cpu_cores,
-                                    ServerDetail.disk: _disk, ServerDetail.memory: _memory,
-                                    ServerDetail.os_type: _os_type, ServerDetail.os_kernel: _os_kernel,
-                                })
-
-                                session.query(Server).filter(Server.ip == k).update(
-                                    {Server.hostname: _hostname, Server.state: 'true'})
-                                session.commit()
-                    except sqlalchemy.exc.IntegrityError as e:
-                        ins_log.read_log('error',e)
-                        # 状态改为Flse->删除主机Detail--记录错误信息
-                        session.query(Server).filter(Server.ip == k).update({Server.state: 'false'})
-                        session.query(ServerDetail).filter(ServerDetail.ip == k).delete(
-                            synchronize_session=False)
-
-                        exist_ip = session.query(AssetErrorLog).filter(AssetErrorLog.ip == k).first()
-                        error_log = str(e)
-                        if exist_ip:
-                            session.query(AssetErrorLog).filter(AssetErrorLog.ip == k).update(
-                                {AssetErrorLog.error_log: error_log})
+                        exist_detail = session.query(ServerDetail).filter(ServerDetail.ip == k).first()
+                        if not exist_detail:
+                            # 不存在就新建
+                            new_server_detail = ServerDetail(ip=k, sn=_sn, cpu=_cpu, cpu_cores=_cpu_cores,
+                                                             memory=_memory, disk=_disk,
+                                                             os_type=_os_type, os_kernel=_os_kernel)
+                            session.add(new_server_detail)
+                            session.commit()
+                            session.query(Server).filter(Server.ip == k).update(
+                                {Server.hostname: _hostname, Server.state: 'true'})
+                            session.commit()
                         else:
-                            new_error_log = AssetErrorLog(ip=k, error_log=error_log)
-                            session.add(new_error_log)
+                            # 存在就更新
+                            session.query(ServerDetail).filter(ServerDetail.ip == k).update({
+                                ServerDetail.sn: _sn, ServerDetail.ip: k,
+                                ServerDetail.cpu: _cpu, ServerDetail.cpu_cores: _cpu_cores,
+                                ServerDetail.disk: _disk, ServerDetail.memory: _memory,
+                                ServerDetail.os_type: _os_type, ServerDetail.os_kernel: _os_kernel,
+                            })
 
-                        session.commit()
-                        return False
+                            session.query(Server).filter(Server.ip == k).update(
+                                {Server.hostname: _hostname, Server.state: 'true'})
+                            session.commit()
+                except sqlalchemy.exc.IntegrityError as e:
+                    ins_log.read_log('error', e)
+                    # 状态改为Flse->删除主机Detail--记录错误信息
+                    session.query(Server).filter(Server.ip == k).update({Server.state: 'false'})
+                    session.query(ServerDetail).filter(ServerDetail.ip == k).delete(
+                        synchronize_session=False)
+
+                    exist_ip = session.query(AssetErrorLog).filter(AssetErrorLog.ip == k).first()
+                    error_log = str(e)
+                    if exist_ip:
+                        session.query(AssetErrorLog).filter(AssetErrorLog.ip == k).update(
+                            {AssetErrorLog.error_log: error_log})
+                    else:
+                        new_error_log = AssetErrorLog(ip=k, error_log=error_log)
+                        session.add(new_error_log)
+
+                    session.commit()
+                    return False
+
+    def get_host_info(self):
+        '''获取主机信息，并写入数据库'''
+        id_list = self.check_server_state()
+        with DBContext('r') as session:
+            for i in id_list:
+                server_list = session.query(Server.ip, Server.port, AdminUser.system_user).outerjoin(AdminUser,
+                                                                                                     AdminUser.admin_user == Server.admin_user).filter(
+                    Server.id == i).all()
+                asset_data = get_server_sysinfo(server_list)
+                ins_log.read_log('info', '资产信息：{}'.format(asset_data))
+                self.update_asset(asset_data)
 
 
 def main(state):
@@ -192,14 +189,9 @@ def main(state):
         if not obj.rsync_public_key():
             # 如果没有发现有新增的主机,直接PASS
             return
-        hosts_data = obj.get_host_info()
-        obj.update_asset(hosts_data)
+        obj.get_host_info()
     elif state == 'true':
-        hosts_data_list = obj.get_host_info()
-        obj.update_asset(hosts_data_list)
-
-    else:
-        pass
+        obj.get_host_info()
 
 
 def new_tail_data():
@@ -211,5 +203,4 @@ def true_tail_data():
 
 
 if __name__ == '__main__':
-    main('new')
-# fire.Fire(main)
+    fire.Fire(main)

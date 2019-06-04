@@ -7,7 +7,6 @@
 
 
 import json
-import tornado.web
 from libs.base_handler import BaseHandler
 from models.server import Tag, Server, ServerTag, model_to_dict
 from models.db import DB, DBTag
