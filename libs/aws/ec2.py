@@ -51,7 +51,6 @@ class Ec2Api():
         if ret:
             for r in ret:
                 for i in r['Instances']:
-                    print(i)
                     asset_data = dict()
                     try:
                         asset_data['hostname'] = i.get('Tags')[0].get('Value')
@@ -81,7 +80,7 @@ class Ec2Api():
             return False
         with DBContext('w') as session:
             for server in server_list:
-                print(server)
+                ins_log.read_log('info', '资产信息:{}'.format(server))
                 ip = server.get('public_ip')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)

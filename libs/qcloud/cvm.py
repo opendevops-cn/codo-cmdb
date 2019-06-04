@@ -125,7 +125,7 @@ class CVMApi():
             asset_data['os_type'] = os_type
             # print(asset_data)
             server_list.append(asset_data)
-            ins_log.read_log('info', asset_data)
+            ins_log.read_log('info', '资产信息:{}'.format(asset_data))
         return server_list
 
     def sync_cmdb(self):

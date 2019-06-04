@@ -141,12 +141,7 @@ class PushSystemUser():
                 mc = MyCryptV2()
                 system_user = data.get('system_user')
                 _public_key = mc.my_decrypt(data.get('id_rsa_pub'))  # 解密
-                # print(_public_key)
-                # module_args = '[ ! -d /home/{}/.ssh ] &&  mkdir /home/{}/.ssh &&  chmod 700 /home/{}/.ssh ; ' \
-                #               '[ ! -f /home/{}/.ssh/authorized_keys ] &&  touch /home/{}/.ssh/authorized_keys;  ' \
-                #               ' grep -c "{}" /home/{}/.ssh/authorized_keys >> /dev/null ||  echo "{}" >> /home/{}/.ssh/authorized_keys &&  chmod 600 /home/{}/.ssh/authorized_keys && echo ok'.format(
-                #     system_user, system_user, system_user, system_user, system_user, _public_key, system_user,
-                #     _public_key, system_user, system_user)
+
 
                 module_args = '{sudo} [ ! -d /home/{system_user}/.ssh ]&& ' \
                               '{sudo} mkdir /home/{system_user}/.ssh &&' \
@@ -329,6 +324,10 @@ class PushSystemUser():
 
 
 def main():
+    """
+    这是二期规划，跳板用的
+    :return:
+    """
     obj = PushSystemUser()
     # obj.delete_system_user('sudo_test')
     # obj.delete_user_sudo('sudo_test')

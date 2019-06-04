@@ -7,7 +7,6 @@
 
 
 import json
-import tornado.web
 from libs.base_handler import BaseHandler
 from models.server import AdminUser, model_to_dict
 from websdk.db_context import DBContext

@@ -3,7 +3,7 @@
 # @Time    : 2019/4/17 16:09
 # @Author  : Fred Yangxiaofei
 # @File    : asset_server_handler.py
-# @Role    : 说明脚本功能
+# @Role    : 主机管理
 
 
 import json
@@ -15,7 +15,6 @@ import tornado.web
 from tornado import gen
 from concurrent.futures import ThreadPoolExecutor
 from tornado.concurrent import run_on_executor
-# from libs.server_test import RsyncPublicKey, start_rsync, get_server_sysinfo
 from libs.common import check_ip
 from libs.server.sync_to_tagtree import main as sync_tag_tree
 import datetime
@@ -385,8 +384,6 @@ class SyncServerTagTree(BaseHandler):
 
     @gen.coroutine
     def get(self, *args, **kwargs):
-        # msg = yield self.sync_task()
-
         try:
             # 超过120s 返回Timeout
             msg = yield gen.with_timeout(datetime.timedelta(seconds=120), self.sync_task(),

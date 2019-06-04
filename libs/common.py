@@ -9,7 +9,6 @@ import sys
 import time
 import subprocess
 import paramiko
-import shortuuid
 import concurrent.futures
 import re
 from  libs.ansibleAPI.runner import Runner
