@@ -101,7 +101,7 @@ def rsync_public_key(server_list):
     :return: 只返回推送成功的，失败的直接写错误日志
     """
     # server_list = [('47.100.231.147', 22, 'root', '-----BEGIN RSA PRIVATE KEYxxxxxEND RSA PRIVATE KEY-----', 'false')]
-    ins_log.read_log('info', 'first, rsync public key to server')
+    ins_log.read_log('info', 'rsync public key to server')
     rsync_error_list = []
     rsync_sucess_list = []
     sync_key_obj = RsyncPublicKey()
