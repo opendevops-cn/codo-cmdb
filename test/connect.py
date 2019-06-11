@@ -6,6 +6,8 @@
 # @Role    : 基于paramiko实现机器跳板+审计，这是CMDB第二版，现在不可用
 
 
+import operator
+import re
 import textwrap
 from libs.common import color_print, exec_shell
 from models.server import Server, SystemUser, model_to_dict
@@ -16,7 +18,6 @@ import os
 import socket
 import sys
 from paramiko.py3compat import input
-
 import paramiko
 import termios
 import tty
@@ -26,14 +27,11 @@ import struct
 from paramiko.py3compat import u
 from opssdk.operate import MyCryptV2
 
-#Python3里面终端不能使用Delete退格，需要导入这个模块
+# Python3里面终端不能使用Delete退格，需要导入这个模块
 
 BASE_DIR = os.path.abspath((os.path.dirname(__file__)))
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
 print(LOG_DIR)
-
-import re
-import operator
 
 
 try:
@@ -79,7 +77,8 @@ class Nav():
         '''获取资产信息'''
         server_list = []
         with DBContext('r') as session:
-            server_data = session.query(Server).filter(Server.state == 'true').all()
+            server_data = session.query(Server).filter(
+                Server.state == 'true').all()
             for data in server_data:
                 data_dict = model_to_dict(data)
                 data_dict['create_time'] = str(data_dict['create_time'])
@@ -119,6 +118,7 @@ class Nav():
                 # 只需要最后一个mysql后面的字符串
                 result = match[-1].strip()
         return result
+
     def deal_command(self, data):
         """
         处理截获的命令
@@ -130,7 +130,8 @@ class Nav():
             self.stream.feed(data)
             # 从虚拟屏幕中获取处理后的数据
             for line in reversed(self.screen.buffer):
-                line_data = "".join(map(operator.attrgetter("data"), line)).strip()
+                line_data = "".join(
+                    map(operator.attrgetter("data"), line)).strip()
                 if len(line_data) > 0:
                     parser_result = self.command_parser(line_data)
                     if parser_result is not None:
@@ -153,7 +154,8 @@ class Nav():
                 try:
                     id_ = int(input_str)
                     print('根据ID进行连接, ID：{}'.format(id_))
-                    server_info = session.query(Server.ip, Server.port).filter(Server.id == id_).first()
+                    server_info = session.query(Server.ip, Server.port).filter(
+                        Server.id == id_).first()
                     if not server_info:
                         color_print('没有匹配到任何主机', color='red')
                         return None
@@ -188,9 +190,10 @@ class Nav():
                             self.start_connect(msg.id)
 
                     else:
-                        #让用户再次选择匹配出来的数据
+                        # 让用户再次选择匹配出来的数据
                         line = '[%-3s] %-16s %-5s  %-' + str(30) + 's %-10s %s'
-                        color_print(line % ('ID', 'IP', 'Port', 'Hostname', 'AdminUser', 'Comment'), 'title')
+                        color_print(
+                            line % ('ID', 'IP', 'Port', 'Hostname', 'AdminUser', 'Comment'), 'title')
                         for msg in server_info_list:
                             _id = msg.id
                             _ip = msg.ip
@@ -198,7 +201,8 @@ class Nav():
                             _hostname = msg.hostname
                             _admin_user = msg.admin_user
                             _detail = msg.detail
-                            print(line % (_id, _ip, _port, _hostname, _admin_user, _detail))
+                            print(line % (_id, _ip, _port,
+                                          _hostname, _admin_user, _detail))
                         print()
 
             else:
@@ -273,9 +277,6 @@ class Nav():
     #     # log_file_f.write('Start at %s\r\n' % datetime.datetime.now())
     #     # return log_file_f, log_time_f, log
 
-
-
-
     def get_system_user(self):
         """
         获取系统用户，若查询到2个，就只return一个优先级高的
@@ -285,36 +286,37 @@ class Nav():
         with DBContext('r') as session:
             system_user_cont = session.query(SystemUser).count()
             if system_user_cont == 1:
-                #只有一个用户，直接返回，用这个作为跳板的用户
+                # 只有一个用户，直接返回，用这个作为跳板的用户
                 system_user_data = session.query(SystemUser).all()
                 for data in system_user_data:
                     data_dict = model_to_dict(data)
                     data_dict['create_time'] = str(data_dict['create_time'])
                     data_dict['update_time'] = str(data_dict['update_time'])
                     if data_dict['platform_users']:
-                        data_dict['platform_users'] = data_dict.get('platform_users', '').split(',')
+                        data_dict['platform_users'] = data_dict.get(
+                            'platform_users', '').split(',')
                     system_user_list.append(data_dict)
 
             else:
-                priority_max_info = session.query(func.max(SystemUser.priority)).all()
+                priority_max_info = session.query(
+                    func.max(SystemUser.priority)).all()
                 # return is list[tuple]
                 priority_max_num = priority_max_info[0][0]
-                system_user_data = session.query(SystemUser).filter(SystemUser.priority == priority_max_num).first()
+                system_user_data = session.query(SystemUser).filter(
+                    SystemUser.priority == priority_max_num).first()
                 data_dict = model_to_dict(system_user_data)
                 data_dict['create_time'] = str(data_dict['create_time'])
                 data_dict['update_time'] = str(data_dict['update_time'])
                 if data_dict['platform_users']:
-                    data_dict['platform_users'] = data_dict.get('platform_users', '').split(',')
+                    data_dict['platform_users'] = data_dict.get(
+                        'platform_users', '').split(',')
                 system_user_list.append(data_dict)
 
-        #print(system_user_list)
+        # print(system_user_list)
         return system_user_list
-
-
 
         # for i in system_user_list:
         #     system_user_priority = i.get('priority')
-
 
     def get_connect_info(self, asset_id):
         """
@@ -328,10 +330,11 @@ class Nav():
             system_user = i.get('system_user')
             mc = MyCryptV2()
             _private_key_txt = mc.my_decrypt(i.get('id_rsa'))
-            #这里需要写到本地文件
+            # 这里需要写到本地文件
 
         with DBContext('r') as session:
-            server_info = session.query(Server.ip, Server.port, Server.detail).filter(Server.id == asset_id).first()
+            server_info = session.query(Server.ip, Server.port, Server.detail).filter(
+                Server.id == asset_id).first()
             ip = server_info[0]
             port = server_info[1]
             detail = server_info[2]
@@ -344,7 +347,6 @@ class Nav():
             'detail': detail
         }
         return connect_info
-
 
         # with DBContext('r') as session:
         #     connect_info = session.query(Server.ip, Server.port, AdminUser.system_user,
@@ -371,9 +373,10 @@ class Nav():
         port = connect_info.get('port')
         user = connect_info.get('system_user')
         _private_key_txt = connect_info.get('private_key_txt')
-        #将Key写文件
+        # 将Key写文件
         file_path = '/tmp/{}_private_key'.format(user)
-        cmd = 'echo "{}" > {} && chmod 600 {}'.format(_private_key_txt, file_path, file_path)
+        cmd = 'echo "{}" > {} && chmod 600 {}'.format(
+            _private_key_txt, file_path, file_path)
         ret, stdout = exec_shell(cmd)
         if ret != 0:
             print('[ERROR]: PrivateKey文件写文件失败')
@@ -408,8 +411,8 @@ class Nav():
         except Exception as e:
             print(e)
 
-        #这是官方的写法 和下面posix对应，但是没有日志记录
-        #self.posix_shell(channel)
+        # 这是官方的写法 和下面posix对应，但是没有日志记录
+        # self.posix_shell(channel)
         self.posix_shell()
 
         # Shutdown channel socket
@@ -556,13 +559,13 @@ class Nav():
         # finally:
         #     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_tty)
         #     print('End time is %s' % datetime.datetime.now())
-            # log_file_f.close()
-            # log_time_f.close()
-            # termlog.save()
-            # log.filename = termlog.filename
-            # log.is_finished = True
-            # log.end_time = datetime.datetime.now()
-            # log.save()
+        # log_file_f.close()
+        # log_time_f.close()
+        # termlog.save()
+        # log.filename = termlog.filename
+        # log.is_finished = True
+        # log.end_time = datetime.datetime.now()
+        # log.save()
     # def posix_shell(self):
     #     import select
     #
@@ -696,11 +699,6 @@ class Nav():
         finally:
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, oldtty)
 
-
-
-
-
-
     # def connect_test(self):
     #     connect_info = {
     #         'ip': '172.16.0.101',
@@ -765,7 +763,8 @@ class Nav():
             system_user = i.get('system_user')
 
         line = '[%-3s] %-16s %-5s  %-' + str(30) + 's %-10s %s'
-        color_print(line % ('ID', 'IP', 'Port', 'Hostname', 'SystemUser', 'Comment'), 'title')
+        color_print(line % ('ID', 'IP', 'Port', 'Hostname',
+                            'SystemUser', 'Comment'), 'title')
         server_list = self.get_asset_info()
         for host in server_list:
             _id = host.get('id')
