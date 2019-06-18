@@ -127,6 +127,9 @@ class AssetConfigs(Base):
     region = Column('region', String(50), nullable=False)          #区域：如AWS：us-east-1 阿里云：cn-hangzhou等
     access_id = Column('access_id', String(120), nullable=False)       # IAM角色访问密钥
     access_key = Column('access_key', String(120), nullable=False)       # IAM角色访问密钥
+    huawei_instance_id = Column('huawei_instance_id', String(120), nullable=False)       # Huawei云实例ID
+    huawei_cloud = Column('huawei_cloud', String(120), nullable=False)  # Huawei云地址
+    project_id = Column('project_id', String(120), nullable=False)   #huawei云区域对应的项目ID
     default_admin_user = Column('default_admin_user', String(120)) #默认管理用户，会默认关联上一个管理用户，用来登陆机器
     state = Column('state', String(50), nullable=False)             #状态，Ture：开启，Flase:关闭
     remarks = Column('remarks', String(150))  # 备注信息

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2019/5/13 14:02
 # @Author  : Fred Yangxiaofei
-# @File    : ecs.py
+# @File    : huawei_ecs.py
 # @Role    : 获取Aliyun资产信息推送到CMDB
 
 
