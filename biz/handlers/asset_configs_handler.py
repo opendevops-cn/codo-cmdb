@@ -17,12 +17,15 @@ from websdk.db_context import DBContext
 from libs.aliyun.ecs import EcsAPi
 from libs.qcloud.cvm import CVMApi
 from libs.aws.ec2 import Ec2Api
+from libs.huaweiyun.huawei_ecs import HuaweiEcsApi
 from libs.aliyun.ecs import main as aliyun_update_main
 from libs.qcloud.cvm import main as qcloud_update_main
 from libs.aws.ec2 import main as aws_update_main
+from libs.huaweiyun.huawei_ecs import main as huaweiyun_update_main
 from websdk.web_logs import ins_log
 from opssdk.operate import MyCryptV2
-
+import openstack
+import keystoneauth1
 
 mc = MyCryptV2()  # 实例化
 
@@ -51,14 +54,18 @@ class AssetConfigsHandler(BaseHandler):
 
     def post(self, *args, **kwargs):
         data = json.loads(self.request.body.decode("utf-8"))
-        name = data.get('name', None)
-        account = data.get('account', None)
-        region = data.get('region', None)
-        access_id = data.get('access_id', None)
-        access_key = data.get('access_key', None)
-        default_admin_user = data.get('default_admin_user', None)
-        state = data.get('state', None)
-        remarks = data.get('remarks', None)
+        name = data.get('name', None).strip()
+        account = data.get('account', None).strip()
+        region = data.get('region', None).strip()
+        access_id = data.get('access_id', None).strip()
+        access_key = data.get('access_key', None).strip()
+        default_admin_user = data.get('default_admin_user', None).strip()
+        state = data.get('state', None).strip()
+        remarks = data.get('remarks', None).strip()
+        # 华为云需要额外三个数据
+        project_id = data.get('project_id', None).strip()
+        huawei_cloud = data.get('huawei_cloud', None).strip()
+        huawei_instance_id = data.get('huawei_instance_id', None).strip()
 
         if not name or not account or not region or not access_id or not access_key or not state:
             return self.write(dict(code=-2, msg='关键参数不能为空'))
@@ -79,7 +86,8 @@ class AssetConfigsHandler(BaseHandler):
         with DBContext('w', None, True) as session:
             new_asset_config = AssetConfigs(name=name, account=account, region=region, access_id=access_id,
                                             access_key=_access_key, default_admin_user=default_admin_user, state=state,
-                                            remarks=remarks)
+                                            remarks=remarks, project_id=project_id, huawei_cloud=huawei_cloud,
+                                            huawei_instance_id=huawei_instance_id)
             session.add(new_asset_config)
 
         return self.write(dict(code=0, msg='添加成功'))
@@ -87,14 +95,18 @@ class AssetConfigsHandler(BaseHandler):
     def put(self, *args, **kwargs):
         data = json.loads(self.request.body.decode("utf-8"))
         id = data.get('id', None)
-        name = data.get('name', None)
-        account = data.get('account', None)
-        region = data.get('region', None)
-        access_id = data.get('access_id', None)
-        access_key = data.get('access_key', None)
-        default_admin_user = data.get('default_admin_user', None)
-        state = data.get('state', None)
-        remarks = data.get('remarks', None)
+        name = data.get('name', None).strip()
+        account = data.get('account', None).strip()
+        region = data.get('region', None).strip()
+        access_id = data.get('access_id', None).strip()
+        access_key = data.get('access_key', None).strip()
+        default_admin_user = data.get('default_admin_user', None).strip()
+        state = data.get('state', None).strip()
+        remarks = data.get('remarks', None).strip()
+        # 华为云需要额外三个数据
+        project_id = data.get('project_id', None).strip()
+        huawei_cloud = data.get('huawei_cloud', None).strip()
+        huawei_instance_id = data.get('huawei_instance_id', None).strip()
 
         if not name or not account or not region or not access_id or not access_key or not state:
             return self.write(dict(code=-2, msg='关键参数不能为空'))
@@ -105,7 +117,8 @@ class AssetConfigsHandler(BaseHandler):
             session.query(AssetConfigs).filter(AssetConfigs.id == id).update(
                 {AssetConfigs.account: account, AssetConfigs.access_id: access_id, AssetConfigs.access_key: _access_key,
                  AssetConfigs.default_admin_user: default_admin_user, AssetConfigs.state: state,
-                 AssetConfigs.remarks: remarks})
+                 AssetConfigs.remarks: remarks, AssetConfigs.project_id: project_id,
+                 AssetConfigs.huawei_cloud: huawei_cloud, AssetConfigs.huawei_instance_id: huawei_instance_id})
         return self.write(dict(code=0, msg='编辑成功'))
 
     def patch(self, *args, **kwargs):
@@ -152,10 +165,10 @@ class AssetConfigsHandler(BaseHandler):
 
 class TestAuthHandler(BaseHandler):
     '''测试用户填写的信息及认证是否正确,防止主进程卡死，使用异步方法测试'''
-    _thread_pool = ThreadPoolExecutor(3)
+    _thread_pool = ThreadPoolExecutor(1)
 
     @run_on_executor(executor='_thread_pool')
-    def test_auth(self, account, region, access_id, access_key):
+    def test_auth(self, account, region, access_id, access_key, project_id, huawei_cloud, huawei_instance_id):
         """
         测试接口权限
         :return:
@@ -196,6 +209,22 @@ class TestAuthHandler(BaseHandler):
                 #     msg = '测试成功'
             except Exception as e:
                 ins_log.read_log('error', e)
+
+        elif account == '华为云':
+            ins_log.read_log('info', '华为云 API TEST')
+            obj = HuaweiEcsApi(access_id=access_id, access_key=access_key, region=region, cloud=huawei_cloud,
+                               project_id=project_id,
+                               default_admin_user=default_admin_user)
+            try:
+                obj.test_auth(huawei_instance_id)
+            except keystoneauth1.exceptions.http.Unauthorized:
+                msg = '请检查AccessID和AccessKey权限是否正确'
+            except openstack.exceptions.HttpException as err:
+                msg = 'openstack error for {}'.format(err)
+            except Exception as e:
+                print(e)
+                msg = 'error: {}'.format(e)
+
         return msg
 
     @gen.coroutine
@@ -205,35 +234,41 @@ class TestAuthHandler(BaseHandler):
         region = data.get('region', None)
         access_id = data.get('access_id', None)
         access_key = data.get('access_key', None)
+        project_id = data.get('project_id', None)
+        huawei_cloud = data.get('huawei_cloud', None)
+        huawei_instance_id = data.get('huawei_instance_id', None)
 
         if not account or not region or not access_id or not access_key:
             return self.write(dict(code=-2, msg="测试必须要包含：厂商、Region、 Access_id 、Access_key"))
 
+        if account == '华为云':
+            if not project_id or not huawei_cloud or not huawei_instance_id:
+                return self.write(dict(code=-2, msg="华为云测试必须包含：Cloud地址、区域项目ID、一个实例ID"))
+
         # 超过120s 返回Timeout
-        msg = yield self.test_auth(account, region, access_id, access_key)
+        msg = yield self.test_auth(account, region, access_id, access_key, project_id, huawei_cloud, huawei_instance_id)
         if msg:
-            #失败
+            # 失败
             return self.write(dict(code=-1, msg=msg))
         else:
             return self.write(dict(code=0, msg='测试成功'))
 
 
-
 class HanderUpdateOSServer(tornado.web.RequestHandler):
     '''前端手动触发从云厂商更新资产,使用异步方法'''
     _thread_pool = ThreadPoolExecutor(3)
+
     @run_on_executor(executor='_thread_pool')
     def handler_update_task(self):
         aliyun_update_main()
         aws_update_main()
         qcloud_update_main()
+        huaweiyun_update_main()
 
     @gen.coroutine
     def get(self, *args, **kwargs):
         yield self.handler_update_task()
         return self.write(dict(code=0, msg='拉取完成'))
-
-
 
 
 asset_configs_urls = [
