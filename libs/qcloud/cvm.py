@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2019/5/10 16:37
 # @Author  : Fred Yangxiaofei
-# @File    : huawei_ecs.py
+# @File    : cvm.py
 # @Role    : 获取腾讯云主机信息
 
 

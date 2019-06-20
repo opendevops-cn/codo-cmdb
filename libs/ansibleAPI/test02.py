@@ -11,12 +11,19 @@ import json
 
 
 def exec_shell():
+    host_dict = {
+        "host": '172.16.0.101',
+        "port": '2222',
+    }
+
+
     runner1 = Runner(
         module_name="shell",
         module_args="uptime",
         remote_user="root",
         pattern="all",
-        hosts="1.1.1.1"
+        forks=5,
+        hosts= host_dict
     )
     result1 = runner1.run()
     print(result1)
@@ -41,4 +48,4 @@ def exec_setup():
 
 if __name__ == '__main__':
     exec_shell()
-    exec_setup()
+    # exec_setup()

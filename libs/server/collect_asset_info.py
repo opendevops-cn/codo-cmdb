@@ -10,7 +10,6 @@ from libs.ansibleAPI.runner import Runner
 from libs.common import M2human
 
 
-
 def get_host_info(server_list):
     if not isinstance(server_list, list):
         raise ValueError()
@@ -18,16 +17,22 @@ def get_host_info(server_list):
     for host in server_list:
         ip = host[0]
         user = host[2]
+        host_dict = {
+            "host": host[0],
+            "port": host[1],
+            "user": host[2],
+        }
         # print(ip,user)
 
         runner = Runner(
             module_name="setup",
             module_args="",
             remote_user=user,
+            # remote_port=2222,
             pattern="all",
-            hosts=ip,
+            hosts=host_dict,
             timeout=10,
-            forks=10
+
         )
 
         result = runner.run()
@@ -83,10 +88,10 @@ def get_host_info(server_list):
             # 磁盘容量
             try:
                 disk = sum([int(result['contacted'][ip]['ansible_facts']["ansible_devices"][i]["sectors"]) * \
-                                  int(result['contacted'][ip]['ansible_facts']["ansible_devices"][i][
-                                          "sectorsize"]) / 1024 / 1024 / 1024 \
-                                  for i in result['contacted'][ip]['ansible_facts']["ansible_devices"] if
-                                  i[0:2] in ("sd", "ss", "vd", "xv")])
+                            int(result['contacted'][ip]['ansible_facts']["ansible_devices"][i][
+                                    "sectorsize"]) / 1024 / 1024 / 1024 \
+                            for i in result['contacted'][ip]['ansible_facts']["ansible_devices"] if
+                            i[0:2] in ("sd", "ss", "vd", "xv")])
             except KeyError:
                 disk = 'Null'
 
@@ -126,6 +131,7 @@ def get_host_info(server_list):
 def get_server_sysinfo(server_list):
     return get_host_info(server_list)
 
+
 # def get_server_sysinfo(server_list):
 #     """
 #     多进程采集机器信息
@@ -138,5 +144,5 @@ def get_server_sysinfo(server_list):
 
 if __name__ == '__main__':
     pass
-    # server_list = [[('172.16.0.120', 22, 'root')],[('172.16.0.93', 22, 'root')], [('1.1.1.1', 22, 'root')]]
-    # get_server_sysinfo(server_list)
+#    server_list = [[[('172.16.0.120', 22, 'root')],[('172.16.0.93', 22, 'root')], [('1.1.1.1', 22, 'root')]]]
+#    get_server_sysinfo(server_list)
