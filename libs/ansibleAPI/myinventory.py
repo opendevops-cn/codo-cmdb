@@ -96,7 +96,7 @@ class InventoryStringPlugin(BaseInventoryPlugin):
 
             for h in host_string:
                 if h not in self.inventory.hosts:
-                    self.inventory.add_host(h, group='ungrouped')
+                    self.inventory.add_host(h, group='ungrouped', port=None)
         except Exception as e:
             raise AnsibleParserError("Invalid data from string, could not parse: %s" % to_native(e))
 
@@ -115,6 +115,7 @@ class InventoryListPlugin(BaseInventoryPlugin):
         return isinstance(host_list, (list, set))
 
     def parse(self, inventory, loader, host_list, cache=None):
+        #print('11111111->',inventory, loader, host_list)
         super(InventoryListPlugin, self).parse(inventory, loader, host_list)
         try:
             for h in host_list:
@@ -141,27 +142,33 @@ class InventoryDictPlugin(BaseInventoryPlugin):
         return isinstance(sources, Mapping)
 
     def parse(self, inventory, loader, sources, cache=None):
+        # print('souce---->',sources)
         super(InventoryDictPlugin, self).parse(inventory, loader, sources)
-
-        data_from_meta = {}
-
         try:
-            for group, gdata in sources.iteritems():
-                if group == "_meta":
-                    if "hostvars" in gdata:
-                        data_from_meta = gdata['hostvars']
-                else:
-                    self._parse_group(group, gdata)
-
-            for host in self._hosts:
-                got = {}
-                if data_from_meta:
-                    got = data_from_meta.get(host, {})
-
-                self._set_host_vars([host], got)
-
+            self.inventory.add_host(host=sources.get('host'), group='ungrouped', port=sources.get('port'))
         except Exception as e:
-            raise AnsibleParserError(to_native(e))
+            raise AnsibleParserError("Invalid data from sequnes, could not parse: %s" % to_native(e))
+
+        # 下面这块有时间修改，应该是支持dict传入多主机的，目前先以self.inventory.add_host处理
+        # data_from_meta = {}
+        #
+        # try:
+        #     for group, gdata in sources.iteritems():
+        #         if group == "_meta":
+        #             if "hostvars" in gdata:
+        #                 data_from_meta = gdata['hostvars']
+        #         else:
+        #             self._parse_group(group, gdata)
+        #
+        #     for host in self._hosts:
+        #         got = {}
+        #         if data_from_meta:
+        #             got = data_from_meta.get(host, {})
+        #
+        #         self._set_host_vars([host], got)
+        #
+        # except Exception as e:
+        #     raise AnsibleParserError(to_native(e))
 
     def _set_host_vars(self, *args, **kwargs):
         if hasattr(self, "populate_host_vars"):
@@ -172,7 +179,6 @@ class InventoryDictPlugin(BaseInventoryPlugin):
             raise Exception("Have no host vars set function.")
 
     def _parse_group(self, group, data):
-
         self.inventory.add_group(group)
 
         if not isinstance(data, dict):
