@@ -63,9 +63,9 @@ class AssetConfigsHandler(BaseHandler):
         state = data.get('state', None)
         remarks = data.get('remarks', None)
         # 华为云需要额外三个数据
-        project_id = data.get('project_id', None)
-        huawei_cloud = data.get('huawei_cloud', None)
-        huawei_instance_id = data.get('huawei_instance_id', None)
+        project_id = data.get('project_id', 'Null')
+        huawei_cloud = data.get('huawei_cloud', 'Null')
+        huawei_instance_id = data.get('huawei_instance_id', 'Null')
 
         if not name or not account or not region or not access_id or not access_key or not state:
             return self.write(dict(code=-2, msg='关键参数不能为空'))
