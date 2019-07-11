@@ -29,8 +29,8 @@ class PushSystemUser():
             remote_user=remote_user,
             pattern="all",
             hosts=hosts,
-            forks=timeout,
-            timeout=forks,
+            forks=forks,
+            timeout=timeout,
         )
 
         result = runner.run()

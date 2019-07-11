@@ -57,13 +57,16 @@ def get_host_info(server_list):
             # 资产信息
 
             # SN
+            # print(result['contacted'][ip])
             try:
                 sn = result['contacted'][ip]['ansible_facts']['ansible_product_serial']
             except KeyError:
                 sn = 'Null'
             # 主机名
             try:
-                host_name = result['contacted'][ip]['ansible_facts']['ansible_hostname']
+                #这个带.没办法获取到
+                #host_name = result['contacted'][ip]['ansible_facts']['ansible_hostname']
+                host_name = result['contacted'][ip]['ansible_facts']['ansible_fqdn']
             except KeyError:
                 host_name = 'Null'
 
