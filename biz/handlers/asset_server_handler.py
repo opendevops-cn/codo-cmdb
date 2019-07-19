@@ -178,7 +178,7 @@ class ServerHandler(BaseHandler):
         data = json.loads(self.request.body.decode("utf-8"))
         hostname = data.get('hostname', None)
         ip = data.get('ip', None)
-        port = data.get('port', None)
+        port = data.get('port', 22)
         public_ip = data.get('public_ip', None)
         idc = data.get('idc', None)
         admin_user = data.get('admin_user', None)
@@ -206,7 +206,7 @@ class ServerHandler(BaseHandler):
             return self.write(dict(code=-2, msg='不要重复记录'))
 
         with DBContext('w', None, True) as session:
-            new_server = Server(hostname=hostname, ip=ip, public_ip=public_ip, port=port, idc=idc,
+            new_server = Server(hostname=hostname, ip=ip, public_ip=public_ip, port=int(port), idc=idc,
                                 admin_user=admin_user, region=region, state=state, detail=detail)
             session.add(new_server)
 
@@ -255,7 +255,7 @@ class ServerHandler(BaseHandler):
                     session.add(ServerTag(server_id=server_id, tag_id=tag_id[0]))
 
             session.query(Server).filter(Server.id == server_id).update({Server.hostname: hostname, Server.ip: ip,
-                                                                         Server.port: port,
+                                                                         Server.port: int(port),
                                                                          Server.public_ip: public_ip,
                                                                          Server.idc: idc,
                                                                          Server.admin_user: admin_user,

@@ -44,9 +44,9 @@ class Server(Base):
 
     ### 服务器主要信息
     id = Column(Integer, primary_key=True, autoincrement=True)  # ID自增长
-    hostname = Column('hostname', String(100), unique=True, nullable=False)  # 主机名称
-    ip = Column('ip', String(32), nullable=False)
-    public_ip = Column('public_ip', String(50))  # 公网IP
+    hostname = Column('hostname', String(100),  index=True, unique=True, nullable=False)  # 主机名称
+    ip = Column('ip', String(32),  index=True, nullable=False)
+    public_ip = Column('public_ip', String(32))  # 公网IP
     port = Column('port', Integer, nullable=False)  # 端口
     idc = Column('idc', String(128))  # IDC
     admin_user = Column('admin_user', String(128))  # 管理用户
