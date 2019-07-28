@@ -151,22 +151,11 @@ class TAGHandler(BaseHandler):
                     new_db_list.append(i)
 
             # if server_id_list:
-            server_list, new_server_list, del_server_list = [], [], []
-            in_server_tags = session.query(Server.id).outerjoin(ServerTag, ServerTag.server_id == Server.id).filter(
-                ServerTag.tag_id == tag_id).all()
-
-            for i in in_server_tags:
-                i = i[0]
-                server_list.append(i)
-                if i not in server_id_list:
-                    del_server_list.append(i)
-
-                    session.query(ServerTag).filter(ServerTag.server_id == i).delete(synchronize_session=False)
-
-            for i in server_id_list:
-                if i not in server_list:
-                    session.add(ServerTag(server_id=int(i), tag_id=tag_id))
-                    new_server_list.append(i)
+            session.query(ServerTag).filter(
+                ServerTag.tag_id == int(tag_id)).delete()
+            session.add_all([
+                ServerTag(server_id=i, tag_id=tag_id) for i in server_id_list
+            ])
             if users:
                 users = ','.join(users)
             session.query(Tag).filter(Tag.id == int(tag_id)).update({Tag.users: users, Tag.proxy_host: proxy_host})
