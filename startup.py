@@ -14,11 +14,11 @@ from biz.applications import Application as CmdbApp
 from biz.crontab_app import Application as CronApp
 
 
-define("service", default='api', help="start service flag", type=str)
+define("service", default='api', help="start service flag", type=bool)
 
 
 class MyProgram(MainProgram):
-    def __init__(self, service='cmdb_api', progress_id='cmdb'):
+    def __init__(self, service, progress_id):
         self.__app = None
         settings = app_settings
         if service == 'cmdb':
@@ -30,4 +30,5 @@ class MyProgram(MainProgram):
 
 
 if __name__ == '__main__':
+    # 启动 python3 startup.py --service cmdb --progressid 'cmdb'
     fire.Fire(MyProgram)
