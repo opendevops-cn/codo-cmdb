@@ -72,12 +72,12 @@ class AssetConfigsHandler(BaseHandler):
 
         with DBContext('r', None, True) as session:
             exist_id = session.query(AssetConfigs.id).filter(AssetConfigs.name == name).first()
-            exist_region = session.query(AssetConfigs.id).filter(AssetConfigs.region == region).first()
+            # exist_region = session.query(AssetConfigs.id).filter(AssetConfigs.region == region).first()
         if exist_id:
             return self.write(dict(code=-2, msg='不要重复记录'))
-
-        if exist_region:
-            return self.write(dict(code=-2, msg='Region：{}已经存在'.format(region)))
+        #
+        # if exist_region:
+        #     return self.write(dict(code=-2, msg='Region：{}已经存在'.format(region)))
 
         # 对密钥进行加密再写数据库
 
