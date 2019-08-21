@@ -96,10 +96,13 @@ class EcsAPi():
             asset_data['memory'] = M2human(i.get('Memory'))
             # 内网IP
             try:
+                #VPC里面内网IP
                 asset_data['private_ip'] = i['VpcAttributes']['PrivateIpAddress']['IpAddress'][0]
-            except KeyError:
+            except (KeyError, IndexError):
+                #非VPC里面获取内网IP
+                asset_data['private_ip'] = i['InnerIpAddress']['IpAddress'][0]
+            except Exception:
                 asset_data['private_ip'] = 'Null'
-
             # 公网IP/弹性IP
             try:
                 asset_data['public_ip'] = i['PublicIpAddress']['IpAddress'][0]
