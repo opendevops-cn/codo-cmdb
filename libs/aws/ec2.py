@@ -53,7 +53,12 @@ class Ec2Api():
                 for i in r['Instances']:
                     asset_data = dict()
                     try:
-                        asset_data['hostname'] = i.get('Tags')[0].get('Value')
+                        # asset_data['hostname'] = i.get('Tags')[0].get('Value') #这是旧的
+                        # AWS里面支持多个标签,我们只要Key为Name的
+                        tag_list = i.get('Tags')
+                        # tag_list = [i for i in tag_list if i["Key"] == "Name"]
+                        tag_list = filter(lambda x: x["Key"] == "Name", tag_list)
+                        asset_data['hostname'] = list(tag_list)[0].get('Value')
                     except (KeyError, TypeError):
                         asset_data['hostname'] = i.get('InstanceId', 'Null')  # 拿不到hostnameg给instance_id
                     asset_data['region'] = i['Placement'].get('AvailabilityZone', 'Null')
