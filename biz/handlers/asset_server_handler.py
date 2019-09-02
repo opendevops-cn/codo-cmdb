@@ -395,12 +395,53 @@ class SyncServerTagTree(BaseHandler):
         return self.write(dict(code=0, msg='同步TagTree完成, 详细的机器同步信息可查看后端日志'))
 
 
+class MultiAddServerHandler(BaseHandler):
+    def post(self, *args, **kwargs):
+        data = json.loads(self.request.body.decode("utf-8"))
+
+        # 列表包str格式，str空格切割
+        if not data:
+            return self.write(dict(code=-1, msg='不能为空'))
+
+        # 判断下格式长度
+        with DBContext('w', None, True) as session:
+            for i in data:
+                if i:
+                    server_info = i.split(' ')
+                    ins_log.read_log('info', 'MultiServer:{server_info}'.format(server_info=server_info))
+                    if len(server_info) != 4:
+                        return self.write(dict(code=-2, msg='格式错误'))
+                    hostname = server_info[0]
+                    ip = server_info[1]
+                    port = server_info[2]
+                    admin_user = server_info[3]
+                    if not check_ip(ip):
+                        return self.write(dict(code=-1, msg="IP格式不正确"))
+
+                    if not type(port) is int and int(port) >= 65535:
+                        return self.write(dict(code=-1, msg="端口格式不正确"))
+
+                    exist_id = session.query(Server.id).filter(Server.hostname == hostname).first()
+                    exist_ip = session.query(Server.id).filter(Server.ip == ip).first()
+                    if exist_id or exist_ip:
+                        return self.write(
+                            dict(code=-2,
+                                 msg='IP:{ip}/Hostname:{hostname}已经存在,不要重复记录'.format(ip=ip, hostname=hostname)))
+
+                    new_server = Server(hostname=hostname, ip=ip, port=int(port), admin_user=admin_user)
+                    session.add(new_server)
+            session.commit()
+
+        return self.write(dict(code=0, msg='批量添加成功'))
+
+
 asset_server_urls = [
     (r"/v1/cmdb/server/", ServerHandler),
     (r"/v1/cmdb/server_detail/", ServerDetailHandler),
     (r"/v1/cmdb/tree/", TreeHandler),
     (r"/v1/cmdb/error_log/", AssetErrorLogHandler),
     (r"/v1/cmdb/server/sync_tagtree/", SyncServerTagTree),
+    (r"/v1/cmdb/server/multi_add/", MultiAddServerHandler),
     (r"/are_you_ok/", LivenessProbe),
 ]
 
