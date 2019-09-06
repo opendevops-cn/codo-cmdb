@@ -7,17 +7,17 @@
 
 
 import json
-from sqlalchemy import or_
-from libs.base_handler import BaseHandler
-from models.server import Tag, ServerTag, Server, ServerDetail, AssetErrorLog, model_to_dict
-from websdk.db_context import DBContext
+import datetime
 import tornado.web
 from tornado import gen
 from concurrent.futures import ThreadPoolExecutor
 from tornado.concurrent import run_on_executor
+from sqlalchemy import or_
+from libs.base_handler import BaseHandler
 from libs.common import check_ip
 from libs.server.sync_to_tagtree import main as sync_tag_tree
-import datetime
+from models.server import Tag, ServerTag, Server, ServerDetail, AssetErrorLog, model_to_dict
+from websdk.db_context import DBContext
 from websdk.base_handler import LivenessProbe
 
 
@@ -408,7 +408,7 @@ class MultiAddServerHandler(BaseHandler):
             for i in data:
                 if i:
                     server_info = i.split(' ')
-                    ins_log.read_log('info', 'MultiServer:{server_info}'.format(server_info=server_info))
+                    # ins_log.read_log('info', 'MultiServer:{server_info}'.format(server_info=server_info))
                     if len(server_info) != 4:
                         return self.write(dict(code=-2, msg='格式错误'))
                     hostname = server_info[0]
