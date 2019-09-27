@@ -1,18 +1,30 @@
 ### 资产管理
 
+> 基于Python Tornado实现的一套CMDB资产管理系统，前端使用Vue+Iview-admin
 
-**前言**
->  简单说明下，Beta0.3版本CMDB进行了重构，后端使用Tornado ，老版Django资产管理代码没有删除，在Tag里面，后续CMDB将持续更新支持跳板审计的功能
 
 
 **目前功能**  
 
 - 支持主机记录
 - 支持数据库记录
-- 支持从主机列表系统获取信息（定时、手动）
-- 支持从AWS/阿里云/腾讯云自动获取数据(可选、定时)
+- 支持自定义IDC机房
+- 支持Server/DB批量添加、删除
+- 支持基于Tag管理实现用户访问资产授权
+- 支持AWS/阿里云/腾讯云 AWS/RDS/Cache自动获取
+- 支持IDC、Server、DB 操作记录(POST\PUT\DELETE)
+- 支持标签管理、标签规则管理、自定义规则自动加入Tag
 - 支持主表和详情表分离，可不影响数据的情况下进行扩展
-- 众多功能我们一直在开发中，请耐心等待
+- 支持(自动、手动)发现AWS、阿里云、腾讯云主机、DB、Cache
+
+
+
+**功能排期**
+
+- CMDB跳板机功能
+- Ucloud 云服务器支持
+
+
 
 #### 截图
 
@@ -20,9 +32,11 @@
 
 ![](./static/images/cmdb_host_list.png)  
 
+![](./static/images/cmdb_tag_rule.png)
+
 ![](./static/images/cmdb_server_detail.png)  
 
-![](./static/images/cmdb_asset_config.png)
+![](./static/images/cmdb_asset_config_v2.png)
 
 #### 部署文档
 

@@ -7,6 +7,7 @@
 
 
 import boto3
+import re
 from libs.db_context import DBContext
 from models.server import Server, ServerDetail, AssetConfigs, model_to_dict
 from opssdk.operate import MyCryptV2
@@ -59,8 +60,10 @@ class Ec2Api():
                         # tag_list = [i for i in tag_list if i["Key"] == "Name"]
                         tag_list = filter(lambda x: x["Key"] == "Name", tag_list)
                         asset_data['hostname'] = list(tag_list)[0].get('Value')
-                    except (KeyError, TypeError):
+
+                    except (KeyError, TypeError, IndexError):
                         asset_data['hostname'] = i.get('InstanceId', 'Null')  # 拿不到hostnameg给instance_id
+
                     asset_data['region'] = i['Placement'].get('AvailabilityZone', 'Null')
                     asset_data['instance_id'] = i.get('InstanceId', 'Null')
                     asset_data['instance_type'] = i.get('InstanceType', 'Null')
@@ -87,10 +90,14 @@ class Ec2Api():
             for server in server_list:
                 ins_log.read_log('info', '资产信息:{}'.format(server))
                 ip = server.get('public_ip')
+                private_ip = server.get('private_ip')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
                 if not hostname.strip():
                     hostname = instance_id
+                if re.search('syncserver', hostname):
+                    hostname = '{}_{}'.format(hostname, private_ip)
+
                 region = server.get('region', 'Null')
                 instance_type = server.get('instance_type', 'Null')
                 instance_state = server.get('instance_state', 'Null')
@@ -107,10 +114,12 @@ class Ec2Api():
                 # exist_ip = session.query(Server).filter(Server.ip == ip).first()
                 if exist_hostname:
                     session.query(Server).filter(Server.hostname == hostname).update(
-                        {Server.ip: ip, Server.public_ip: ip, Server.idc: 'AWS', Server.region: region})
+                        {Server.ip: ip, Server.public_ip: ip, Server.private_ip: private_ip, Server.idc: 'AWS',
+                         Server.region: region})
 
                 else:
-                    new_server = Server(ip=ip, public_ip=ip, hostname=hostname, port=22, idc=self.account,
+                    new_server = Server(ip=ip, public_ip=ip, private_ip=private_ip, hostname=hostname, port=22,
+                                        idc=self.account,
                                         region=region,
                                         state=self.state, admin_user=self.default_admin_user)
                     session.add(new_server)

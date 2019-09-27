@@ -10,6 +10,7 @@ import time
 import random
 import requests
 import json
+import re
 from libs.qcloud.qcloud_api import ApiOper
 from libs.db_context import DBContext
 from libs.web_logs import ins_log
@@ -142,10 +143,14 @@ class CVMApi():
         with DBContext('w') as session:
             for server in server_list:
                 ip = server.get('public_ip')
+                private_ip = server.get('private_ip')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
                 if not hostname.strip():
                     hostname = instance_id
+                if re.search('syncserver', hostname):
+                    hostname = '{}_{}'.format(hostname, private_ip)
+
                 region = server.get('region', 'Null')
                 instance_type = server.get('instance_type', 'Null')
                 instance_state = server.get('instance_state', 'Null')
@@ -161,7 +166,8 @@ class CVMApi():
                 exist_ip = session.query(Server).filter(Server.ip == ip).first()
 
                 if not exist_hostname and not exist_ip:
-                    new_serve = Server(ip=ip, public_ip=ip, hostname=hostname, port=22, idc=self.account, region=region,
+                    new_serve = Server(ip=ip, public_ip=ip, private_ip=private_ip, hostname=hostname, port=22,
+                                       idc=self.account, region=region,
                                        state=self.state,
                                        admin_user=self.default_admin_user)
                     new_serve_detail = ServerDetail(ip=ip, instance_id=instance_id, instance_type=instance_type,
@@ -172,7 +178,8 @@ class CVMApi():
                     session.add(new_serve_detail)
                 else:
                     session.query(Server).filter(Server.hostname == hostname).update(
-                        {Server.ip: ip, Server.public_ip: ip, Server.idc: self.account, Server.region: region,
+                        {Server.ip: ip, Server.private_ip: private_ip, Server.public_ip: ip, Server.idc: self.account,
+                         Server.region: region,
                          Server.admin_user: self.default_admin_user})
                     session.query(ServerDetail).filter(ServerDetail.ip == ip).update(
                         {ServerDetail.instance_id: instance_id, ServerDetail.instance_type: instance_type,
@@ -246,11 +253,6 @@ def main():
 
         obj = CVMApi(access_id, access_key, region, default_admin_user)
         obj.index()
-
-
-# def test():
-#     obj = CVMApi('','','ap-shanghai','')
-#     obj.index()
 
 
 if __name__ == '__main__':
