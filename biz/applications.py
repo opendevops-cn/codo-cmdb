@@ -14,6 +14,10 @@ from biz.handlers.asset_tag_handler import tag_urls
 from biz.handlers.system_user_handler import system_user_urls
 from biz.handlers.asset_configs_handler import asset_configs_urls
 from biz.handlers.hand_update_asset_handler import asset_hand_server_urls
+from biz.handlers.aws_events_handler import aws_events_urls
+from biz.handlers.asset_idc_handler import asset_idc_urls
+from biz.handlers.asset_operational_audit_handler import asset_audit_urls
+
 
 class Application(myApplication):
     def __init__(self, **settings):
@@ -25,6 +29,9 @@ class Application(myApplication):
         urls.extend(system_user_urls)
         urls.extend(asset_configs_urls)
         urls.extend(asset_hand_server_urls)
+        urls.extend(aws_events_urls)
+        urls.extend(asset_idc_urls)
+        urls.extend(asset_audit_urls)
         super(Application, self).__init__(urls, **settings)
 
 

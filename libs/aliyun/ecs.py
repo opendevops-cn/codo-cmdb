@@ -7,6 +7,7 @@
 
 
 import json
+import re
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkecs.request.v20140526 import DescribeInstancesRequest
 from libs.common import M2human
@@ -101,9 +102,7 @@ class EcsAPi():
             except (KeyError, IndexError):
                 #非VPC里面获取内网IP
                 asset_data['private_ip'] = i['InnerIpAddress']['IpAddress'][0]
-            except Exception:
-                asset_data['private_ip'] = 'Null'
-                # 公网IP/弹性IP
+            # 公网IP/弹性IP
             try:
                 asset_data['public_ip'] = i['PublicIpAddress']['IpAddress'][0]
             except(KeyError, IndexError):
@@ -132,10 +131,15 @@ class EcsAPi():
         with DBContext('w') as session:
             for server in server_list:
                 ip = server.get('public_ip')
+                private_ip = server.get('private_ip')
                 instance_id = server.get('instance_id', 'Null')
                 hostname = server.get('hostname', instance_id)
                 if hostname == '' or not hostname:
                     hostname = instance_id
+
+                if re.search('syncserver', hostname):
+                    hostname = '{}_{}'.format(hostname, private_ip)
+
                 region = server.get('region', 'Null')
                 instance_type = server.get('instance_type', 'Null')
                 instance_state = server.get('instance_state', 'Null')
@@ -148,23 +152,26 @@ class EcsAPi():
                 os_kernel = server.get('os_kernel', 'Null')
                 sn = server.get('sn', 'Null')
 
-                exist_hostname = session.query(Server).filter(Server.hostname == hostname).first()
-                if exist_hostname:
-                    session.query(Server).filter(Server.hostname == hostname).update(
-                        {Server.ip: ip, Server.public_ip: ip, Server.idc: self.account, Server.region: region,
+                exist_ip_1 = session.query(Server).filter(Server.hostname == hostname).first()
+                if exist_ip_1:
+                    session.query(Server).filter(Server.ip == ip).update(
+                        {Server.hostname: hostname, Server.public_ip: ip, Server.private_ip: private_ip,
+                         Server.idc: self.account,
+                         Server.region: region,
                          Server.admin_user: self.default_admin_user})
 
                 else:
                     if os_type == 'windows':
                         # windows机器不绑定管理用户，资产信息只是平台拿到的一些基础信息
-                        new_windows_server = Server(ip=ip, public_ip=ip, hostname=hostname, port=3389, idc=self.account,
+                        new_windows_server = Server(ip=ip, public_ip=ip, private_ip=private_ip, hostname=hostname,
+                                                    port=3389, idc=self.account,
                                                     region=region,
                                                     state=self.state)
                         session.add(new_windows_server)
 
                     else:
                         # unix机器给默认绑定上管理用户，用于后续登陆机器拿详细资产使用的
-                        new_server = Server(ip=ip, public_ip=ip, hostname=hostname, port=22, idc=self.account,
+                        new_server = Server(ip=ip, public_ip=ip,  private_ip=private_ip,hostname=hostname, port=54822, idc=self.account,
                                             region=region,
                                             state=self.state, admin_user=self.default_admin_user)
                         session.add(new_server)
@@ -196,6 +203,8 @@ class EcsAPi():
         测试接口权限等信息是否异常
         :return:
         """
+        self.page_number = '1'
+        self.page_size = '1'
         request = self.set_request()
         response = self.client.do_action_with_exception(request)
         response_data = json.loads(str(response, encoding="utf8"))
@@ -206,8 +215,10 @@ class EcsAPi():
         阿里云若机器超过100台需要进行通过PageSize+PageSize获取
         :return:
         """
+
         count = self.get_server_count()
-        # print('Tocal：{}'.format(count))
+        print('Tocal：{}'.format(count))
+
 
         self.page_size = 100
         mod = count % self.page_size
@@ -215,10 +226,11 @@ class EcsAPi():
             total_page_number = int(count / self.page_size) + 1
         else:
             total_page_number = int(count / self.page_size)
-        for cur_page_number in range(1, total_page_number+1):
+        for cur_page_number in range(1, total_page_number + 1):
             self.page_number = cur_page_number
             ins_log.read_log('info', '开始同步阿里云第{}页的{}台机器'.format(self.page_number, self.page_size))
             self.sync_cmdb()
+
 
 def get_configs():
     """
@@ -243,7 +255,6 @@ def main():
     从接口获取已经启用的配置
     :return:
     """
-
     mc = MyCryptV2()
     aliyun_configs_list = get_configs()
     if not aliyun_configs_list:

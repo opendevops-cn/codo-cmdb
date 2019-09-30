@@ -36,6 +36,11 @@ DEFAULT_REDIS_AUTH = True
 DEFAULT_REDIS_CHARSET = 'utf-8'
 DEFAULT_REDIS_PASSWORD = os.getenv('DEFAULT_REDIS_PASSWORD', '123456') #修改
 
+
+# Aws Events 事件邮件通知人
+
+AWS_EVENT_TO_EMAIL = '1111@qq.com,2222@gmail.com'
+
 # SSH公钥,获取资产使用，一般都是机器默认路径,建议不要修改
 PUBLIC_KEY = '/root/.ssh/id_rsa.pub' #默认
 

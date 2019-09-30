@@ -7,18 +7,20 @@
 
 
 import json
-import datetime
+from sqlalchemy import or_
+from libs.base_handler import BaseHandler
+from models.server import Tag, ServerTag, Server, ServerDetail, AssetErrorLog, model_to_dict, AssetOperationalAudit, \
+    AdminUser
+from websdk.db_context import DBContext
 import tornado.web
 from tornado import gen
 from concurrent.futures import ThreadPoolExecutor
 from tornado.concurrent import run_on_executor
-from sqlalchemy import or_
-from libs.base_handler import BaseHandler
 from libs.common import check_ip
 from libs.server.sync_to_tagtree import main as sync_tag_tree
-from models.server import Tag, ServerTag, Server, ServerDetail, AssetErrorLog, model_to_dict
-from websdk.db_context import DBContext
+import datetime
 from websdk.base_handler import LivenessProbe
+from websdk.web_logs import ins_log
 
 
 class ServerHandler(BaseHandler):
@@ -29,6 +31,7 @@ class ServerHandler(BaseHandler):
         page_size = self.get_argument('page', default=1, strip=True)
         limit = self.get_argument('limit', default="888", strip=True)
         limit_start = (int(page_size) - 1) * int(limit)
+
         server_list = []
         with DBContext('r') as session:
             ### 通过TAG搜索
@@ -60,6 +63,7 @@ class ServerHandler(BaseHandler):
                     count = session.query(Server).filter(or_(Server.hostname.like('%{}%'.format(key)),
                                                              Server.ip.like('%{}%'.format(key)),
                                                              Server.public_ip.like('%{}%'.format(key)),
+                                                             Server.private_ip.like('%{}%'.format(key)),
                                                              Server.admin_user.like('%{}%'.format(key)),
                                                              Server.port.like('%{}%'.format(key)),
                                                              Server.idc.like('%{}%'.format(key)),
@@ -68,6 +72,7 @@ class ServerHandler(BaseHandler):
                     server_info = session.query(Server).filter(or_(Server.hostname.like('%{}%'.format(key)),
                                                                    Server.ip.like('%{}%'.format(key)),
                                                                    Server.public_ip.like('%{}%'.format(key)),
+                                                                   Server.private_ip.like('%{}%'.format(key)),
                                                                    Server.admin_user.like('%{}%'.format(key)),
                                                                    Server.port.like('%{}%'.format(key)),
                                                                    Server.idc.like('%{}%'.format(key)),
@@ -176,6 +181,7 @@ class ServerHandler(BaseHandler):
 
     def post(self, *args, **kwargs):
         data = json.loads(self.request.body.decode("utf-8"))
+        nickname = self.get_current_nickname()
         hostname = data.get('hostname', None)
         ip = data.get('ip', None)
         port = data.get('port', 22)
@@ -216,10 +222,21 @@ class ServerHandler(BaseHandler):
                 for tag_id in all_tags:
                     session.add(ServerTag(server_id=new_server.id, tag_id=tag_id[0]))
 
+        # 记录,记录错误也不要影响用户正常添加
+        try:
+            with DBContext('w', None, True) as session:
+
+                new_record = AssetOperationalAudit(username=nickname, request_object='主机', request_host=ip,
+                                                   request_method='新增', modify_data=data)
+                session.add(new_record)
+        except Exception as err:
+            ins_log.read_log('error', 'operational_audit error:{err}'.format(err=err))
+
         return self.write(dict(code=0, msg='添加成功'))
 
     def put(self, *args, **kwargs):
         data = json.loads(self.request.body.decode("utf-8"))
+        nickname = self.get_current_nickname()
         server_id = data.get('id', None)
         hostname = data.get('hostname', None)
         ip = data.get('ip', None)
@@ -261,13 +278,56 @@ class ServerHandler(BaseHandler):
                                                                          Server.admin_user: admin_user,
                                                                          Server.region: region, Server.detail: detail
                                                                          })  # Server.state: 'new'
-
+        # 记录操作,不成功直接Pass
+        try:
+            modify_data = data
+            with DBContext('w', None, True) as session:
+                data_info = session.query(Server).filter(Server.id == int(server_id)).all()
+                for data in data_info:
+                    origion_data = model_to_dict(data)
+                    origion_data['create_time'] = str(origion_data['create_time'])
+                    origion_data['update_time'] = str(origion_data['update_time'])
+                    new_record = AssetOperationalAudit(username=nickname, request_object='主机', request_host=ip,
+                                                       request_method='更新', original_data=origion_data,
+                                                       modify_data=modify_data)
+                    session.add(new_record)
+        except Exception as err:
+            ins_log.read_log('error', 'operational_audit error:{err}'.format(err=err))
         return self.write(dict(code=0, msg='编辑成功'))
 
     def delete(self, *args, **kwargs):
         data = json.loads(self.request.body.decode("utf-8"))
+        nickname = self.get_current_nickname()
         server_id = data.get('server_id', None)
         id_list = data.get('id_list', None)
+
+        # 记录操作,不成功直接Pass
+        try:
+            with DBContext('w', None, True) as session:
+                if server_id:
+                    data_info = session.query(Server).filter(Server.id == int(server_id)).all()
+                    for data in data_info:
+                        origion_data = model_to_dict(data)
+                        origion_data['create_time'] = str(origion_data['create_time'])
+                        origion_data['update_time'] = str(origion_data['update_time'])
+                        new_record = AssetOperationalAudit(username=nickname, request_object='主机',
+                                                           request_host=origion_data.get('ip'),
+                                                           request_method='删除', original_data=origion_data)
+                        session.add(new_record)
+                elif id_list:
+                    for i in id_list:
+                        data_info = session.query(Server).filter(Server.id == i).all()
+                        for data in data_info:
+                            origion_data = model_to_dict(data)
+                            origion_data['create_time'] = str(origion_data['create_time'])
+                            origion_data['update_time'] = str(origion_data['update_time'])
+                            new_record = AssetOperationalAudit(username=nickname, request_object='主机',
+                                                               request_host=origion_data.get('ip'),
+                                                               request_method='删除', original_data=origion_data)
+                            session.add(new_record)
+        except Exception as err:
+            ins_log.read_log('error', 'operational_audit error:{err}'.format(err=err))
+
         with DBContext('w', None, True) as session:
             if server_id:
                 server_info = session.query(Server).filter(Server.id == int(server_id)).first()
@@ -398,17 +458,28 @@ class SyncServerTagTree(BaseHandler):
 class MultiAddServerHandler(BaseHandler):
     def post(self, *args, **kwargs):
         data = json.loads(self.request.body.decode("utf-8"))
+        nickname = self.get_current_nickname()
 
         # 列表包str格式，str空格切割
         if not data:
             return self.write(dict(code=-1, msg='不能为空'))
+
+        # 记录下操作，即使报错也不影响程序
+        try:
+            with DBContext('w', None, True) as session:
+
+                new_record = AssetOperationalAudit(username=nickname, request_object='主机',
+                                                   request_method='批量添加', modify_data=data)
+                session.add(new_record)
+        except Exception as err:
+            ins_log.read_log('error', 'operational_audit error:{err}'.format(err=err))
 
         # 判断下格式长度
         with DBContext('w', None, True) as session:
             for i in data:
                 if i:
                     server_info = i.split(' ')
-                    # ins_log.read_log('info', 'MultiServer:{server_info}'.format(server_info=server_info))
+                    ins_log.read_log('info', 'MultiServer:{server_info}'.format(server_info=server_info))
                     if len(server_info) != 4:
                         return self.write(dict(code=-2, msg='格式错误'))
                     hostname = server_info[0]
@@ -435,6 +506,57 @@ class MultiAddServerHandler(BaseHandler):
         return self.write(dict(code=0, msg='批量添加成功'))
 
 
+class ConnnetServerinfoHandler(tornado.web.RequestHandler):
+    def get(self, *args, **kwargs):
+        # nickname = self.get_current_nickname()
+        id = self.get_argument('id', default=None, strip=True)
+
+        if not id:
+            return self.write(dict(code=-1, msg='关键参数不能为空'))
+
+        server_list = []
+        admin_user_list = []
+        connect_server_info_list = []
+
+        with DBContext('r') as session:
+            server_info = session.query(Server).filter(Server.id == id).filter()
+            for msg in server_info:
+                data_dict = model_to_dict(msg)
+                server_list.append(data_dict)
+                data_dict['create_time'] = str(data_dict['create_time'])
+                data_dict['update_time'] = str(data_dict['update_time'])
+
+            if not server_list:
+                return self.write(dict(code=-1, msg='没有发现IP'))
+
+            admin_user = server_list[0]['admin_user']
+            if not admin_user:
+                return self.write(dict(code=-1, msg='此机器没有配置管理用户，请先配置管理用户'))
+
+            admin_user_info = session.query(AdminUser).filter(AdminUser.admin_user == admin_user).filter()
+            for admin_user_msg in admin_user_info:
+                data_dict = model_to_dict(admin_user_msg)
+
+                data_dict['update_time'] = str(data_dict['update_time'])
+                admin_user_list.append(data_dict)
+
+            try:
+                connect_server_info = dict()
+                connect_server_info['ip'] = server_list[0].get('ip')
+                connect_server_info['public_ip'] = server_list[0].get('public_ip')
+                connect_server_info['private_ip'] = server_list[0].get('private_ip')
+                connect_server_info['port'] = server_list[0].get('port')
+                connect_server_info['admin_user'] = server_list[0].get('admin_user')
+                connect_server_info['system_user'] = admin_user_list[0].get('system_user')
+                connect_server_info['user_key'] = admin_user_list[0].get('user_key')
+                connect_server_info_list.append(connect_server_info)
+            except (IndexError, KeyError) as err:
+                ins_log.read_log('error', '解析的时候出错:{err}'.format(err=err))
+                return False
+
+        return self.write(dict(code=0, msg='获取成功', data=connect_server_info_list))
+
+
 asset_server_urls = [
     (r"/v1/cmdb/server/", ServerHandler),
     (r"/v1/cmdb/server_detail/", ServerDetailHandler),
@@ -442,6 +564,7 @@ asset_server_urls = [
     (r"/v1/cmdb/error_log/", AssetErrorLogHandler),
     (r"/v1/cmdb/server/sync_tagtree/", SyncServerTagTree),
     (r"/v1/cmdb/server/multi_add/", MultiAddServerHandler),
+    (r"/v1/cmdb/server/connect_info/", ConnnetServerinfoHandler),
     (r"/are_you_ok/", LivenessProbe),
 ]
 
