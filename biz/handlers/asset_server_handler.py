@@ -21,6 +21,9 @@ from libs.server.sync_to_tagtree import main as sync_tag_tree
 import datetime
 from websdk.base_handler import LivenessProbe
 from websdk.web_logs import ins_log
+from opssdk.operate import MyCryptV2
+from tornado import httpclient
+from settings import WEB_TERMINAL
 
 
 class ServerHandler(BaseHandler):
@@ -501,25 +504,27 @@ class MultiAddServerHandler(BaseHandler):
 
                     new_server = Server(hostname=hostname, ip=ip, port=int(port), admin_user=admin_user)
                     session.add(new_server)
+
             session.commit()
 
         return self.write(dict(code=0, msg='批量添加成功'))
 
 
-class ConnnetServerinfoHandler(tornado.web.RequestHandler):
-    def get(self, *args, **kwargs):
-        # nickname = self.get_current_nickname()
-        id = self.get_argument('id', default=None, strip=True)
+class ConnnetServerinfoHandler(BaseHandler):
+    async def post(self, *args, **kwargs):
+        data = json.loads(self.request.body.decode("utf-8"))
+        nickname = self.get_current_user() #获取username 不用中文名
+        # id = self.get_argument('id', default=None, strip=True)
+        server_id = data.get('server_id', None)
 
-        if not id:
+        if not server_id:
             return self.write(dict(code=-1, msg='关键参数不能为空'))
 
         server_list = []
         admin_user_list = []
-        connect_server_info_list = []
 
         with DBContext('r') as session:
-            server_info = session.query(Server).filter(Server.id == id).filter()
+            server_info = session.query(Server).filter(Server.id == server_id).filter()
             for msg in server_info:
                 data_dict = model_to_dict(msg)
                 server_list.append(data_dict)
@@ -528,6 +533,8 @@ class ConnnetServerinfoHandler(tornado.web.RequestHandler):
 
             if not server_list:
                 return self.write(dict(code=-1, msg='没有发现IP'))
+
+            if not self.is_superuser: return self.write(dict(code=-1, msg='你不是超级超级管理员,不能使用WebTerminal'))
 
             admin_user = server_list[0]['admin_user']
             if not admin_user:
@@ -542,6 +549,7 @@ class ConnnetServerinfoHandler(tornado.web.RequestHandler):
 
             try:
                 connect_server_info = dict()
+                connect_server_info['nickname'] = nickname
                 connect_server_info['ip'] = server_list[0].get('ip')
                 connect_server_info['public_ip'] = server_list[0].get('public_ip')
                 connect_server_info['private_ip'] = server_list[0].get('private_ip')
@@ -549,12 +557,88 @@ class ConnnetServerinfoHandler(tornado.web.RequestHandler):
                 connect_server_info['admin_user'] = server_list[0].get('admin_user')
                 connect_server_info['system_user'] = admin_user_list[0].get('system_user')
                 connect_server_info['user_key'] = admin_user_list[0].get('user_key')
-                connect_server_info_list.append(connect_server_info)
             except (IndexError, KeyError) as err:
                 ins_log.read_log('error', '解析的时候出错:{err}'.format(err=err))
                 return False
+            # print(connect_server_info)
+            # 数据加密给Jimmy
+            mc = MyCryptV2()
+            # 加密数据
+            encrypt_data = mc.my_encrypt(str(connect_server_info))
+            ins_log.read_log('info', '加密后的数据是：{}'.format(encrypt_data))
+            # # 解密方法
+            # decrypt_data = mc.my_decrypt(encrypt_data)
+            # # print(decrypt_data)
+            # print('解密后的数据是：{}'.format(json.dumps(str(decrypt_data))))
 
-        return self.write(dict(code=0, msg='获取成功', data=connect_server_info_list))
+            try:
+                web_terminal_initialssh = '{0}/webterminal/initialssh/'.format(WEB_TERMINAL)
+                print(web_terminal_initialssh)
+                the_body = json.dumps(encrypt_data)
+                # 异步HTTPClient
+                http_client = httpclient.AsyncHTTPClient()
+                # 异步http_client请求
+                response = await http_client.fetch(web_terminal_initialssh, method="POST", body=the_body,
+                                                   raise_error=False)
+                # 返回的数据都在body里面
+                response_data = json.loads(response.body.decode('utf-8'))
+                # print('response_data', response_data)
+                if not response_data.get('status'):
+                    return self.write(dict(code=1, msg=response_data.get('message')))
+
+                # 返回信息
+                web_terminal_key = response_data['key']
+                web_terminal_url = '{0}/webterminal/'.format(WEB_TERMINAL)
+                # res_list = []
+                res_data = {
+                    "web_terminal_url": web_terminal_url,
+                    "web_terminal_key": web_terminal_key
+                }
+                # res_list.append(res_data)
+
+            except Exception as e:
+                ins_log.read_log('error', '请求webterminal接口出错:{err}'.format(err=e))
+                return self.write(dict(code=1, msg='请求webterminal接口出错:{err}'.format(err=e)))
+
+        return self.write(dict(code=0, msg='Sucessfully', data=res_data))
+
+
+class WebTerminalLoginfoHandler(BaseHandler):
+    async def post(self, *args, **kwargs):
+        # data = json.loads(self.request.body.decode("utf-8"))
+        nickname = self.get_current_user()  # 这里使用useame 不用中文
+        #if not self.is_superuser: return self.write(dict(code=-1, msg='你不是超级超级管理员,不能使用WebTerminal'))
+
+        connect_server_info = dict()
+        connect_server_info['nickname'] = nickname
+        # 数据加密给Jimmy
+        mc = MyCryptV2()
+        # 加密数据
+        # encrypt_data = mc.my_encrypt(str(connect_server_info))
+        encrypt_data = mc.my_encrypt(str(connect_server_info))
+        print(encrypt_data)
+        ins_log.read_log('info', '加密后的数据是：{}'.format(encrypt_data))
+        try:
+            web_terminal_initialssh = '{0}/webterminal/initiallogin/'.format(WEB_TERMINAL)
+            the_body = json.dumps(encrypt_data)
+            http_client = httpclient.AsyncHTTPClient()
+            response = await http_client.fetch(web_terminal_initialssh, method="POST", body=the_body,
+                                               raise_error=False)
+            response_data = json.loads(response.body.decode('utf-8'))
+            if not response_data.get('status'):
+                return self.write(dict(code=1, msg=response_data.get('message')))
+            # 返回信息
+            web_terminal_key = response_data['key']
+            web_terminal_url = '{0}/logslist/'.format(WEB_TERMINAL)
+            res_data = {
+                "web_terminal_url": web_terminal_url,
+                "web_terminal_key": web_terminal_key
+            }
+        except Exception as e:
+            ins_log.read_log('error', '请求webterminal接口出错:{err}'.format(err=e))
+            return self.write(dict(code=1, msg='请求webterminal接口出错:{err}'.format(err=e)))
+
+        return self.write(dict(code=0, msg='Sucessfully', data=res_data))
 
 
 asset_server_urls = [
@@ -564,7 +648,8 @@ asset_server_urls = [
     (r"/v1/cmdb/error_log/", AssetErrorLogHandler),
     (r"/v1/cmdb/server/sync_tagtree/", SyncServerTagTree),
     (r"/v1/cmdb/server/multi_add/", MultiAddServerHandler),
-    (r"/v1/cmdb/server/connect_info/", ConnnetServerinfoHandler),
+    (r"/v1/cmdb/server/webterminnal/", ConnnetServerinfoHandler),
+    (r"/v1/cmdb/server/webterminnal/loginfo/", WebTerminalLoginfoHandler),
     (r"/are_you_ok/", LivenessProbe),
 ]
 

@@ -9,3 +9,4 @@ keystoneauth1==3.4.0
 aliyun_python_sdk_core==2.13.9
 aliyun_python_sdk_rds
 aliyun_python_sdk_r_kvstore
+ucloud-sdk-python3
