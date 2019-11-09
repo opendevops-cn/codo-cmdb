@@ -55,7 +55,6 @@ def get_host_info(server_list):
             }  # ip为key 数据为value
             # print(result['contacted'][ip])
             # 资产信息
-
             # SN
             # print(result['contacted'][ip])
             try:
@@ -67,6 +66,8 @@ def get_host_info(server_list):
                 #这个带.没办法获取到
                 #host_name = result['contacted'][ip]['ansible_facts']['ansible_hostname']
                 host_name = result['contacted'][ip]['ansible_facts']['ansible_fqdn']
+                #centos7.6版本下获取hostname fqdn会出现全显示localhost6.localdomain6问题
+                if host_name == "localhost6.localdomain6": host_name = result['contacted'][ip]['ansible_facts']['ansible_hostname']
             except KeyError:
                 host_name = 'Null'
 

@@ -39,6 +39,13 @@ from libs.qcloud.cdb import main as qcloud_cdb_update
 from libs.qcloud.redis import main as qcloud_redis_update
 from libs.huaweiyun.huawei_ecs import HuaweiEcsApi
 from libs.huaweiyun.huawei_ecs import main as huawei_ecs_update
+from ucloud.core import exc
+from libs.ucloud.uhost import UHostAPI
+from libs.ucloud.uhost import main as ucloud_uhost_update
+from libs.ucloud.udb import UdbAPI
+from libs.ucloud.udb import main as ucloud_udb_update
+from libs.ucloud.uredis import UredisAPI
+from libs.ucloud.uredis import main as ucloud_uredis_update
 
 mc = MyCryptV2()  # 实例化
 
@@ -223,15 +230,22 @@ class ApiPermissionHandler(BaseHandler):
             except openstack.exceptions.HttpException as err:
                 err_msg = 'openstack error {}'.format(err)
             except Exception as e:
-                print(e)
                 err_msg = 'error: {}'.format(e)
-
+        elif account == 'UCloud':
+            ins_log.read_log('info', 'UCloud  Uhost API TEST')
+            try:
+                UHostAPI.permission_auth(access_id=access_id, access_key=access_key, region=region,
+                                         project_id=project_id)
+            except exc.UCloudException as uerr:
+                err_msg = 'ucloud error: {ucloud_error}'.format(ucloud_error=uerr)
+            except Exception as e:
+                err_msg = 'error: {}'.format(e)
         else:
             err_msg = 'In Development.'
         return err_msg
 
     @run_on_executor(executor='_thread_pool')
-    def rds_api(self, account, region, access_id, access_key):
+    def rds_api(self, account, region, access_id, access_key, project_id):
         """
         测试DB API权限
         :return:
@@ -262,7 +276,15 @@ class ApiPermissionHandler(BaseHandler):
                     err_msg = 'Error：{}'.format(result_data['Response'])
             except Exception as e:
                 ins_log.read_log('error', e)
-
+        elif account == 'UCloud':
+            ins_log.read_log('info', 'UCloud UDB API TEST')
+            try:
+                UdbAPI.permission_auth(access_id=access_id, access_key=access_key, region=region,
+                                       project_id=project_id)
+            except exc.UCloudException as uerr:
+                err_msg = 'ucloud error: {ucloud_error}'.format(ucloud_error=uerr)
+            except Exception as e:
+                err_msg = 'error: {}'.format(e)
 
         else:
             err_msg = 'In Development.'
@@ -270,7 +292,7 @@ class ApiPermissionHandler(BaseHandler):
         return err_msg
 
     @run_on_executor(executor='_thread_pool')
-    def redis_api(self, account, region, access_id, access_key):
+    def redis_api(self, account, region, access_id, access_key, project_id):
         """
         测试redis API权限
         :return:
@@ -302,6 +324,15 @@ class ApiPermissionHandler(BaseHandler):
                     err_msg = 'Error：{}'.format(result_data['Response'])
             except Exception as e:
                 ins_log.read_log('Error', e)
+        elif account == 'UCloud':
+            ins_log.read_log('info', 'UCloud Uredis API TEST')
+            try:
+                UredisAPI.permission_auth(access_id=access_id, access_key=access_key, region=region,
+                                          project_id=project_id)
+            except exc.UCloudException as uerr:
+                err_msg = 'ucloud error: {ucloud_error}'.format(ucloud_error=uerr)
+            except Exception as e:
+                err_msg = 'error: {}'.format(e)
         else:
             # 其余厂商
             err_msg = 'In Development'
@@ -325,6 +356,9 @@ class ApiPermissionHandler(BaseHandler):
         if account == '华为云':
             if not project_id or not huawei_cloud or not huawei_instance_id:
                 return self.write(dict(code=-2, msg="华为云测试必须包含：Cloud地址、区域项目ID、一个实例ID"))
+        elif account == 'UCloud':
+            if not project_id:
+                return self.write(dict(code=-2, msg="UCloud测试必须包含：项目ID"))
 
         if api_type == 'server':
             error_msg = yield self.server_api(account, region, access_id, access_key, project_id, huawei_cloud,
@@ -332,11 +366,11 @@ class ApiPermissionHandler(BaseHandler):
             if error_msg: return self.write(dict(code=-1, msg=error_msg))
             return self.write(dict(code=0, msg='Successful'))
         elif api_type == 'rds':
-            error_msg = yield self.rds_api(account, region, access_id, access_key)
+            error_msg = yield self.rds_api(account, region, access_id, access_key, project_id)
             if error_msg: return self.write(dict(code=-1, msg=error_msg))
             return self.write(dict(code=0, msg='Successful'))
         elif api_type == 'redis':
-            error_msg = yield self.redis_api(account, region, access_id, access_key)
+            error_msg = yield self.redis_api(account, region, access_id, access_key, project_id)
             if error_msg: return self.write(dict(code=-1, msg=error_msg))
             return self.write(dict(code=0, msg='Successful'))
         else:
@@ -356,6 +390,8 @@ class HanderUpdateOSServer(tornado.web.RequestHandler):
         qcloud_cvm_update()
         time.sleep(2)
         huawei_ecs_update()
+        time.sleep(2)
+        ucloud_uhost_update()
 
     @gen.coroutine
     def get(self, *args, **kwargs):
@@ -374,6 +410,8 @@ class HanderUpdateOSRds(tornado.web.RequestHandler):
         qcloud_cdb_update()
         time.sleep(1)
         aliyun_rds_update()
+        time.sleep(1)
+        ucloud_udb_update()
 
     @gen.coroutine
     def get(self, *args, **kwargs):
@@ -392,6 +430,8 @@ class HanderUpdateOSRedis(tornado.web.RequestHandler):
         aliyun_redis_update()
         time.sleep(1)
         aws_cache_update()
+        time.sleep(1)
+        ucloud_uredis_update()
 
     @gen.coroutine
     def get(self, *args, **kwargs):
