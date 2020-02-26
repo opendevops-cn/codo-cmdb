@@ -1,7 +1,7 @@
 opssdk
 pycryptodome
 boto3==1.9.5
-ansible==2.7.10
+ansible==2.7.16
 paramiko==2.4.2
 aliyun_python_sdk_ecs==4.16.10
 huaweicloud_sdk_python==1.0.13
