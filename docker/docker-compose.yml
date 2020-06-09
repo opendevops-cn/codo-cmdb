@@ -1,6 +1,6 @@
 codo_cmdb:
   restart: unless-stopped
-  image: codo_cmdb:latest
+  image: registry.cn-hangzhou.aliyuncs.com/sourcegarden/opendevops-cmdb:alpine-0.3.0
   volumes:
     - /var/log/supervisor/:/var/log/supervisor/
     - /sys/fs/cgroup:/sys/fs/cgroup
