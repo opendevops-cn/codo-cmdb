@@ -1,4 +1,7 @@
 codo_cmdb:
+  build:
+    context: .
+    dockerfile: Dockerfile-cmdb
   restart: unless-stopped
   image: registry.cn-hangzhou.aliyuncs.com/sourcegarden/opendevops-cmdb:alpine-0.3.0
   volumes:
