@@ -25,4 +25,16 @@ cd /var/www/codo-cmdb/
   sed -i "s#CODO_TASK_DB_DBNAME = .*#CODO_TASK_DB_DBNAME = os.getenv('CODO_TASK_DB_DBNAME', '${TASK_DB_DBNAME}')#g" codo-cmdb-settings.py
 
 
-#python3 /var/www/kerrigan/db_sync.py
+try_num=0
+
+while [[ $try_num -le 100 ]];
+do
+     if $(curl  -s ${DEFAULT_DB_DBHOST}:${DEFAULT_DB_DBPORT}  > /dev/null);then
+          python3 db_sync.py
+          exit 0
+     else
+          echo 'wait mysql start to do db_sync.db'
+     fi
+     let try_num+=1
+     sleep 6
+done
