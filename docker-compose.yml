@@ -1,9 +1,0 @@
-codo_cmdb:
-  restart: unless-stopped
-  image: codo_cmdb:latest
-  volumes:
-    - /var/log/supervisor/:/var/log/supervisor/
-    - /sys/fs/cgroup:/sys/fs/cgroup
-  ports:
-    - "8050:80"
-  hostname: codo-cmdb

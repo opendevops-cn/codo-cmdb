@@ -1,0 +1,17 @@
+version: "3.8"
+networks:
+    codo:
+services:
+  codo_cmdb:
+    env_file:
+      - ./env.sh
+    restart: unless-stopped
+    image: registry.cn-hangzhou.aliyuncs.com/sourcegarden/opendevops-cmdb:alpine-0.3.0
+    volumes:
+      - /var/log/supervisor/:/var/log/supervisor/
+      - /sys/fs/cgroup:/sys/fs/cgroup
+    ports:
+      - "8050:80"
+    hostname: codo-cmdb
+    networks:
+      - codo
