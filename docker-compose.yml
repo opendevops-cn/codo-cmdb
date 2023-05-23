@@ -1,0 +1,15 @@
+version: '3'
+networks:
+    codo:
+services:
+    cmdb_master:
+        restart: unless-stopped
+        image: ops_cmdb_image
+        networks:
+            - codo
+        volumes:
+            - /sys/fs/cgroup:/sys/fs/cgroup
+            - ./log/:/data/log/
+            # - ./local_settings.py:/data/local_settings.py
+        ports:
+            - "9222:8000"
