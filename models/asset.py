@@ -22,7 +22,7 @@ class AssetBaseModel(TimeBaseModel, Base):
     cloud_name = Column('cloud_name', String(120), nullable=False, comment='云厂商名称', index=True)  # 云厂商信息
     account_id = Column('account_id', String(120), nullable=False, index=True, comment='AccountID')  # 账号信息
     instance_id = Column('instance_id', String(120), unique=True, nullable=False, comment='实例ID,唯一ID')
-    region = Column('region', String(120), comment='regionID')  # 位置信息
+    region = Column('region', String(120), comment='地域')  # 位置信息
     zone = Column('zone', String(120), comment='可用区id')  # 位置信息
     is_expired = Column('is_expired', Boolean(), default=False, comment='True表示已过期')
     ext_info = Column('ext_info', JSON(), comment='扩展字段存JSON')
@@ -39,9 +39,9 @@ class AssetServerModels(AssetBaseModel):
     agent_id = Column('agent_id', String(160), index=True, comment='AgentID')
     agent_status = Column('agent_status', String(20), index=True, default='1', comment='Agent状态')  # 1在线 2离线
     is_product = Column("is_product", Integer, default=0, comment="标记是否上线", index=True)
-    # 联合键约束
+    # 联合键约束 2023年5月23日 添加关机支持
     __table_args__ = (
-        UniqueConstraint('region', 'inner_ip', 'is_expired', name='host_key'),
+        UniqueConstraint('region', 'inner_ip', 'state', 'is_expired', name='host_key'),
     )
 
 

@@ -18,10 +18,13 @@ from websdk2.db_context import DBContext
 from websdk2.model_utils import queryset_to_list
 from services.tree_service import get_biz_name, get_tree_by_api, add_tree_by_api, put_tree_by_api, patch_tree_by_api, \
     del_tree_by_api
-from services.tree_asset_service import get_tree_env_list, get_tree_form_env_list, get_tree_form_set_list, \
-    register_asset, del_tree_asset, get_tree_asset_by_api, add_tree_asset_by_api, update_tree_asset_by_api
+from services.tree_asset_service import get_tree_env_list, get_tree_form_env_list, get_tree_form_module_list, \
+    get_tree_form_set_list, register_asset, del_tree_asset, get_tree_asset_by_api, add_tree_asset_by_api, \
+    update_tree_asset_by_api
 
 from models import asset_mapping as mapping
+
+
 # # 定义类型和模型的关系
 # mapping = {'server': AssetServerModels, 'mysql': AssetMySQLModels, 'redis': AssetRedisModels,
 #            'lb': AssetLBModels}
@@ -292,11 +295,19 @@ class TreeFormSetHandler(BaseHandler, ABC):
         return self.write(res)
 
 
+class TreeFormModuleHandler(BaseHandler, ABC):
+    def get(self):
+        res = get_tree_form_module_list(**self.params)
+        return self.write(res)
+
+
 tree_urls = [
     (r"/api/v2/cmdb/tree/", TreeHandler, {"handle_name": "服务树", "handle_status": "y"}),
     (r"/api/v2/cmdb/tree/env/", TreeEnvHandler, {"handle_name": "获取业务下环境列表", "handle_status": "y"}),
     (r"/api/v2/cmdb/tree/form/env/", TreeFormEnvHandler, {"handle_name": "获取业务环境列表、动态表单专用"}),
-    (r"/api/v2/cmdb/tree/form/set/", TreeFormSetHandler, {"handle_name": "获取业务环境集群列表、动态表单专用"}),
+    (r"/api/v2/cmdb/tree/form/set/", TreeFormSetHandler, {"handle_name": "获取业务环境下集群列表、动态表单专用"}),
+    (r"/api/v2/cmdb/tree/form/module/", TreeFormModuleHandler,
+     {"handle_name": "获取业务环境集群下模块列表、动态表单专用"}),
     (r"/api/v2/cmdb/tree/asset/", TreeAssetHandler, {"handle_name": "树资产关系", "handle_status": "y"}),
     (r"/api/v2/cmdb/tree/asset/relation/", TreeAssetRelationHandler,
      {"handle_name": "树资产关联关系", "handle_status": "y"}),
