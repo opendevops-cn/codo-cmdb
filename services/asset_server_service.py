@@ -205,3 +205,15 @@ def delete_server(data: dict) -> dict:
     #     session.query(AssetServerModels).filter(AssetServerModels.id.in_(host_ids)).delete(
     #         synchronize_session=False)
     # return dict(code=0, msg='删除成功')
+
+
+def check_delete(data: dict, asset_type) -> bool:
+    id_list = data.get('id_list')
+    if id_list and isinstance(id_list, list):
+        with DBContext('w', None, True) as session:
+            __info = session.query(TreeAssetModels).filter(TreeAssetModels.asset_type == asset_type).filter(
+                TreeAssetModels.asset_id.in_(id_list)).all()
+            if __info:
+                return True
+
+    return False

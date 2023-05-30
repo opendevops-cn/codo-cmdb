@@ -11,6 +11,7 @@ import json
 from abc import ABC
 from libs.base_handler import BaseHandler
 from services.asset_mysql_service import get_mysql_list_for_api, opt_obj
+from services.asset_server_service import check_delete
 
 
 class AssetMySQLHandler(BaseHandler, ABC):
@@ -20,6 +21,9 @@ class AssetMySQLHandler(BaseHandler, ABC):
 
     def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        check_status = check_delete(data, 'mysql')
+        if check_status:
+            return self.write(dict(code=-2, msg='数据库有业务关联，请先处理与业务的关联'))
         res = opt_obj.handle_delete(data)
         self.write(res)
 
