@@ -13,6 +13,7 @@ from models.tree import TreeModels, TreeAssetModels
 from libs.tree import Tree
 from models.business import BizModels
 from models import asset_mapping as mapping
+from websdk2.model_utils import model_to_dict, queryset_to_list
 from websdk2.db_context import DBContextV2 as DBContext
 
 
@@ -316,7 +317,6 @@ def get_tree_assets(params: Dict[str, Any]) -> Tuple[list or dict, int]:
             res = {
                 'cloud_name': asset.cloud_name, 'account_id': asset.account_id, 'instance_id': asset.instance_id,
                 'region': asset.region, 'zone': asset.zone, 'is_expired': asset.is_expired, 'name': asset.name,
-                'state': asset.state, 'agent_status': asset.agent_status,
                 # 业务字段
                 'id': tree.id, 'biz_id': tree.biz_id, 'is_enable': tree.is_enable, 'env_name': tree.env_name,
                 'region_name': tree.region_name, 'module_name': tree.module_name, 'asset_type': tree.asset_type,
@@ -325,7 +325,7 @@ def get_tree_assets(params: Dict[str, Any]) -> Tuple[list or dict, int]:
             if asset_type == 'server':
                 res.update({
                     'inner_ip': asset.inner_ip, 'outer_ip': asset.outer_ip, 'state': asset.state,
-                    'agent_id': asset.agent_id, 'is_product': asset.is_product
+                    'agent_status': asset.agent_status, 'agent_id': asset.agent_id, 'is_product': asset.is_product,
                 })
             elif asset_type == 'mysql':
                 res.update({
@@ -340,8 +340,32 @@ def get_tree_assets(params: Dict[str, Any]) -> Tuple[list or dict, int]:
                 })
             elif asset_type == 'lb':
                 res.update({
-                    'type': asset.type, 'dns_name': asset.dns_name, 'status': asset.status,
-                    'endpoint_type': asset.endpoint_type,
+                    'type': asset.type, 'dns_name': asset.dns_name, 'state': asset.state,
+                    'lb_vip': asset.lb_vip, 'endpoint_type': asset.endpoint_type,
                 })
             result.append(res)
     return result, tree_count
+
+
+def _get_biz_value(value: str = None):
+    if not value:
+        return True
+    return or_(
+        TreeAssetModels.biz_id == value
+    )
+
+
+# 根据服务器内网IP查询主机拓扑
+def get_server_tree_for_api(**params: Dict[str, Any]) -> dict:
+    asset_type = 'server'
+    biz_id = params.get('biz_id')
+    inner_ip = params.get('inner_ip')
+
+    __model = mapping[asset_type]
+    with DBContext('r') as session:
+        __info = session.query(TreeAssetModels).outerjoin(__model,
+                                                          __model.id == TreeAssetModels.asset_id).filter(
+            _get_biz_value(biz_id), __model.inner_ip == inner_ip, TreeAssetModels.asset_type == asset_type,
+                                    TreeAssetModels.is_enable == 1).all()
+
+    return dict(code=0, msg='获取成功', data=queryset_to_list(__info))

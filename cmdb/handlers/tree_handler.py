@@ -20,14 +20,9 @@ from services.tree_service import get_biz_name, get_tree_by_api, add_tree_by_api
     del_tree_by_api
 from services.tree_asset_service import get_tree_env_list, get_tree_form_env_list, get_tree_form_module_list, \
     get_tree_form_set_list, register_asset, del_tree_asset, get_tree_asset_by_api, add_tree_asset_by_api, \
-    update_tree_asset_by_api
+    update_tree_asset_by_api, get_server_tree_for_api
 
 from models import asset_mapping as mapping
-
-
-# # 定义类型和模型的关系
-# mapping = {'server': AssetServerModels, 'mysql': AssetMySQLModels, 'redis': AssetRedisModels,
-#            'lb': AssetLBModels}
 
 
 class TreeHandler(BaseHandler, ABC):
@@ -268,6 +263,17 @@ class TreeRegisterHandler(BaseHandler, ABC):
         return self.write({"code": 0, "msg": "注册成功"})
 
 
+class TreeServerRelationHandler(BaseHandler, ABC):
+    def get(self):
+        biz_id = self.get_argument('biz_id', None)
+        inner_ip = self.get_argument('inner_ip', None)
+
+        if not inner_ip:
+            return self.write({"code": 1, "msg": "关键参数不能为空"})
+        res = get_server_tree_for_api(**self.params)
+        return self.write(res)
+
+
 class TreeRegisterV2Handler(BaseHandler, ABC):
     def post(self):
         data = json.loads(self.request.body.decode("utf-8"))
@@ -310,7 +316,9 @@ tree_urls = [
      {"handle_name": "获取业务环境集群下模块列表、动态表单专用"}),
     (r"/api/v2/cmdb/tree/asset/", TreeAssetHandler, {"handle_name": "树资产关系", "handle_status": "y"}),
     (r"/api/v2/cmdb/tree/asset/relation/", TreeAssetRelationHandler,
-     {"handle_name": "树资产关联关系", "handle_status": "y"}),
+     {"handle_name": "树关联-查询所在拓扑结构", "handle_status": "y"}),
+    (r"/api/v2/cmdb/tree/server/relation/", TreeServerRelationHandler,
+     {"handle_name": "树关联-根据内网IP查询关联", "handle_status": "y"}),
     (r"/api/v2/cmdb/tree/register/", TreeRegisterHandler, {"handle_name": "Tree数据注册", "handle_status": "y"}),
     (r"/api/v2/cmdb/tree/v2/register/", TreeRegisterV2Handler, {"handle_name": "Tree数据注册V2"}),
 ]

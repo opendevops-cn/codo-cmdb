@@ -300,7 +300,7 @@ def lb_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
                         name=row.get("name"), cloud_name=cloud_name, type=row.get("type"), account_id=account_id,
                         instance_id=row.get("instance_id"), region=row.get("region"), zone=row.get("zone"),
                         endpoint_type=row.get("endpoint_type"), lb_vip=row.get("lb_vip"), dns_name=row.get("dns_name"),
-                        is_expired=False, status=row.get("status"), ext_info=row.get("ext_info")
+                        is_expired=False, state=row.get("status"), ext_info=row.get("ext_info")
                     ))
                 else:
                     db_session.query(AssetLBModels).filter(
@@ -311,7 +311,7 @@ def lb_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
                         AssetLBModels.region: row.get("region"),
                         AssetLBModels.zone: row.get("zone"),
                         AssetLBModels.lb_vip: row.get("lb_vip"),
-                        AssetLBModels.status: row.get("status"),
+                        AssetLBModels.state: row.get("status"),
                         AssetLBModels.is_expired: False,
                         AssetLBModels.instance_id: row.get("instance_id"),
                         AssetLBModels.endpoint_type: row.get("endpoint_type"),

@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*-coding:utf-8-*-
 """
-Author: shenshuo
-Since: 2019/1/12 15:10
-Desc:  this module is used for cloud handler use sync task.
+Contact : 191715030@qq.com
+Author  : shenshuo
+Date    : 2023/2/15 14:59
+Desc    : this module is used for cloud handler use sync task.
 """
 
 import json
@@ -66,7 +67,7 @@ class CloudSettingHandler(BaseHandler, ABC):
         data = json.loads(self.request.body.decode("utf-8"))
         access_key = data.get('access_key', None).strip()
         if len(access_key) < 110:
-            access_key = mc.my_encrypt(access_key)  ### 密钥如果太短，则认为当前密钥为原始密钥
+            data['access_key'] = mc.my_encrypt(access_key)  # 密钥如果太短，则认为当前密钥为原始密钥
 
         res = opt_obj.handle_update(data)
 

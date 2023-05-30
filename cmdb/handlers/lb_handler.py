@@ -1,8 +1,12 @@
+#!/usr/bin/env python
+# -*-coding:utf-8-*-
 """
-Author: shenshuo
-Since: 2021/1/12 15:10
-Description: this module is used for lb handler.
+Contact : 191715030@qq.com
+Author  : shenshuo
+Date    : 2023/2/15 14:59
+Desc    : this module is used for lb handler.
 """
+
 import json
 from abc import ABC
 from typing import *
@@ -39,7 +43,7 @@ def _get_lb_by_val(search_val: str = None):
         AssetLBModels.endpoint_type.like(f'%{search_val}%'),
         AssetLBModels.instance_id.like(f'%{search_val}%'),
         AssetLBModels.type.like(f'%{search_val}%'),
-        AssetLBModels.status.like(f'%{search_val}%'),
+        AssetLBModels.state.like(f'%{search_val}%'),
     )
 
 
@@ -73,6 +77,7 @@ class AssetLBHandler(BaseHandler, ABC):
                     AssetLBModels.id == _id
                 ).delete(synchronize_session=False)
         return self.write({"code": 0, "msg": "success"})
+
 
 lb_urls = [
     (r"/api/v2/cmdb/lb/", AssetLBHandler, {"handle_name": "CMDB-LB管理", "handle_status": "y"}),

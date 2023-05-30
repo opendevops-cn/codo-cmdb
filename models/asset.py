@@ -77,7 +77,7 @@ class AssetLBModels(AssetBaseModel):
     __tablename__ = 't_asset_lb'  # 负载均衡
     name = Column('name', String(255), nullable=False, comment='实例名称')
     type = Column('type', String(120), comment='LB类型, SLB/ALB/NLB')
-    status = Column('status', String(120), comment='状态')
+    state = Column('state', String(120), comment='状态')
     dns_name = Column('dns_name', String(255), comment='DNS解析记录 7层有')
     lb_vip = Column('lb_vip', String(255), comment='vip')
     endpoint_type = Column('endpoint_type', String(255), comment='标记内网/外网')
