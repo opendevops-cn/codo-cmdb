@@ -69,6 +69,13 @@ class VMWareHostAPI(object):
         Print information for a particular virtual machine or recurse into a
         folder with depth protection
         """
+        aa = []
+        for info in self.client.view:
+            print(info)
+            aa.append(aa)
+        print(len(aa))
+            # print(info.summary)
+            # print(info.summary.ipAddress)
         return [self.format_data(info) for info in self.client.view]
 
     def format_data(self, data) -> Dict[str, Any]:
@@ -77,19 +84,20 @@ class VMWareHostAPI(object):
         # # 定义返回
         res: Dict[str, Any] = dict()
         res['instance_id'] = summary.config.instanceUuid
-        res['name'] = summary.config.name
-        res['account_id'] = self._account_id
-        res['state'] = check_instance_status(summary.runtime.powerState)
-        # res['instance_type'] = data.get('InstanceType')
-        res['inner_ip'] = summary.guest.ipAddress
-        res['cpu'] = summary.config.numCpu
-        res['memory'] = round(summary.config.memorySizeMB / 1024, 0)
-        res['region'] = self.__server
-        res['zone'] = ''
-        res['os_type'] = check_os_type(summary.config.guestFullName)
-        res['os_name'] = summary.config.guestFullName
-
-        # logging.info(f'同步开始, 信息：「format_data」-「{res}」.')
+        try:
+            res['name'] = summary.config.name
+            res['account_id'] = self._account_id
+            res['state'] = check_instance_status(summary.runtime.powerState)
+            # res['instance_type'] = data.get('InstanceType')
+            res['inner_ip'] = summary.guest.ipAddress
+            res['cpu'] = summary.config.numCpu
+            res['memory'] = round(summary.config.memorySizeMB / 1024, 0)
+            res['region'] = self.__server
+            res['zone'] = ''
+            res['os_type'] = check_os_type(summary.config.guestFullName)
+            res['os_name'] = summary.config.guestFullName
+        except Exception as e:
+            logging.error(f'同步开始, 信息：「format_data」-「{e}」.')
         return res
 
     def sync_cmdb(self, cloud_name: Optional[str] = 'vmware', resource_type: Optional[str] = 'server') -> Tuple[

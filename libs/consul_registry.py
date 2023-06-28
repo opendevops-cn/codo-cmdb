@@ -25,7 +25,6 @@ from websdk2.model_utils import model_to_dict
 from websdk2.cache_context import cache_conn
 
 if configs.can_import: configs.import_dict(**settings)
-redis_conn = cache_conn()
 
 
 def deco(cls, release=False):
@@ -151,6 +150,7 @@ class ConsulOpt(object):
 
 
 def get_registry_server_info():
+    redis_conn = cache_conn()
     asset_type = 'server'
     port = 9100
     __model = asset_mapping[asset_type]
@@ -188,6 +188,7 @@ def get_items_ip(db_address, port) -> tuple:
 
 
 def get_registry_mysql_info():
+    redis_conn = cache_conn()
     asset_type = 'mysql'
     __model = asset_mapping[asset_type]
     with DBContext('r') as session:
@@ -214,6 +215,7 @@ def get_registry_mysql_info():
 
 
 def get_registry_redis_info():
+    redis_conn = cache_conn()
     asset_type = 'redis'
     __model = asset_mapping[asset_type]
     with DBContext('r') as session:
