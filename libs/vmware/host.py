@@ -69,13 +69,7 @@ class VMWareHostAPI(object):
         Print information for a particular virtual machine or recurse into a
         folder with depth protection
         """
-        aa = []
-        for info in self.client.view:
-            print(info)
-            aa.append(aa)
-        print(len(aa))
-            # print(info.summary)
-            # print(info.summary.ipAddress)
+
         return [self.format_data(info) for info in self.client.view]
 
     def format_data(self, data) -> Dict[str, Any]:
