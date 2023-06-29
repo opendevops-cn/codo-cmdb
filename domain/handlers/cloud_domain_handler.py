@@ -393,7 +393,7 @@ class DomainInfoSync(BaseHandler, ABC):
     @run_on_executor(executor='_thread_pool')
     def domain_sync(self):
         domain_main('aliyun')
-        domain_main('qcloud')
+        # domain_main('qcloud')
         domain_main('dnspod')
         domain_main('GoDaddy')
         return dict(code=0, msg='更新完毕')

@@ -238,7 +238,7 @@ def data_sync_record(cloud_name, account_id, record_list):
                                          state=record.get('Status', 'unknown'),
                                          remark=record.get('Remark', 'unknown'),
                                          account=account_id))
-
+                    session.commit()
                 except Exception as err:
                     ins_log.read_log('info', f'{cloud_name} 更新域名记录出错 {err}')
 
@@ -260,9 +260,9 @@ def data_sync_record(cloud_name, account_id, record_list):
                                          remark=record.Remark,
                                          account=account_id
                                          ))
-
+                    session.commit()
                 except Exception as err:
-                    ins_log.read_log('info', f'{cloud_name} 更新域名记录出错 {err}')
+                    ins_log.read_log('error', f'{cloud_name} 更新域名记录出错 {err}')
 
             # elif cloud_name in ['dnspod', 'DNSPod']:
             #     record_id = record.get('id')
