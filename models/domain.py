@@ -46,7 +46,7 @@ class DomainRecords(BizBaseModel):
     record_id = Column('record_id', String(128), index=True, unique=True)  # 解析记录ID
     domain_rr = Column('domain_rr', String(128), index=True, default='www')  # 主机记录。
     domain_type = Column('domain_type', String(20), default='A')  # 记录类型
-    domain_value = Column('domain_value', String(250), default='')  # 记录值。
+    domain_value = Column('domain_value', String(500), default='')  # 记录值。
     domain_ttl = Column('domain_ttl', Integer, default=600)  # 生存时间
     domain_mx = Column('domain_mx', Integer, default=5)  # MX记录的优先级。
     weight = Column('weight', String(10), default=None)  # 权重 企业版功能。
