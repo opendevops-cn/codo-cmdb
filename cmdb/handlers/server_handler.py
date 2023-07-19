@@ -13,7 +13,7 @@ from abc import ABC
 from libs.base_handler import BaseHandler
 from websdk2.db_context import DBContext
 from models.asset import AssetUserFieldModels
-from services.asset_server_service import add_server_batch, delete_server, mark_server, get_server_list
+from services.asset_server_service import add_server_batch, add_server, delete_server, mark_server, get_server_list
 
 
 class AssetServerHandler(BaseHandler, ABC):
@@ -27,7 +27,7 @@ class AssetServerHandler(BaseHandler, ABC):
         :return:
         """
         data = json.loads(self.request.body.decode("utf-8"))
-        res = add_server_batch(data)
+        res = add_server(data)
         return self.write(res)
 
     def patch(self):
@@ -42,6 +42,17 @@ class AssetServerHandler(BaseHandler, ABC):
     def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))
         res = delete_server(data)
+        return self.write(res)
+
+
+class AssetServerBatchHandler(BaseHandler, ABC):
+    def post(self):
+        """
+        添加Server数据，一般都是用自动获取，应对非等待获取，其他云机器
+        :return:
+        """
+        data = json.loads(self.request.body.decode("utf-8"))
+        res = add_server_batch(data)
         return self.write(res)
 
 
@@ -94,5 +105,6 @@ class AssetUserFieldHandler(BaseHandler, ABC):
 
 server_urls = [
     (r"/api/v2/cmdb/server/", AssetServerHandler, {"handle_name": "CMDB-主机管理", "handle_status": "y"}),
+    (r"/api/v2/cmdb/server/batch/", AssetServerHandler, {"handle_name": "CMDB-主机管理", "handle_status": "y"}),
     (r"/api/v2/cmdb/user_field/", AssetUserFieldHandler, {"handle_name": "CMDB-用户字段配置", "handle_status": "y"}),
 ]

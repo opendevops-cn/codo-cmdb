@@ -8,6 +8,7 @@ Desc    : 解释一下吧
 """
 
 import logging
+from shortuuid import uuid
 from sqlalchemy import or_
 from typing import *
 from websdk2.db_context import DBContextV2 as DBContext
@@ -115,6 +116,53 @@ def mark_server(data: dict) -> dict:
 
         session.query(AssetServerModels).filter_by(**filter_map).update({AssetServerModels.is_product: is_product})
     return dict(code=0, msg='标记成功')
+
+
+def add_server(server: dict):
+    if not isinstance(server, dict):
+        return {"code": 1, "msg": "server类型错误"}
+
+    ext_info = server.pop('ext_info', None)
+    if ext_info and not isinstance(ext_info, dict):
+        return {"code": 1, "msg": "ext_info必须是json"}
+
+    server = dict(list(ext_info.items()) + list(server.items()))
+    cloud_name = server.get('cloud_name', None)
+    inner_ip = server.get('inner_ip')
+    name = server.get('name', None)
+    if not cloud_name:
+        return {"code": 1, "msg": "cloud_name不能为空"}
+
+    if not name or not inner_ip:
+        return {"code": 1, "msg": "inner_ip/name不能为空"}
+
+    instance_id = server.get('instance_id')
+    if not instance_id:
+        instance_id = uuid(f'{inner_ip}{name}')
+
+    ext_info['instance_id'] = instance_id
+    if cloud_name: ext_info['cloud_name'] = cloud_name
+    if name: ext_info['name'] = name
+    if inner_ip: ext_info['inner_ip'] = inner_ip
+
+    try:
+        with DBContext('w', None, True) as session:
+            try:
+                session.add(AssetServerModels(**dict(instance_id=instance_id, cloud_name=cloud_name,
+                                                     account_id=server.get('account_id', uuid()).strip(),
+                                                     # 随机uuid标记post写入
+                                                     agent_id=server.get('agent_id', f"{inner_ip}:0").strip(),
+                                                     state=server.get('state', '运行中'), name=name,
+                                                     region=server.get('region'), zone=server.get('zone'),
+                                                     inner_ip=inner_ip, outer_ip=server.get('outer_ip'),
+                                                     ext_info=ext_info, is_expired=False)))
+            except Exception as err:
+                print(err)
+                return dict(code=-1, msg=f'批量添加失败 {err}')
+    except Exception as err:
+        return dict(code=-2, msg=f'批量添加失败 {err}')
+
+    return dict(code=0, msg='批量添加成功')
 
 
 def add_server_batch(data: dict):
