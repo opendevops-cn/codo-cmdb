@@ -186,8 +186,7 @@ def get_tree_count(session, biz_id: Optional[str], asset_type: Optional[str] = '
     获取一个业务有多少主机数量
     """
     biz_count = session.query(TreeAssetModels).filter(
-        TreeAssetModels.asset_type == asset_type, TreeAssetModels.biz_id == biz_id,
-    ).count()
+        TreeAssetModels.asset_type == asset_type, TreeAssetModels.biz_id == biz_id).count()
 
     return biz_count
 

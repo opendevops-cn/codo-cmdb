@@ -93,19 +93,21 @@ def sync_agent_status():
         if res.status_code != 200: return
         data = res.json()
         agent_list = data.get('list')
+        model = AssetServerModels
         with DBContext('w', None, True) as session:
-            __info = session.query(AssetServerModels.id, AssetServerModels.agent_id,
-                                   AssetServerModels.agent_status).all()
+            __info = session.query(model.id, model.agent_id, model.agent_status).all()
 
             all_info = []
             for asset_id, agent_id, agent_status, in __info:
                 if agent_status == '1' and agent_id not in agent_list:  # 如果状态在线  但是agent找不到
                     ins_log.read_log('info', f'{agent_id}改为离线  {asset_id}')
                     all_info.append(dict(id=asset_id, agent_status='2'))
+                    session.query(model).filter(model.id == asset_id).update(**dict(agent_status='2'))
                 elif (agent_status == '2' or not agent_status) and agent_id in agent_list:  # 如果状态离线  但是agent存在
                     all_info.append(dict(id=asset_id, agent_status='1'))
-                    ins_log.read_log('info', f'{agent_id}改为在线  { {asset_id}}')
-            session.bulk_update_mappings(AssetServerModels, all_info)
+                    ins_log.read_log('info', f'{agent_id}改为在线  { {asset_id} }')
+                    session.query(model).filter(model.id == asset_id).update(**dict(agent_status='1'))
+            # session.bulk_update_mappings(AssetServerModels, all_info) # 数据量过大造成阻塞
         ins_log.read_log('info', f'sync agent status end {datetime.datetime.now()}')
 
     try:

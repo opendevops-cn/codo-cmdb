@@ -25,4 +25,4 @@ class TimeBaseModel(Base):
 class BizBaseModel(TimeBaseModel, Base):
     """业务模型基类"""
     __abstract__ = True
-    biz_id = Column(String(15), comment='业务/项目ID', nullable=True)
+    biz_id = Column(String(15), comment='业务/项目ID', index=True, nullable=True)

@@ -238,7 +238,7 @@ def data_sync_record(cloud_name, account_id, record_list):
                                          state=record.get('Status', 'unknown'),
                                          remark=record.get('Remark', 'unknown'),
                                          account=account_id))
-                    session.commit()
+                    # session.commit()
                 except Exception as err:
                     ins_log.read_log('info', f'{cloud_name} 更新域名记录出错 {err}')
 
@@ -260,34 +260,10 @@ def data_sync_record(cloud_name, account_id, record_list):
                                          remark=record.Remark,
                                          account=account_id
                                          ))
-                    session.commit()
+                    # session.commit()
                 except Exception as err:
                     ins_log.read_log('error', f'{cloud_name} 更新域名记录出错 {err}')
 
-            # elif cloud_name in ['dnspod', 'DNSPod']:
-            #     record_id = record.get('id')
-            #     state = 'disable' if record.get('enabled') == 0 else 'enable'  ##1和0分别代表启用和暂停
-            #     record_ex = session.query(DomainRecords).filter(DomainRecords.record_id == record_id).first()
-            #
-            #     if record_ex:
-            #         session.query(DomainRecords).filter(DomainRecords.domain_name == domain_name,
-            #                                             DomainRecords.record_id == record_id).update(
-            #             dict(domain_rr=record.get('name', ''), domain_type=record.get('type', ''),
-            #                  domain_value=record.get('value', ''), domain_ttl=int(record.get('ttl', 600)),
-            #                  domain_mx=record.get('mx', 0), line=record.get('line', ''), state=state,
-            #                  account=account_id))
-            #     else:
-            #         new_record = DomainRecords(domain_name=domain_name,
-            #                                    record_id=record_id,
-            #                                    domain_rr=record.get('name', ''),
-            #                                    domain_type=record.get('type', ''),
-            #                                    domain_value=record.get('value', ''),
-            #                                    domain_ttl=int(record.get('ttl', 600)),
-            #                                    domain_mx=int(record.get('mx', 0)),
-            #                                    line=record.get('line', 'unknown'),
-            #                                    state=state,
-            #                                    account=account_id)
-            #         session.add(new_record)
             elif cloud_name == 'GoDaddy':
                 record_ex = session.query(DomainRecords).filter(DomainRecords.domain_rr == record.get('name'),
                                                                 DomainRecords.domain_type == record.get('type'),
@@ -322,18 +298,23 @@ def data_sync_record(cloud_name, account_id, record_list):
                                                state=record.get('status', 'ENABLE'),
                                                account=account_id)
                     session.add(new_record)
-        ##
-        mark_expired(DomainRecords, domain_name=domain_name)
+            ##
+            mark_expired(DomainRecords, domain_name=domain_name, record_id=record_id)
 
 
-def mark_expired(resource_model, domain_name: Optional[str]):
+def mark_expired(resource_model, domain_name: Optional[str], record_id: Optional[str]):
     """
     根据时间标记过期的数据
     """
     with DBContext('w', None, True, **settings) as session:
-        # 7天前
-        seven_days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
+        # 1天前
+        _days_ago = datetime.datetime.now() - datetime.timedelta(days=1)
         # 过期
         session.query(resource_model).filter(
-            resource_model.domain_name == domain_name, resource_model.update_time <= seven_days_ago
-        ).update({resource_model.state: '过期'})
+            resource_model.domain_name == domain_name, record_id == record_id,
+            resource_model.update_time <= _days_ago).update({resource_model.state: '过期'})
+
+        session.query(resource_model).filter(resource_model.domain_name == domain_name, record_id == record_id,
+                                             resource_model.state == '过期',
+                                             resource_model.update_time <= _days_ago).delete(
+            synchronize_session=False)
