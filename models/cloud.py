@@ -41,5 +41,5 @@ class SyncLogModels(Base):
     sync_region = Column('sync_region', String(120), comment='区域')
     sync_state = Column('sync_state', String(120), comment='同步状态')
     sync_consum = Column('sync_consum', String(120), comment='同步耗时')
-    sync_time = Column('sync_time', DateTime(), default=datetime.now, comment='同步时间')
+    sync_time = Column('sync_time', DateTime(), default=datetime.now, index=True, comment='同步时间')
     loginfo = Column('loginfo', Text(), comment='log')

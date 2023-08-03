@@ -58,8 +58,7 @@ class CDSHostApi(CDSApi):
         res['name'] = data.get('InstanceName')
         res['region'] = data.get('RegionId')
         res['zone'] = ''
-
-        res['os_name'] = data['ImageInfo']["ImageName"]
+        res['os_name'] = data['ImageInfo']["ImageType"]
         return res
 
     def fetch_cds_instances(self):
