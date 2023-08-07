@@ -216,6 +216,22 @@ def add_server_batch(data: dict):
     return dict(code=0, msg='批量添加成功')
 
 
+def patch_server_batch(data: dict):
+    hosts = data.get('hosts')
+    outer_biz_addr = data.get('outer_biz_addr')
+
+    with DBContext('w', None, True) as session:
+        if outer_biz_addr:
+            for host in hosts:
+                logging.info(
+                    f"{host.get('instance_id')},{host.get('name')} 修改 {host.get('outer_biz_addr')} 为 {outer_biz_addr}")
+                session.query(AssetServerModels).filter(AssetServerModels.id == host.get('id')).update(
+                    {AssetServerModels.outer_biz_addr: outer_biz_addr})
+        else:
+            return dict(code=-1, msg='缺少必要参数')
+    return dict(code=0, msg='修改成功')
+
+
 def delete_server(data: dict) -> dict:
     hosts = data.get('hosts')
     name = data.get('name')

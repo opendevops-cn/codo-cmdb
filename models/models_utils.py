@@ -255,7 +255,7 @@ def redis_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]
                         AssetRedisModels.is_expired: False,
                         AssetRedisModels.ext_info: __info,
                         AssetRedisModels.name: __info.get('name'),
-                        AssetRedisModels.instance_status: __info.get('instance_status'),
+                        AssetRedisModels.state: __info.get('state'),
                         AssetRedisModels.instance_class: __info.get('instance_class'),
                         AssetRedisModels.instance_arch: __info.get('instance_arch'),
                         AssetRedisModels.instance_type: __info.get('instance_type'),
@@ -267,7 +267,7 @@ def redis_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]
                         cloud_name=cloud_name, account_id=account_id, instance_id=instance_id,
                         region=__info.get('region'), zone=__info.get('zone'), is_expired=False, ext_info=__info,
                         # up base, down self models data
-                        name=__info.get('name'), instance_status=__info.get('instance_status'),
+                        name=__info.get('name'), state=__info.get('state'),
                         instance_class=__info.get('instance_class'), instance_arch=__info.get('instance_arch'),
                         instance_type=__info.get('instance_type'), instance_version=__info.get('instance_version'),
                         instance_address=__info.get('instance_address')

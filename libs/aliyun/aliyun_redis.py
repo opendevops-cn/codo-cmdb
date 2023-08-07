@@ -151,7 +151,7 @@ class AliyunRedisClient:
         return instance_address
 
     def _format_data(self, data: Optional[Dict]) -> Dict[str, Any]:
-        res: Dict[str, Any] = {}
+        res: Dict[str, Any] = dict()
         res['instance_id'] = data.get('InstanceId')
         res['create_time'] = data.get('CreateTime')
         res['charge_type'] = get_paymeny_type(data.get('ChargeType'))
@@ -163,7 +163,7 @@ class AliyunRedisClient:
         res['instance_arch'] = get_arch_type(data.get('ArchitectureType'))
         res['instance_type'] = data.get('InstanceType')
         res['instance_version'] = data.get('EngineVersion')
-        res['instance_status'] = get_run_type(data.get('InstanceStatus'))
+        res['state'] = get_run_type(data.get('InstanceStatus'))
         res['network_type'] = get_network_type(data.get('NetworkType'))
         res['instance_address'] = self.get_redis_endpoints(data.get('InstanceId'))
         return res

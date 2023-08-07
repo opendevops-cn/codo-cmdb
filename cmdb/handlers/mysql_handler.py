@@ -10,7 +10,7 @@ Desc   : RDS API
 import json
 from abc import ABC
 from libs.base_handler import BaseHandler
-from services.asset_mysql_service import get_mysql_list_for_api, opt_obj
+from services.asset_mysql_service import get_mysql_list_for_api, opt_obj, add_mysql
 from services.asset_server_service import check_delete
 
 
@@ -18,6 +18,11 @@ class AssetMySQLHandler(BaseHandler, ABC):
     def get(self):
         res = get_mysql_list_for_api(**self.params)
         return self.write(res)
+
+    def post(self):
+        data = json.loads(self.request.body.decode("utf-8"))
+        res = add_mysql(data)
+        self.write(res)
 
     def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))

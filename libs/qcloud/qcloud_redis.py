@@ -42,16 +42,16 @@ def get_product_type(val):
 def get_type_version(val):
     version_map = {
         1: "Redis老集群版",
-        2: "Redis 2.8主从版",
+        2: "2.8主从版",
         3: "CKV主从版",
         4: "CKV集群版",
-        5: "Redis 2.8单机版",
-        6: "Redis 4.0主从版",
-        7: "Redis 4.0集群版",
-        8: "Redis 5.0主从版",
-        9: "Redis 5.0集群版",
-        15: "Redis 6.2标准版",
-        16: "Redis 6.2集群版",
+        5: "2.8单机版",
+        6: "4.0主从版",
+        7: "4.0集群版",
+        8: "5.0主从版",
+        9: "5.0集群版",
+        15: "6.2标准版",
+        16: "6.2集群版",
 
     }
     return version_map.get(val, val)
@@ -123,9 +123,9 @@ class QCloudRedis:
         res['name'] = data.InstanceName
         res['instance_class'] = f'{data.Size}MB'
         res['instance_arch'] = get_product_type(data.ProductType)
-        res['instance_type'] = get_type_version(data.Type)
-        res['instance_version'] = data.Engine
-        res['instance_status'] = get_run_type(data.Status)
+        res['instance_type'] = data.Engine
+        res['instance_version'] = get_type_version(data.Type)
+        res['state'] = get_run_type(data.Status)
         res['network_type'] = network_type
         res['instance_address'] = {
             "items": [

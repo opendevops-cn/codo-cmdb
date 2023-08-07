@@ -49,10 +49,10 @@ class AwsRedisClient:
         return redis_list
 
     def _format_data(self, data: dict) -> Dict[str, Any]:
-        res: Dict[str, Any] = {}
+        res: Dict[str, Any] = dict()
         res['instance_id'] = data.get('ReplicationGroupId')
         res['name'] = data.get('ReplicationGroupId')
-        res['instance_status'] = '运行中' if data.get('Status') == 'available' else data.get('Status')
+        res['state'] = '运行中' if data.get('Status') == 'available' else data.get('Status')
         res['instance_class'] = data.get('CacheNodeType')
         res['charge_type'] = '按量付费'
         res['instance_network'] = '专有网络'

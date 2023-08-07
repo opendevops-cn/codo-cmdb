@@ -35,6 +35,7 @@ class AssetServerModels(AssetBaseModel):
     # hostname = Column('hostname', String(180), nullable=False, comment='主机名')
     inner_ip = Column('inner_ip', String(120), comment='内网IP', index=True)
     outer_ip = Column('outer_ip', String(120), comment='外网IP')
+    outer_biz_addr = Column('outer_biz_addr', String(255), comment='业务出口地址')
     state = Column('state', String(30), comment='主机状态', index=True)
     agent_id = Column('agent_id', String(160), index=True, comment='AgentID')
     agent_status = Column('agent_status', String(20), index=True, default='1', comment='Agent状态')  # 1在线 2离线
@@ -60,7 +61,7 @@ class AssetRedisModels(AssetBaseModel):
     """基础Redis"""
     __tablename__ = 't_asset_redis'  # server 基础主机
     name = Column('name', String(180), nullable=False, comment='实例名称')
-    instance_status = Column('instance_status', String(120), comment='状态')
+    state = Column('state', String(120), comment='状态')
     instance_class = Column('instance_class', String(120), comment='类型/规格')
     instance_arch = Column('instance_arch', String(120), comment='Arch 集群/标准')
     instance_type = Column('instance_type', String(120), comment='Redis/Memcache')

@@ -97,12 +97,12 @@ class AwsRDSClient:
 
     @staticmethod
     def _format_instance_data(data: dict) -> Dict[str, str]:
-        res: Dict[str, str] = {}
+        res: Dict[str, str] = dict()
         res["name"] = data.get("DBInstanceIdentifier")
         res["instance_class"] = data.get("DBInstanceClass")
         res["instance_engine"] = data.get("Engine")
-        # res["instance_status"] = data.get("DBInstanceStatus")
-        res["instance_status"] = "运行中" if data.get("DBInstanceStatus") == "available" else data.get(
+
+        res["state"] = "运行中" if data.get("DBInstanceStatus") == "available" else data.get(
             "DBInstanceStatus")
         res["instance_user"] = data.get("MasterUsername")
         res["instance_addr"] = data["Endpoint"]["Address"]

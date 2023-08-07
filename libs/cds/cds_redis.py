@@ -40,7 +40,7 @@ class CDSRedisApi(CDSApi):
         res: Dict[str, Any] = dict()
         res['instance_id'] = data.get('InstanceUuid')
         res['account_id'] = self._account_id
-        res['instance_status'] = get_run_type(data['Status'])
+        res['state'] = get_run_type(data['Status'])
         res['charge_type'] = data.get('InstanceType')
         res['instance_class'] = f"{float(data['Ram'])}MB"
         # res['instance_address'] = data['IP']

@@ -23,7 +23,7 @@ def check_os_type(os_name):
     return 'unknown'
 
 
-def check_instance_status(value):
+def check_instance_state(value):
     running_list = ["POWEREDON", "RUNNING"]
     stop_list = ["POWEREDOFF", "STOPPED", "STOP"]
     if value.upper() in running_list:
@@ -81,7 +81,7 @@ class VMWareHostAPI(object):
         try:
             res['name'] = summary.config.name
             res['account_id'] = self._account_id
-            res['state'] = check_instance_status(summary.runtime.powerState)
+            res['state'] = check_instance_state(summary.runtime.powerState)
             # res['instance_type'] = data.get('InstanceType')
             res['inner_ip'] = summary.guest.ipAddress
             res['cpu'] = summary.config.numCpu

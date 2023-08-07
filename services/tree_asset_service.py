@@ -325,7 +325,8 @@ def get_tree_assets(params: Dict[str, Any]) -> Tuple[list or dict, int]:
             if asset_type == 'server':
                 res.update({
                     'inner_ip': asset.inner_ip, 'outer_ip': asset.outer_ip, 'state': asset.state,
-                    'agent_status': asset.agent_status, 'agent_id': asset.agent_id, 'is_product': asset.is_product,
+                    'agent_status': asset.agent_status, 'agent_id': asset.agent_id,
+                    'outer_biz_addr': asset.outer_biz_addr, 'is_product': asset.is_product,
                 })
             elif asset_type == 'mysql':
                 res.update({
@@ -334,7 +335,7 @@ def get_tree_assets(params: Dict[str, Any]) -> Tuple[list or dict, int]:
                 })
             elif asset_type == 'redis':
                 res.update({
-                    'instance_status': asset.instance_status, 'instance_class': asset.instance_class,
+                    'state': asset.state, 'instance_class': asset.instance_class,
                     'instance_arch': asset.instance_arch, 'instance_address': asset.instance_address,
                     'instance_type': asset.instance_type, 'instance_version': asset.instance_version,
                 })
