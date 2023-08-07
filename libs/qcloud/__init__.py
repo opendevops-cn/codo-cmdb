@@ -16,6 +16,7 @@ from libs.qcloud.qcloud_vpc import QCloudCVPC
 from libs.qcloud.qcloud_vswitch import QcloudVSwitch
 from libs.qcloud.qcloud_security_group import QCloudSecurityGroup
 from libs.qcloud.qcloud_events import QCloudEventClient
+from libs.qcloud.qcloud_img import QCloudCImg
 
 DEFAULT_CLOUD_NAME = 'qcloud'
 # 同步的资产对应关系
@@ -51,6 +52,10 @@ mapping: Dict[str, dict] = {
     '安全组': {
         "type": "security_group",
         "obj": QCloudSecurityGroup
+    },
+    '系统镜像': {
+        "type": "image",
+        "obj": QCloudCImg
     },
     '维修任务': {
         "type": "events",

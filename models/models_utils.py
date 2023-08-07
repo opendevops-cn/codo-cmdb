@@ -17,7 +17,7 @@ from websdk2.db_context import DBContext
 from websdk2.model_utils import model_to_dict, insert_or_update
 from models.cloud import SyncLogModels, CloudSettingModels
 from models.asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels, AssetVPCModels, \
-    AssetVSwitchModels, AssetEIPModels, SecurityGroupModels
+    AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetImagesModels
 from models.event import CloudEventsModels
 from models import asset_mapping
 
@@ -462,6 +462,43 @@ def security_group_task(cloud_name: str, account_id: str, rows: list) -> Tuple[b
                     logging.error(err)
     except Exception as error:
         ret_state, ret_msg = False, f"{cloud_name}-{account_id}-安全组task写入数据库失败,错误行:{row},详细信息:{error}"
+    return ret_state, ret_msg
+
+
+def image_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
+    """
+     系统镜像资源入库
+    :param cloud_name:
+    :param account_id:
+    :param rows:
+    :return:
+    """
+    # 定义返回
+    ret_state, ret_msg = True, f"{cloud_name}-{account_id}-系统镜像task写入数据库完成"
+
+    try:
+        with DBContext("w", None, True, **settings) as session:
+            for row in rows:
+                if not row: continue
+                instance_id = row.get("instance_id")
+                try:
+                    session.add(insert_or_update(AssetImagesModels, f"instance_id='{instance_id}'",
+                                                 cloud_name=cloud_name, account_id=account_id,
+                                                 instance_id=instance_id,
+                                                 region=row.get('region'),
+                                                 name=row.get('name'),
+                                                 image_type=row.get('image_type'),
+                                                 image_size=row.get('image_size'),
+                                                 os_platform=row.get('os_platform'),
+                                                 os_name=row.get('os_name'),
+                                                 state=row.get('state'),
+                                                 arch=row.get('arch'),
+                                                 description=row.get('description')
+                                                 ))
+                except Exception as err:
+                    logging.error(err)
+    except Exception as error:
+        ret_state, ret_msg = False, f"{cloud_name}-{account_id}-系统镜像task写入数据库失败,错误行:{row},详细信息:{error}"
     return ret_state, ret_msg
 
 

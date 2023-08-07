@@ -46,9 +46,22 @@ class AssetServerModels(AssetBaseModel):
     )
 
 
+class AssetImagesModels(AssetBaseModel):
+    """"基础镜像"""
+    __tablename__ = 't_asset_image'  # image 基础系统镜像
+    name = Column('name', String(250), comment='名称', index=True)
+    image_type = Column('image_type', String(120), comment='系统类型', index=True)
+    image_size = Column('image_size', String(120), comment='镜像硬盘')
+    os_platform = Column('os_platform', String(255), comment='系统平台')
+    os_name = Column('os_name', String(255), comment='系统名称')
+    arch = Column('arch', String(30), comment='架构', index=True)
+    state = Column('state', String(30), comment='镜像状态', index=True)
+    description = Column('description', String(250), nullable=False, comment='备注')
+
+
 class AssetMySQLModels(AssetBaseModel):
     """"基础数据库"""
-    __tablename__ = 't_asset_mysql'  # server 基础主机
+    __tablename__ = 't_asset_mysql'  # MySQL 数据库
     name = Column('name', String(180), nullable=False, comment='名称', index=True)
     state = Column('state', String(50), comment='状态', index=True)
     db_class = Column('db_class', String(120), comment='类型/规格')
@@ -59,19 +72,14 @@ class AssetMySQLModels(AssetBaseModel):
 
 class AssetRedisModels(AssetBaseModel):
     """基础Redis"""
-    __tablename__ = 't_asset_redis'  # server 基础主机
+    __tablename__ = 't_asset_redis'
     name = Column('name', String(180), nullable=False, comment='实例名称')
-    state = Column('state', String(120), comment='状态')
+    state = Column('state', String(50), index=True, comment='状态')
     instance_class = Column('instance_class', String(120), comment='类型/规格')
     instance_arch = Column('instance_arch', String(120), comment='Arch 集群/标准')
     instance_type = Column('instance_type', String(120), comment='Redis/Memcache')
     instance_version = Column('instance_version', String(120), comment='版本')
     instance_address = Column('instance_address', JSON(), comment='json地址')
-
-    # # 联合键约束
-    # __table_args__ = (
-    #     UniqueConstraint('region', 'instance_id', name='redis_key'),
-    # )
 
 
 class AssetLBModels(AssetBaseModel):
@@ -98,7 +106,6 @@ class AssetEIPModels(AssetBaseModel):
 
     binding_instance_id = Column('binding_instance_id', String(80), comment='绑定实例ID')
     binding_instance_type = Column('binding_instance_type', String(80), comment='绑定实例类型')
-    # domain_records  ManyToMany
 
 
 class AssetUserFieldModels(TimeBaseModel):

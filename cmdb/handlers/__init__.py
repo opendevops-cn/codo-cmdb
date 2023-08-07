@@ -9,6 +9,7 @@ from cmdb.handlers.dynamic_rule_handler import dynamic_rule_urls
 from cmdb.handlers.events_handler import events_urls
 from cmdb.handlers.asset_search_handler import search_urls
 from cmdb.handlers.server_handler import server_urls
+from cmdb.handlers.img_handler import img_urls
 from cmdb.handlers.redis_handler import redis_urls
 from cmdb.handlers.mysql_handler import mysql_urls
 from cmdb.handlers.lb_handler import lb_urls
@@ -28,6 +29,7 @@ urls.extend(cloud_urls)
 urls.extend(events_urls)
 urls.extend(search_urls)
 urls.extend(server_urls)
+urls.extend(img_urls)
 urls.extend(mysql_urls)
 urls.extend(redis_urls)
 urls.extend(lb_urls)
