@@ -29,5 +29,5 @@ class AssetLBHandler(BaseHandler, ABC):
 
 
 lb_urls = [
-    (r"/api/v2/cmdb/lb/", AssetLBHandler, {"handle_name": "CMDB-LB管理", "handle_status": "y"}),
+    (r"/api/v2/cmdb/lb/", AssetLBHandler, {"handle_name": "配置平台-云商-LB管理", "method": ["ALL"]}),
 ]

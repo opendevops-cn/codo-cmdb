@@ -99,7 +99,7 @@ class CloudSettingHandler(BaseHandler, ABC):
         return self.write(res)
 
 
-class CloudSyncLogHandler(BaseHandler, ABC):
+class SyncLogHandler(BaseHandler, ABC):
     def get(self):
         account_id = self.get_argument('account_id', default=None, strip=True)
         res = get_cloud_sync_log(account_id)
@@ -153,7 +153,7 @@ class CloudSyncHandler(BaseHandler, ABC):
 
 
 cloud_urls = [
-    (r"/api/v2/cmdb/cloud/conf/", CloudSettingHandler, {"handle_name": "多云配置", "handle_status": "y"}),
-    (r"/api/v2/cmdb/cloud/sync/log/", CloudSyncLogHandler, {"handle_name": "同步日志", "handle_status": "y"}),
-    (r"/api/v2/cmdb/cloud/sync/", CloudSyncHandler, {"handle_name": "资产同步", "handle_status": "y"}),
+    (r"/api/v2/cmdb/cloud/conf/", CloudSettingHandler, {"handle_name": "配置平台-多云配置", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/cloud/sync/log/", SyncLogHandler, {"handle_name": "配置平台-多云配置-查看同步日志", "method": ["GET"]}),
+    (r"/api/v2/cmdb/cloud/sync/", CloudSyncHandler, {"handle_name": "配置平台-多云配置-资产同步", "method": ["ALL"]}),
 ]

@@ -26,7 +26,12 @@ class CloudRegionModels(TimeBaseModel):
     ssh_user = Column('ssh_user', String(30), default="root", comment='ssh user')
     ssh_ip = Column('ssh_ip', String(180), default="", comment='ssh ip 通过SSH链接地址')
     ssh_port = Column('ssh_port', Integer, default=22220, comment='SSH端口')
-    ssh_key = Column('ssh_key', Text(), default="", comment='SSH密钥')
+    ssh_key = Column('ssh_key', Text(), default="", comment='SSH网域密钥')
+    ssh_pub_key = Column('ssh_pub_key', Text(), default="", comment='SSH网域公钥')
+
+    jms_org_id = Column('jms_org_id', String(80), default="", comment='对应跳板机组织ID')
+    jms_account_template = Column('jms_account_template', String(255), default="", comment='对应跳板机账号模版')
+
     state = Column('state', String(10), default="online", comment='代理状态')
     detail = Column('detail', String(500), comment='备注')
 

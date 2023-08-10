@@ -34,5 +34,5 @@ class AssetRedisHandler(BaseHandler, ABC):
 
 
 redis_urls = [
-    (r"/api/v2/cmdb/redis/", AssetRedisHandler, {"handle_name": "CMDB-Redis管理", "handle_status": "y"}),
+    (r"/api/v2/cmdb/redis/", AssetRedisHandler, {"handle_name": "配置平台-云商-Redis管理", "method": ["ALL"]}),
 ]

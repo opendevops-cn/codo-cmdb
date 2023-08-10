@@ -70,6 +70,7 @@ class SetTempAPPHandler(BaseHandler, ABC):
 
 
 template_urls = [
-    (r"/api/v2/cmdb/biz/set_temp/", SetTempHandler, {"handle_name": "集群模板", "handle_status": "y"}),
-    (r"/api/v2/cmdb/biz/set_temp/batch/", SetTempAPPHandler, {"handle_name": "批量使用集群模板", "handle_status": "y"}),
+    (r"/api/v2/cmdb/biz/set_temp/", SetTempHandler, {"handle_name": "配置平台-业务-集群模板", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/biz/set_temp/batch/", SetTempAPPHandler,
+     {"handle_name": "配置平台-业务-批量使用集群模板", "method": ["ALL"]}),
 ]

@@ -52,6 +52,6 @@ class AsseVswitchHandler(BaseHandler, ABC):
 
 
 vpc_urls = [
-    (r"/api/v2/cmdb/vpc/", AssetVPCHandler, {"handle_name": "CMDB-虚拟局域网管理", "handle_status": "y"}),
-    (r"/api/v2/cmdb/vswitch/", AsseVswitchHandler, {"handle_name": "CMDB-虚拟子网管理", "handle_status": "y"}),
+    (r"/api/v2/cmdb/vpc/", AssetVPCHandler, {"handle_name": "CMDB-云商-虚拟局域网管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/vswitch/", AsseVswitchHandler, {"handle_name": "CMDB-云商-虚拟子网管理", "method": ["ALL"]}),
 ]

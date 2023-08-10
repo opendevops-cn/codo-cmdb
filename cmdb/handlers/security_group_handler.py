@@ -48,6 +48,8 @@ class SecurityGroupRefsHandler(BaseHandler, ABC):
 
 
 security_group_urls = [
-    (r"/api/v2/cmdb/security_group/", SecurityGroupHandler, {"handle_name": "cmdb-安全组", "handle_status": "y"}),
-    (r"/api/v2/cmdb/security_group/refs/", SecurityGroupRefsHandler, {"handle_name": "cmdb-安全组-关联资源"}),
+    (r"/api/v2/cmdb/security_group/", SecurityGroupHandler,
+     {"handle_name": "配置平台-云商安全组管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/security_group/refs/", SecurityGroupRefsHandler,
+     {"handle_name": "配置平台-云商安全组关联信息", "method": ["ALL"]}),
 ]

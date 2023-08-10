@@ -11,12 +11,19 @@ Desc    : 云区域管理
 
 import json
 from abc import ABC
-from services.cloud_region_service import get_cloud_region, preview_cloud_region, opt_obj, relevance_asset, del_relevance_asset, \
+from services.cloud_region_service import get_cloud_region, preview_cloud_region, opt_obj, relevance_asset, \
+    del_relevance_asset, \
     get_cloud_region_from_id
 from libs.base_handler import BaseHandler
 from libs.mycrypt import MyCrypt
 
 mc = MyCrypt()
+
+
+class CloudRegionListHandlers(BaseHandler, ABC):
+    def get(self):
+        res = get_cloud_region(**self.params)
+        return self.write(res)
 
 
 class CloudRegionHandlers(BaseHandler, ABC):
@@ -73,7 +80,11 @@ class CloudRegionProHandlers(BaseHandler, ABC):
 
 
 cloud_region_urls = [
-    (r"/api/v2/cmdb/cloud_region/", CloudRegionHandlers, {"handle_name": "云区域管理"}),
-    (r"/api/v2/cmdb/cloud_region/pro/", CloudRegionProHandlers, {"handle_name": "云区域管理-解绑-反查"}),
-    (r"/api/v2/cmdb/cloud_region/preview/", CloudRegionPreHandlers, {"handle_name": "云区域主机-预览"}),
+    (r"/api/v2/cmdb/cloud_region/", CloudRegionHandlers, {"handle_name": "配置平台-业务-云区域管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/cloud_region/list/", CloudRegionListHandlers,
+     {"handle_name": "配置平台-业务-云区域查看", "method": ["GET"]}),
+    (r"/api/v2/cmdb/cloud_region/pro/", CloudRegionProHandlers,
+     {"handle_name": "配置平台-业务-云区域管理解绑反查", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/cloud_region/preview/", CloudRegionPreHandlers,
+     {"handle_name": "配置平台-业务-云区域主机预览", "method": ["GET"]}),
 ]

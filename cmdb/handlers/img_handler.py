@@ -24,6 +24,13 @@ class AssetImgHandler(BaseHandler, ABC):
         self.write(res)
 
 
+class AssetImgListHandler(BaseHandler, ABC):
+    def get(self):
+        res = get_img_list_for_api(**self.params)
+        return self.write(res)
+
+
 img_urls = [
-    (r"/api/v2/cmdb/img/", AssetImgHandler, {"handle_name": "CMDB-系统镜像", "handle_status": "y"}),
+    (r"/api/v2/cmdb/img/", AssetImgHandler, {"handle_name": "配置平台-云商-系统镜像管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/img/list/", AssetImgListHandler, {"handle_name": "配置平台-云商-系统镜像列表", "method": ["GET"]}),
 ]

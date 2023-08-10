@@ -18,5 +18,5 @@ class SearchHandler(BaseHandler, ABC):
 
 
 search_urls = [
-    (r"/api/v2/cmdb/search/", SearchHandler, {"handle_name": "CMDB-统一查询", "handle_status": "y"}),
+    (r"/api/v2/cmdb/search/", SearchHandler, {"handle_name": "配置平台-基础功能-统一查询", "method": ["GET"]}),
 ]

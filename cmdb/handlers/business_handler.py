@@ -31,5 +31,5 @@ class BusinessHandlers(BaseHandler, ABC):
 
 
 biz_urls = [
-    (r"/api/v2/cmdb/biz/", BusinessHandlers, {"handle_name": "配置平台-业务管理", "handle_status": "y"}),
+    (r"/api/v2/cmdb/biz/", BusinessHandlers, {"handle_name": "配置平台-业务-业务列表", "method": ["GET"]}),
 ]

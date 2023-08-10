@@ -114,7 +114,9 @@ class AssetUserFieldHandler(BaseHandler, ABC):
 
 
 server_urls = [
-    (r"/api/v2/cmdb/server/", AssetServerHandler, {"handle_name": "CMDB-主机管理", "handle_status": "y"}),
-    (r"/api/v2/cmdb/server/batch/", AssetServerBatchHandler, {"handle_name": "CMDB-主机管理批量", "handle_status": "y"}),
-    (r"/api/v2/cmdb/user_field/", AssetUserFieldHandler, {"handle_name": "CMDB-用户字段配置", "handle_status": "y"}),
+    (r"/api/v2/cmdb/server/", AssetServerHandler, {"handle_name": "配置平台-云商-主机管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/server/batch/", AssetServerBatchHandler,
+     {"handle_name": "配置平台-云商-主机批量管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/user_field/", AssetUserFieldHandler,
+     {"handle_name": "配置平台-基础功能-用户字段配置", "method": ["ALL"]}),
 ]

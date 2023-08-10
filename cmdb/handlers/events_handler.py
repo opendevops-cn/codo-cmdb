@@ -9,7 +9,7 @@ Desc    : 事件管理
 
 from abc import ABC
 from tornado.web import RequestHandler
-from services.event_service import get_aws_event_list, get_aliyun_event_list,get_qcloud_event_list
+from services.event_service import get_aws_event_list, get_aliyun_event_list, get_qcloud_event_list
 
 
 class AwsHealthEventsHandler(RequestHandler, ABC):
@@ -34,7 +34,10 @@ class QcloudEventsHandler(RequestHandler, ABC):
 
 
 events_urls = [
-    (r"/api/v2/cmdb/events/aws/", AwsHealthEventsHandler),
-    (r"/api/v2/cmdb/events/aliyun/", AliyunEventsHandler),
-    (r"/api/v2/cmdb/events/qcloud/", QcloudEventsHandler),
+    (r"/api/v2/cmdb/events/aws/", AwsHealthEventsHandler,
+     {"handle_name": "配置平台-云商-事件管理-AWS", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/events/aliyun/", AliyunEventsHandler,
+     {"handle_name": "配置平台-云商-事件管理-阿里云", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/events/qcloud/", QcloudEventsHandler,
+     {"handle_name": "配置平台-云商-事件管理-腾讯云", "method": ["ALL"]}),
 ]

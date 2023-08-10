@@ -20,7 +20,7 @@ from services.tree_service import get_biz_name, get_tree_by_api, add_tree_by_api
     del_tree_by_api
 from services.tree_asset_service import get_tree_env_list, get_tree_form_env_list, get_tree_form_module_list, \
     get_tree_form_set_list, register_asset, del_tree_asset, get_tree_asset_by_api, add_tree_asset_by_api, \
-    update_tree_asset_by_api, get_server_tree_for_api
+    update_tree_asset_by_api, get_server_tree_for_api, get_tree_module_list
 
 from models import asset_mapping as mapping
 
@@ -307,18 +307,30 @@ class TreeFormModuleHandler(BaseHandler, ABC):
         return self.write(res)
 
 
+class TreeModuleHandler(BaseHandler, ABC):
+    def get(self):
+        res = get_tree_module_list(**self.params)
+        return self.write(res)
+
+
 tree_urls = [
-    (r"/api/v2/cmdb/tree/", TreeHandler, {"handle_name": "服务树", "handle_status": "y"}),
-    (r"/api/v2/cmdb/tree/env/", TreeEnvHandler, {"handle_name": "获取业务下环境列表", "handle_status": "y"}),
-    (r"/api/v2/cmdb/tree/form/env/", TreeFormEnvHandler, {"handle_name": "获取业务环境列表、动态表单专用"}),
-    (r"/api/v2/cmdb/tree/form/set/", TreeFormSetHandler, {"handle_name": "获取业务环境下集群列表、动态表单专用"}),
+    (r"/api/v2/cmdb/tree/", TreeHandler, {"handle_name": "配置平台-服务树"}),
+    (r"/api/v2/cmdb/tree/env/", TreeEnvHandler, {"handle_name": "配置平台-树-获取业务下环境列表", "method": ["GET"]}),
+    (r"/api/v2/cmdb/tree/form/env/", TreeFormEnvHandler,
+     {"handle_name": "配置平台-树-获取业务环境列表-form", "method": ["GET"]}),
+    (r"/api/v2/cmdb/tree/form/set/", TreeFormSetHandler,
+     {"handle_name": "配置平台-树-获取业务环境下集群列表-form", "method": ["GET"]}),
     (r"/api/v2/cmdb/tree/form/module/", TreeFormModuleHandler,
-     {"handle_name": "获取业务环境集群下模块列表、动态表单专用"}),
-    (r"/api/v2/cmdb/tree/asset/", TreeAssetHandler, {"handle_name": "树资产关系", "handle_status": "y"}),
+     {"handle_name": "配置平台-树-获取业务环境集群下模块列表-form", "method": ["GET"]}),
+    (r"/api/v2/cmdb/tree/form/module/", TreeModuleHandler,
+     {"handle_name": "配置平台-树-获取业务环境集群下模块数据", "method": ["GET"]}),
+    (r"/api/v2/cmdb/tree/asset/", TreeAssetHandler, {"handle_name": "配置平台-树-资产关系", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tree/asset/relation/", TreeAssetRelationHandler,
-     {"handle_name": "树关联-查询所在拓扑结构", "handle_status": "y"}),
+     {"handle_name": "配置平台-树-查询所在拓扑结构", "handle_status": "y", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tree/server/relation/", TreeServerRelationHandler,
-     {"handle_name": "树关联-根据内网IP查询关联", "handle_status": "y"}),
-    (r"/api/v2/cmdb/tree/register/", TreeRegisterHandler, {"handle_name": "Tree数据注册", "handle_status": "y"}),
-    (r"/api/v2/cmdb/tree/v2/register/", TreeRegisterV2Handler, {"handle_name": "Tree数据注册V2"}),
+     {"handle_name": "配置平台-树-根据内网IP查询关联", "handle_status": "y", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/tree/register/", TreeRegisterHandler,
+     {"handle_name": "配置平台-树-数据注册-未测试", "handle_status": "y", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/tree/v2/register/", TreeRegisterV2Handler,
+     {"handle_name": "配置平台-树-数据注册V2-未测试", "method": ["ALL"]}),
 ]

@@ -205,9 +205,38 @@ def get_tree_form_module_list(**params) -> dict:
                                                                         TreeModels.grand_node == env_name,
                                                                         TreeModels.parent_node == set_name).order_by(
             TreeModels.node_sort, TreeModels.id).all()
-        set_list = [{"text": s[1], "value": s[1], "id": s[0]} for s in _m_info]
+        module_list = [{"text": s[1], "value": s[1], "id": s[0]} for s in _m_info]
 
-    return dict(msg='获取成功', code=0, data=set_list)
+    return dict(msg='获取成功', code=0, data=module_list)
+
+
+def get_tree_module_list(**params) -> dict:
+    biz_id = params.get('biz_id')
+    env_name = params.get('env_name')
+    set_name = params.get('set_name') if params.get('set_name') else params.get('region_name')
+
+    if not biz_id:
+        return dict(code=-1, msg='租户ID为必填参数')
+
+    if not env_name:
+        return dict(code=-2, msg='环境为必填参数')
+
+    if not set_name:
+        return dict(code=-3, msg='集群为必填参数')
+
+    with DBContext('r') as session:
+        biz_info = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
+        if not biz_info:
+            return dict(code=-4, msg='租户ID错误')
+
+        _m_info = session.query(TreeModels).filter(TreeModels.node_type == 3,
+                                                   TreeModels.biz_id == biz_id,
+                                                   TreeModels.grand_node == env_name,
+                                                   TreeModels.parent_node == set_name).order_by(
+            TreeModels.node_sort, TreeModels.id).all()
+        module_list = queryset_to_list(_m_info)
+
+    return dict(msg='获取成功', code=0, data=module_list)
 
 
 def register_asset(data: dict) -> dict:

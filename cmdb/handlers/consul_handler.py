@@ -55,6 +55,8 @@ class ConsulInstanceHandlers(BaseHandler, ABC):
 
 
 consul_urls = [
-    (r"/api/v2/cmdb/consul/service/", ConsulServiceHandlers, {"handle_name": "配置平台-consul-service"}),
-    (r"/api/v2/cmdb/consul/instance/", ConsulInstanceHandlers, {"handle_name": "配置平台-consul-instance"}),
+    (r"/api/v2/cmdb/consul/service/", ConsulServiceHandlers,
+     {"handle_name": "配置平台-监控-consul服务列表", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/consul/instance/", ConsulInstanceHandlers,
+     {"handle_name": "配置平台-监控-consul发现管理", "method": ["ALL"]}),
 ]

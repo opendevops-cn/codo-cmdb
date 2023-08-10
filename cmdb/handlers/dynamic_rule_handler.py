@@ -11,7 +11,8 @@ Desc    : 动态规则管理
 
 import json
 from abc import ABC
-from services.dynamic_rule_service import get_dynamic_rules, get_dynamic_rules_asset, refresh_asset, del_relational_asset, \
+from services.dynamic_rule_service import get_dynamic_rules, get_dynamic_rules_asset, refresh_asset, \
+    del_relational_asset, \
     opt_obj
 from libs.base_handler import BaseHandler
 
@@ -57,13 +58,12 @@ class DynamicGroupProHandlers(BaseHandler, ABC):
 
     def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))
-        print(json.dumps(data))
         res = del_relational_asset(data)
         return self.write(res)
 
 
 dynamic_rule_urls = [
-    (r"/api/v2/cmdb/dynamic_rule/", DynamicGroupHandlers, {"handle_name": "动态规则", "handle_status": "y"}),
+    (r"/api/v2/cmdb/dynamic_rule/", DynamicGroupHandlers, {"handle_name": "配置平台-业务-动态规则管理", "method": ["ALL"]}),
     (r"/api/v2/cmdb/dynamic_rule/pro/", DynamicGroupProHandlers,
-     {"handle_name": "预览变更,更新, 删除关联", "handle_status": "y"}),
+     {"handle_name": "配置平台-业务-动态规则-预览变更,更新,删除关联", "method": ["ALL"]}),
 ]

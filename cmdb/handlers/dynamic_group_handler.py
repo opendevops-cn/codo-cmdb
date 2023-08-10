@@ -80,8 +80,10 @@ class PreviewHostHandler(BaseHandler, ABC):
 
 
 dynamic_group_urls = [
-    (r"/api/v2/cmdb/biz/dynamic_group/", DynamicGroupHandlers, {"handle_name": "CMDB-动态分组", "handle_status": "y"}),
-    (r"/api/v2/cmdb/biz/dynamic_group/list/", DynamicGroupListHandlers, {"handle_name": "CMDB-动态分组列表"}),
-    (r"/api/v2/cmdb/biz/dynamic_group/preview/", PreviewHostHandler, {"handle_name": "CMDB-动态分组预览",
-                                                                      "handle_status": "y"}),
+    (r"/api/v2/cmdb/biz/dynamic_group/", DynamicGroupHandlers,
+     {"handle_name": "配置平台-业务-动态分组管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/biz/dynamic_group/list/", DynamicGroupListHandlers,
+     {"handle_name": "配置平台-业务-动态分组列表", "method": ["GET"]}),
+    (r"/api/v2/cmdb/biz/dynamic_group/preview/", PreviewHostHandler,
+     {"handle_name": "配置平台-业务-动态分组预览", "method": ["GET"]}),
 ]

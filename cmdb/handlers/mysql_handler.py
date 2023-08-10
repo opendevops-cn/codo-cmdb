@@ -34,5 +34,5 @@ class AssetMySQLHandler(BaseHandler, ABC):
 
 
 mysql_urls = [
-    (r"/api/v2/cmdb/mysql/", AssetMySQLHandler, {"handle_name": "CMDB-MySQL管理", "handle_status": "y"}),
+    (r"/api/v2/cmdb/mysql/", AssetMySQLHandler, {"handle_name": "配置平台-云商-MySQL管理", "method": ["ALL"]}),
 ]

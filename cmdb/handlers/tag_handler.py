@@ -218,7 +218,8 @@ class TagAssetDetailHandler(BaseHandler, ABC):
 
 
 tag_urls = [
-    (r"/api/v2/cmdb/tag/", TagHandler, {"handle_name": "标签管理", "handle_status": "y"}),
-    (r"/api/v2/cmdb/tag/asset_id/", TagAssetIOHandler, {"handle_name": "获取资产ID", "handle_status": "y"}),
-    (r"/api/v2/cmdb/tag/asset_detail/", TagAssetDetailHandler, {"handle_name": "标签资产关系详细信息", "handle_status": "y"}),
+    (r"/api/v2/cmdb/tag/", TagHandler, {"handle_name": "配置平台-业务-标签管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/tag/asset_id/", TagAssetIOHandler, {"handle_name": "配置平台-业务-获取资产ID", "method": ["GET"]}),
+    (r"/api/v2/cmdb/tag/asset_detail/", TagAssetDetailHandler,
+     {"handle_name": "配置平台-业务-标签资产关系详细信息", "method": ["GET"]}),
 ]
