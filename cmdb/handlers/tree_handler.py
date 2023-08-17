@@ -322,7 +322,7 @@ tree_urls = [
      {"handle_name": "配置平台-树-获取业务环境下集群列表-form", "method": ["GET"]}),
     (r"/api/v2/cmdb/tree/form/module/", TreeFormModuleHandler,
      {"handle_name": "配置平台-树-获取业务环境集群下模块列表-form", "method": ["GET"]}),
-    (r"/api/v2/cmdb/tree/form/module/", TreeModuleHandler,
+    (r"/api/v2/cmdb/tree/module/", TreeModuleHandler,
      {"handle_name": "配置平台-树-获取业务环境集群下模块数据", "method": ["GET"]}),
     (r"/api/v2/cmdb/tree/asset/", TreeAssetHandler, {"handle_name": "配置平台-树-资产关系", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tree/asset/relation/", TreeAssetRelationHandler,
