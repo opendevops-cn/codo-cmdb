@@ -10,7 +10,7 @@ import logging
 from sqlalchemy import func, or_
 from typing import *
 from models.tree import TreeModels, TreeAssetModels
-from libs.tree import Tree
+# from libs.tree import Tree
 from models.business import BizModels
 from models import asset_mapping as mapping
 from websdk2.model_utils import model_to_dict, queryset_to_list
@@ -31,9 +31,11 @@ def add_tree_asset_by_api(data: dict) -> dict:
         return {'code': 1, 'msg': '缺少biz_id/asset_type/asset_ids'}
 
     with DBContext('w', None, True) as session:
-        exist_asset_ids = session.query(TreeAssetModels.asset_id).filter(
-            TreeAssetModels.asset_type == asset_type, TreeAssetModels.env_name == env_name,
-            TreeAssetModels.region_name == region_name, TreeAssetModels.module_name == module_name).all()
+        exist_asset_ids = session.query(TreeAssetModels.asset_id).filter(TreeAssetModels.biz_id == biz_id,
+                                                                         TreeAssetModels.asset_type == asset_type,
+                                                                         TreeAssetModels.env_name == env_name,
+                                                                         TreeAssetModels.region_name == region_name,
+                                                                         TreeAssetModels.module_name == module_name).all()
         exist_asset_ids = [i[0] for i in exist_asset_ids]
         # 删除已存在的asset_ids
         asset_ids = list(set(asset_ids) - set(exist_asset_ids))
