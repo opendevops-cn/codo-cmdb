@@ -50,21 +50,21 @@ def biz_sync():
     @deco(RedisLock("async_biz_to_cmdb_redis_lock_key"))
     def index():
         ins_log.read_log('info', f'sync biz to cmdb start  {datetime.datetime.now()}')
-        get_mg_biz = dict(method='GET', url=f'/api/mg/v1/base/biz/', description='获取租户数据')
+        get_mg_biz = dict(method='GET', url=f'/api/p/v4/biz/', description='获取租户数据')
         try:
             response = client.do_action(**get_mg_biz)
-            all_biz_list = json.loads(response).get('all_data')
+            all_biz_list = json.loads(response).get('data')
             biz_info_map = {}
             for biz in all_biz_list:
-                biz_id = str(biz.get('business_id'))
-                biz_info_map[biz_id] = biz.get('business_zh', biz.get('business_en'))
+                biz_id = str(biz.get('biz_id'))
+                biz_info_map[biz_id] = biz.get('biz_cn_name', biz.get('biz_en_name'))
                 with DBContext('w', None, True) as session:
                     try:
                         session.add(insert_or_update(BizModels, f"biz_id='{biz_id}'",
                                                      biz_id=biz_id,
-                                                     biz_en_name=biz.get('business_en'),
-                                                     biz_cn_name=biz.get('business_zh'),
-                                                     resource_group=biz.get('resource_group'),
+                                                     biz_en_name=biz.get('biz_en_name'),
+                                                     biz_cn_name=biz.get('biz_cn_name'),
+                                                     resource_group=biz.get('biz_cn_name'),
                                                      sort=biz.get('sort'),
                                                      life_cycle=biz.get('life_cycle'),
                                                      corporate=biz.get('corporate')))

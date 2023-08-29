@@ -24,7 +24,7 @@ from libs.consul_registry import async_consul_info
 class Application(myApplication, ABC):
     def __init__(self, **settings):
         # 同步业务
-        biz_callback = PeriodicCallback(async_biz_info, 120000)  # 120000 2分钟  120000
+        biz_callback = PeriodicCallback(async_biz_info, 360000)  # 360000 6分钟
         biz_callback.start()
         # 同步consul 信息
         consul_callback = PeriodicCallback(async_consul_info, 120000)  # 120000 2分钟
