@@ -153,8 +153,16 @@ def del_tree_by_api(data) -> dict:
         return {"code": 1, "msg": "根节点不能删除"}
 
     with DBContext('w', None, True) as session:
-        exist_children = session.query(TreeModels.id).filter(
-            TreeModels.biz_id == biz_id, TreeModels.parent_node == title, TreeModels.node_type != 3).all()
+        if node_type == 1:
+            exist_children = session.query(TreeModels.id).filter(
+                TreeModels.biz_id == biz_id, TreeModels.parent_node == title, TreeModels.node_type == 2).all()
+        elif node_type == 2:
+            exist_children = session.query(TreeModels.id).filter(
+                TreeModels.biz_id == biz_id, TreeModels.grand_node == parent_node,
+                TreeModels.parent_node == title, TreeModels.node_type == 3).all()
+        else:
+            exist_children = None
+
         if exist_children:
             return {"code": 1, "msg": f"当前业务，{title}节点为其他节点的父节点,禁止删除！"}
         # 判断节点下是否有数据
