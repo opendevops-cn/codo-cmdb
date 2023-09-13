@@ -104,3 +104,4 @@ ENV/
 
 cmdb.conf
 /test/
+docker-compose-local.yml

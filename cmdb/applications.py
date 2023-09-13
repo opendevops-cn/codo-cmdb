@@ -19,6 +19,7 @@ from domain.handlers import urls as domain_urls
 from libs.sync_utils_set import async_biz_info, async_agent
 from domain.cloud_domain import all_domain_sync_index
 from libs.consul_registry import async_consul_info
+from cmp.handlers import urls as order_urls
 
 
 class Application(myApplication, ABC):
@@ -37,6 +38,7 @@ class Application(myApplication, ABC):
         program_callback.start()
 
         urls.extend(domain_urls)
+        urls.extend(order_urls)
         super(Application, self).__init__(urls, **settings)
 
     def start_server(self):

@@ -14,6 +14,7 @@ from libs.base_handler import BaseHandler
 from models.tag import TagModels, TagAssetModels
 from models.asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels
 from sqlalchemy import or_
+from services.tag_service import get_tag_list_by_key
 from websdk2.db_context import DBContext
 from websdk2.model_utils import queryset_to_list
 
@@ -217,9 +218,18 @@ class TagAssetDetailHandler(BaseHandler, ABC):
         return self.write({'code': 0, 'msg': 'success', 'data': data})
 
 
+class TagListHandler(BaseHandler, ABC):
+    """获取所有key列表，或者获取对应key的value列表"""
+
+    def get(self):
+        res = get_tag_list_by_key(**self.params)
+        self.write(res)
+
+
 tag_urls = [
     (r"/api/v2/cmdb/tag/", TagHandler, {"handle_name": "配置平台-业务-标签管理", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tag/asset_id/", TagAssetIOHandler, {"handle_name": "配置平台-业务-获取资产ID", "method": ["GET"]}),
     (r"/api/v2/cmdb/tag/asset_detail/", TagAssetDetailHandler,
      {"handle_name": "配置平台-业务-标签资产关系详细信息", "method": ["GET"]}),
+    (r"/api/v2/cmdb/tag/list/", TagListHandler, {"handle_name": "配置平台-业务-标签列表", "handle_status": "y"}),
 ]

@@ -52,6 +52,36 @@ des_rule_type_mapping = {
     '业务': TreeModels,
     '标签': TagModels
 }
+
+des_model_type_mapping = {
+    '主机': TreeModels,
+    '标签': TagModels
+}
+
 asset_mapping = {'server': AssetServerModels, 'mysql': AssetMySQLModels, 'redis': AssetRedisModels,
                  'lb': AssetLBModels, 'eip': AssetEIPModels, 'vpc': AssetVPCModels, 'vswitch': AssetVSwitchModels,
                  'security_group': SecurityGroupModels}
+
+ORDER_STATUS_MAP = (
+    ("0", "进行中"),
+    ("1", "完成"),
+    ("2", "失败"),
+    ("3", "超时"),
+    ("4", "异常"),
+)
+
+ORDER_MODEL_MAP = (
+    ("server", "服务器"),
+    ("mysql", "Mysql"),
+    ("redis", "Redis"),
+)
+
+TENCENT_LIST = ["qcloud", "tencent"]
+
+CLOUD_VENDOR_MAP = (
+    ("qcloud", "腾讯云"),
+    ("aliyun", "阿里云"),
+    ("aws", "亚马逊"),
+    ("cds", "首都云"),
+    ("vmware", "VMWare"),
+)
