@@ -4,18 +4,11 @@
 # @Author  : harilou
 # @Describe: 处理回调结果数据
 
-# TODO
 
-"""
- 回调处理结构放入 services
- 新建或者更新 可以参考  from websdk2.model_utils import insert_or_update
-"""
 import logging
-from settings import settings
 from typing import *
-import pymysql
 import traceback
-
+from websdk2.model_utils import insert_or_update
 from libs.qcloud import DEFAULT_CLOUD_NAME
 from libs.qcloud.qcloud_cvm import get_run_type
 from websdk2.db_context import DBContextV2 as DBContext
@@ -36,29 +29,13 @@ class CloudCallbackHandler(object):
         ret_state, ret_msg = True, None
         existed_list = list()
         try:
-            with DBContext('w', None, True, **settings) as db_session:
+            with DBContext('w', None, True) as db_session:
                 for __info in rows:
                     instance_id = __info['instance_id']
-                    region = __info.get('region')
-                    inner_ip = __info.get('inner_ip')
-                    filter_map = dict(instance_id=instance_id)
-                    exist_id = db_session.query(AssetServerModels.id).filter_by(**filter_map).first()
-                    if not exist_id:
-                        try:
-                            db_session.add(AssetServerModels(**__info))
-                        except pymysql.err.IntegrityError as err:
-                            db_session.query(AssetServerModels).filter(
-                                AssetServerModels.account_id == account_id,
-                                AssetServerModels.region == region,
-                                AssetServerModels.inner_ip == inner_ip
-                            ).delete(synchronize_session=False)
-                            logging.error(err)
-                    else:
-                        # existed_list.append(instance_id)
-                        logging.error(f"instance_id: {instance_id} 已存在")
-                        continue
-
-                db_session.commit()
+                    try:
+                        db_session.add(insert_or_update(AssetServerModels, f"instance_id='{instance_id}'", **__info))
+                    except Exception as err:
+                        logging.error(err)
         except Exception as err:
             ret_state, ret_msg = False, f"{cloud_name}-{account_id}-server task写入数据库失败:{err}"
             logging.error(ret_msg)
@@ -143,8 +120,7 @@ class CloudCallbackHandler(object):
         region = data["region"]
         asset_type = data["res_type"]
         tags = None
-        if asset_type == "vm":
-            asset_type = "server"
+
         for resources in data["data"]["resources"]:
             for _item in resources["instances"]:
                 item = _item["attributes"]

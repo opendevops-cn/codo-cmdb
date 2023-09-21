@@ -19,6 +19,7 @@ from domain.handlers import urls as domain_urls
 from libs.sync_utils_set import async_biz_info, async_agent
 from domain.cloud_domain import all_domain_sync_index
 from libs.consul_registry import async_consul_info
+from cmp.tasks import async_order_status
 from cmp.handlers import urls as order_urls
 
 
@@ -36,6 +37,9 @@ class Application(myApplication, ABC):
         # 同步域名信息
         program_callback = PeriodicCallback(async_domain_info, 180000)  # 10分钟 600000  300000
         program_callback.start()
+        # 资源订单状态
+        biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒
+        biz_callback.start()
 
         urls.extend(domain_urls)
         urls.extend(order_urls)

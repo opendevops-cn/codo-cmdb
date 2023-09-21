@@ -14,7 +14,6 @@ from libs.base_handler import BaseHandler
 from models.tag import TagModels, TagAssetModels
 from models.asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels
 from sqlalchemy import or_
-from services.tag_service import get_tag_list_by_key
 from websdk2.db_context import DBContext
 from websdk2.model_utils import queryset_to_list
 
@@ -222,8 +221,20 @@ class TagListHandler(BaseHandler, ABC):
     """获取所有key列表，或者获取对应key的value列表"""
 
     def get(self):
-        res = get_tag_list_by_key(**self.params)
-        self.write(res)
+        page_size = self.get_argument('page_size', default='999', strip=True)
+        page_number = self.get_argument('page_number', default='1', strip=True)
+        page_number = (int(page_number) - 1) * int(page_size)
+        tag_key = self.get_argument('tag_key', default='', strip=True)
+
+        with DBContext('r', None, None) as session:
+            if tag_key:
+                tag_info = session.query(TagModels.tag_value).filter(
+                    TagModels.tag_key == tag_key
+                ).group_by(TagModels.tag_value).offset(int(page_number)).limit(int(page_size))
+            else:
+                tag_info = session.query(TagModels.tag_key).group_by(TagModels.tag_key).offset(int(page_number)).limit(int(page_size))
+        tag_data = [i[0] for i in tag_info] if tag_info else []
+        return self.write({'code': 0, 'msg': '获取成功', 'count': len(tag_data), 'data': tag_data})
 
 
 tag_urls = [

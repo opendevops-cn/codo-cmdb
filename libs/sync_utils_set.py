@@ -23,7 +23,6 @@ from websdk2.client import AcsClient
 from models.business import BizModels
 from models.asset import AssetServerModels
 
-# from websdk2.api_set import api_set
 
 if configs.can_import: configs.import_dict(**settings)
 
@@ -31,10 +30,11 @@ if configs.can_import: configs.import_dict(**settings)
 client = AcsClient()
 
 
-def deco(cls, release=False):
+def deco(cls, release=False, **kw):
     def _deco(func):
         def __deco(*args, **kwargs):
-            if not cls.get_lock(cls, key_timeout=300, func_timeout=90): return False
+            key_timeout, func_timeout = kw.get("key_timeout", 300), kw.get("func_timeout", 90)
+            if not cls.get_lock(cls, key_timeout=key_timeout, func_timeout=func_timeout): return False
             try:
                 return func(*args, **kwargs)
             finally:

@@ -23,7 +23,7 @@ def _get_template_value(value: str = None):
         return True
     return or_(
         TemplateModel.name.like(f'%{value}%'),
-        TemplateModel.model.like(f'%{value}%'),
+        TemplateModel.res_type.like(f'%{value}%'),
         TemplateModel.vendor.like(f'%{value}%'),
         TemplateModel.region.like(f'%{value}%'),
         TemplateModel.desc.like(f'%{value}%'),
@@ -35,7 +35,7 @@ def _get_info_value(value: str = None):
         return True
     return or_(
         OrderInfoModel.name.like(f'%{value}%'),
-        OrderInfoModel.model.like(f'%{value}%'),
+        OrderInfoModel.res_type.like(f'%{value}%'),
         OrderInfoModel.vendor.like(f'%{value}%'),
         OrderInfoModel.instance_name.like(f'%{value}%'),
         OrderInfoModel.flow_id.like(f'%{value}%'),
@@ -51,11 +51,11 @@ def get_order_template(**params) -> dict:
     if 'page_size' not in params:
         params['page_size'] = 300  # 默认获取到全部数据
 
-    model_choice_list = ["model", "vendor"]
+    res_type_choice_list = ["res_type", "vendor"]
     with DBContext('r') as session:
         page = paginate(session.query(TemplateModel).filter(_get_template_value(value)).filter_by(**filter_map), **params)
         for item in page.items:
-            for _filed in model_choice_list:
+            for _filed in res_type_choice_list:
                 item[f"{_filed}_alias"] = item[_filed].value
                 item[_filed] = item[_filed].code
     return dict(msg='获取成功', code=0, count=page.total, data=page.items)
@@ -69,11 +69,11 @@ def get_order_info(**params) -> dict:
     if 'page_size' not in params:
         params['page_size'] = 300  # 默认获取到全部数据
 
-    model_choice_list = ["status", "model", "vendor"]
+    res_type_choice_list = ["status", "res_type", "vendor"]
     with DBContext('r') as session:
         page = paginate(session.query(OrderInfoModel).filter(_get_info_value(value)).filter_by(**filter_map), **params)
         for item in page.items:
-            for _filed in model_choice_list:
+            for _filed in res_type_choice_list:
                 item[f"{_filed}_alias"] = item[_filed].value
                 item[_filed] = item[_filed].code
     return dict(msg='获取成功', code=0, count=page.total, data=page.items)

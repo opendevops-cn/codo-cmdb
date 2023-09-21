@@ -11,7 +11,7 @@ from models.base import TimeBaseModel
 from sqlalchemy import Column, String, Integer, JSON, TEXT, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils.types.choice import ChoiceType
-from models import ORDER_STATUS_MAP, ORDER_MODEL_MAP, CLOUD_VENDOR_MAP
+from models import ORDER_STATUS_MAP, RES_TYPE_MAP, CLOUD_VENDOR_MAP
 from datetime import datetime
 
 Base = declarative_base()
@@ -26,7 +26,7 @@ class TemplateModel(TimeBaseModel, Base):
     vendor = Column(ChoiceType(CLOUD_VENDOR_MAP, String(32)), nullable=False, comment='云厂商', index=True)
     cloud_region_id = Column('cloud_region_id', String(120), nullable=False, comment='云区域ID', index=True)
     cloud_region_name = Column('cloud_region_name', String(120), comment='云区域名称')
-    model = Column(ChoiceType(ORDER_MODEL_MAP, String(32)), comment='类型', index=True)
+    res_type = Column(ChoiceType(RES_TYPE_MAP, String(32)), comment='类型', index=True)
     region = Column('region', String(120), comment='地域', index=True)
     zone = Column('zone', String(120), comment='可用区', index=True)
     image_id = Column('image_id', String(120), comment='镜像ID', index=True)
@@ -62,7 +62,7 @@ class OrderInfoModel(TimeBaseModel, Base):
     flow_id = Column('flow_id', Integer, comment='任务ID', index=True)
     name = Column('name', String(120), nullable=False, comment='名称', index=True)
     instance_name = Column('instance_name', String(120), nullable=False, comment='实例名称', index=True)
-    model = Column(ChoiceType(ORDER_MODEL_MAP, String(32)), comment='类型', index=True)
+    res_type = Column(ChoiceType(RES_TYPE_MAP, String(32)), comment='类型', index=True)
     vendor = Column(ChoiceType(CLOUD_VENDOR_MAP, String(32)), comment='云厂商', index=True)
     status = Column(ChoiceType(ORDER_STATUS_MAP, String(32)), default="0", comment='任务运行状态')
     data = Column('data', JSON(), comment='数据')
