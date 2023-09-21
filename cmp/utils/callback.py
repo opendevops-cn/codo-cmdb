@@ -17,7 +17,7 @@ from models.asset import AssetServerModels
 from models.tag import TagAssetModels, TagModels
 
 
-class CloudCallbackHandler(object):
+class CloudCallback(object):
 
     def __init__(self):
         pass

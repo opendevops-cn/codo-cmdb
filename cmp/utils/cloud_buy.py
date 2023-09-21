@@ -10,6 +10,7 @@ Desc    : 申购订单
 
 import json
 import ipaddress
+from loguru import logger
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import insert_or_update
 from models.order_model import OrderInfoModel
@@ -18,12 +19,12 @@ from libs.flow import FlowAPI
 from websdk2.configs import configs
 
 
-class CloudBuyHandler(FlowAPI):
+class CloudBuyUtils(FlowAPI):
 
     def __init__(self):
         # 此处可以引用SDK
         self.callback = f"{configs.get('api_gw')}/api/cmdb/api/v2/cmdb/order/callback/"
-        super(CloudBuyHandler, self).__init__()
+        super(CloudBuyUtils, self).__init__()
 
     @staticmethod
     def check_ip(ip_addr):
@@ -128,10 +129,11 @@ class CloudBuyHandler(FlowAPI):
             return dict(msg=f"下单失败:{error}", code=-1)
         return dict(msg="下单成功", data=ret_data, code=0)
 
-    def cds_buy_handler(self, data):
-        pass
+    def cds_buy_handler(self, data) -> dict:
+        return dict()
 
-    def save_order(self, data):
+    @staticmethod
+    def save_order(data) -> tuple:
         """保存订单数据"""
         ret_state, ret_msg = True, None
         try:
@@ -141,13 +143,13 @@ class CloudBuyHandler(FlowAPI):
                 try:
                     db_session.add(insert_or_update(OrderInfoModel, f"flow_id='{flow_id}' and name='{name}'", **data))
                 except Exception as err:
-                    logg
+                    logger.error(err)
 
         except Exception as err:
             ret_state, ret_msg = False, f"写入订单数据库失败:{err}"
         return ret_state, ret_msg
 
-    def buy(self, data):
+    def buy(self, data) -> dict:
         vendor = data["vendor"]
         if vendor in TENCENT_LIST:
             return self.tx_buy_handler(data)
@@ -155,5 +157,3 @@ class CloudBuyHandler(FlowAPI):
             return self.cds_buy_handler(data)
         else:
             return dict(msg=f'不支持该云厂商:{vendor}', code=-1)
-
-

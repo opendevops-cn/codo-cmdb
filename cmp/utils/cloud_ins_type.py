@@ -12,12 +12,12 @@ from libs.qcloud.utils import QCloudAPI
 from models import TENCENT_LIST
 
 
-class CloudInsTypeHandler(object):
+class CloudInsType:
 
     def __init__(self, account_id: str):
         self.account_id = account_id
 
-    def get_tx_ins_type(self, data):
+    def get_tx_ins_type(self, data) -> dict:
         region = data["region"]
         zone = data["zone"]
         instance_type = data["instance_type"]
@@ -39,7 +39,7 @@ class CloudInsTypeHandler(object):
     def get_cds_ins_type(self, data):
         return dict(msg='获取成功', code=0)
 
-    def get_ins_type(self, data):
+    def get_ins_type(self, data) -> dict:
         vendor = data["vendor"]
         if vendor in TENCENT_LIST:
             return self.get_tx_ins_type(data)

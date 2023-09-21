@@ -11,13 +11,21 @@ Desc    : 申购订单
 import json
 from abc import ABC
 from libs.base_handler import BaseHandler
-from cmp.handlers.cloud_price import CloudPriceHandler
+from cmp.utils.cloud_price import CloudPrice
 from services.order_service import get_order_template, get_order_info, info_obj, tmp_obj, update_tmp_last_time
-from cmp.handlers.cloud_buy import CloudBuyHandler
-from cmp.handlers.callback import CloudCallbackHandler
-from cmp.handlers.cloud_ins_type import CloudInsTypeHandler
-from cmp.handlers.cloud_band_width_pkg import BandWidthPkg
+from cmp.utils.cloud_buy import CloudBuyUtils
+from cmp.utils.callback import CloudCallback
+from cmp.utils.cloud_ins_type import CloudInsType
+from cmp.utils.cloud_band_width_pkg import BandWidthPkg
 from datetime import datetime
+
+# TODO
+
+"""
+1、 定义函数的时候需要定义返回值类型
+2、 Handler 结尾的命名是标识这个是一个API
+3、 对数据库的操作主要放在 service 目录下
+"""
 
 
 class OrderTemplateHandler(BaseHandler, ABC):
@@ -81,7 +89,7 @@ class OrderBuyHandler(BaseHandler, ABC):
     def post(self):
         """购买"""
         data = json.loads(self.request.body.decode("utf-8"))
-        api = CloudBuyHandler()
+        api = CloudBuyUtils()
         res = api.buy(data)
         return self.write(res)
 
@@ -93,7 +101,7 @@ class OrderPriceHandler(BaseHandler, ABC):
         """取云实例价格"""
         data = json.loads(self.request.body.decode("utf-8"))
         account_id = data["account_id"]
-        tx_api = CloudPriceHandler(account_id=account_id)
+        tx_api = CloudPrice(account_id=account_id)
         res = tx_api.get_preice(data=data)
         return self.write(res)
 
@@ -104,7 +112,7 @@ class OrderCallbackHandler(BaseHandler, ABC):
     def post(self):
         """将回调的结果数据进行保存"""
         data = json.loads(self.request.body.decode("utf-8"))
-        obj = CloudCallbackHandler()
+        obj = CloudCallback()
         res = obj.save(data)
         return self.write(res)
 
@@ -116,7 +124,7 @@ class TmpInsTypeHandler(BaseHandler, ABC):
         """模板的实例类型查询配置"""
         data = json.loads(self.request.body.decode("utf-8"))
         account_id = data["account_id"]
-        tx_api = CloudInsTypeHandler(account_id=account_id)
+        tx_api = CloudInsType(account_id=account_id)
         res = tx_api.get_ins_type(data=data)
         return self.write(res)
 
@@ -134,13 +142,18 @@ class GetBandWidthPkgHandler(BaseHandler, ABC):
 
 
 order_template_urls = [
-    (r"/api/v2/cmdb/order/template/", OrderTemplateHandler, {"handle_name": "CMDB-资源采购-模板管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/order/template/", OrderTemplateHandler,
+     {"handle_name": "CMDB-资源采购-模板管理", "method": ["ALL"]}),
     (r"/api/v2/cmdb/order/info/", OrderInfoHandler, {"handle_name": "CMDB-资源采购-采购列表", "method": ["ALL"]}),
     (r"/api/v2/cmdb/order/buy/", OrderBuyHandler, {"handle_name": "CMDB-资源采购-资源购买", "method": ["POST"]}),
-    (r"/api/v2/cmdb/order/callback/", OrderCallbackHandler, {"handle_name": "CMDB-资源采购-资源购买后回调", "method": ["POST"]}),
+    (r"/api/v2/cmdb/order/callback/", OrderCallbackHandler,
+     {"handle_name": "CMDB-资源采购-资源购买后回调", "method": ["POST"]}),
     # 云资源信息查询
-    (r"/api/v2/cmdb/order/query_cloud/ins_type/", TmpInsTypeHandler, {"handle_name": "CMDB-资源采购-获取实例类型", "method": ["POST"]}),
-    (r"/api/v2/cmdb/order/query_cloud/price/", OrderPriceHandler, {"handle_name": "CMDB-资源采购-获取实例价格", "method": ["POST"]}),
-    (r"/api/v2/cmdb/order/query_cloud/bandwidth_pkg/", GetBandWidthPkgHandler, {"handle_name": "CMDB-资源采购-带宽包", "method": ["POST"]}),
+    (r"/api/v2/cmdb/order/query_cloud/ins_type/", TmpInsTypeHandler,
+     {"handle_name": "CMDB-资源采购-获取实例类型", "method": ["POST"]}),
+    (r"/api/v2/cmdb/order/query_cloud/price/", OrderPriceHandler,
+     {"handle_name": "CMDB-资源采购-获取实例价格", "method": ["POST"]}),
+    (r"/api/v2/cmdb/order/query_cloud/bandwidth_pkg/", GetBandWidthPkgHandler,
+     {"handle_name": "CMDB-资源采购-带宽包", "method": ["POST"]}),
 
 ]

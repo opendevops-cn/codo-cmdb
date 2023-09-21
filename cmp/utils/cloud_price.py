@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# @Time    : 2023/7/26 10:47
-# @Author  : harilou
-# @Describe: 获取云实例计费
+"""
+Contact : 1084430062@qq.com
+Author  : 娄文军
+Date    : 2023/7/26 10:47
+Desc    : 获取云实例计费
+"""
 
 from libs.qcloud.utils import QCloudAPI
 from models import TENCENT_LIST
 
 
-class CloudPriceHandler(object):
+class CloudPrice:
 
     def __init__(self, account_id: str):
         self.account_id = account_id
@@ -60,11 +63,10 @@ class CloudPriceHandler(object):
     def get_cds_vm_price(self, data):
         return dict(msg='获取成功', code=0)
 
-    def get_preice(self, data):
+    def get_preice(self, data) -> dict:
         vendor = data["vendor"]
         if vendor in TENCENT_LIST:
             return self.get_tx_vm_price(data)
         elif vendor == "cds":
             return self.get_cds_vm_price(data)
         return dict(msg=f'不支持该云厂商:{vendor}', code=-1)
-
