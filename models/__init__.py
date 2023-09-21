@@ -70,9 +70,9 @@ ORDER_STATUS_MAP = (
     ("4", "异常"),
 )
 
-ORDER_MODEL_MAP = (
+RES_TYPE_MAP = (
     ("server", "服务器"),
-    ("mysql", "Mysql"),
+    ("mysql", "MySql"),
     ("redis", "Redis"),
 )
 

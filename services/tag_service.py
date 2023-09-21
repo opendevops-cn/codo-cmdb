@@ -34,14 +34,3 @@ def _get_by_val(val: str = None):
         TagModels.id == val,
     )
 
-
-def get_tag_list_by_key(**params) -> dict:
-    value = params.get('searchValue') if "searchValue" in params else params.get('searchVal')
-    filter_map = params.pop('filter_map') if "filter_map" in params else {}
-    if 'page_size' not in params: params['page_size'] = 300  # 默认获取到全部数据
-    tag_key = params.get('tag_key')
-    with DBContext('r') as session:
-        page = paginate(session.query(TagModels).filter(_get_by_key(tag_key), _get_by_val(value)).filter_by(
-            **filter_map), **params)
-
-    return dict(code=0, msg='获取成功', data=page.items, count=page.total)

@@ -10,28 +10,19 @@ Desc    : 申购订单
 
 import json
 import ipaddress
-from settings import settings
 from websdk2.db_context import DBContextV2 as DBContext
+from websdk2.model_utils import insert_or_update
 from models.order_model import OrderInfoModel
 from models import TENCENT_LIST
 from libs.flow import FlowAPI
-
-# TODO
-"""
-callback 的url 可以直接引用配置中的 api_gw
-api获取的 不用使用settings
-如果有的地方获取不到settings数据 可以使用
-from settings import settings
 from websdk2.configs import configs
-if configs.can_import: configs.import_dict(**settings)
-"""
 
 
 class CloudBuyHandler(FlowAPI):
 
     def __init__(self):
         # 此处可以引用SDK
-        self.callback = f"xxxxxxx/api/cmdb/api/v2/cmdb/order/callback/"
+        self.callback = f"{configs.get('api_gw')}/api/cmdb/api/v2/cmdb/order/callback/"
         super(CloudBuyHandler, self).__init__()
 
     @staticmethod
@@ -104,7 +95,7 @@ class CloudBuyHandler(FlowAPI):
         # 购买虚拟机资源
         tf_params = {
             "csp": "tencent",
-            "target": data["model"],
+            "target": data["res_type"],
             "callback": self.callback,
             "account_id": data["account_id"],
             "cloud_region_id": data["cloud_region_id"],
@@ -128,6 +119,7 @@ class CloudBuyHandler(FlowAPI):
                 "internet_max_bandwidth_out": data["max_flow_out"],
                 "internet_charge_type": data["internet_charge_type"],
                 "image_passwd": data["image_passwd"],
+                "data_disk": data["data_disk"],
                 "count": data["count"]
             }
         }
@@ -143,16 +135,14 @@ class CloudBuyHandler(FlowAPI):
         """保存订单数据"""
         ret_state, ret_msg = True, None
         try:
-            with DBContext('w', None, True, **settings) as db_session:
+            with DBContext('w', None, True) as db_session:
                 flow_id = data["flow_id"]
                 name = data["name"]
-                filter_map = dict(flow_id=flow_id, name=name)
-                exist_id = db_session.query(OrderInfoModel.id).filter_by(**filter_map).first()
-                if not exist_id:
-                    db_session.add(OrderInfoModel(**data))
-                else:
-                    ret_state, ret_msg = False, "此订单已存在"
-                db_session.commit()
+                try:
+                    db_session.add(insert_or_update(OrderInfoModel, f"flow_id='{flow_id}' and name='{name}'", **data))
+                except Exception as err:
+                    logg
+
         except Exception as err:
             ret_state, ret_msg = False, f"写入订单数据库失败:{err}"
         return ret_state, ret_msg
@@ -165,3 +155,5 @@ class CloudBuyHandler(FlowAPI):
             return self.cds_buy_handler(data)
         else:
             return dict(msg=f'不支持该云厂商:{vendor}', code=-1)
+
+

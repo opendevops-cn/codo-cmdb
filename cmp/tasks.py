@@ -5,16 +5,20 @@
 Contact : 1084430062@qq.com
 Author  : 娄文军
 Date    : 2023/7/31 20:52
-Desc    :
+Desc    : 定时任务
 """
-# TODO  此类同步 无需使用 scheduler
+
 
 import logging
-from libs.flow import FlowAPI
-from websdk2.db_context import DBContextV2 as DBContext
-from models.order_model import OrderInfoModel
+import traceback
+
+from concurrent.futures import ThreadPoolExecutor
 from settings import settings
-from cmdb.handlers.cloud_handler import scheduler
+from websdk2.tools import RedisLock
+from websdk2.db_context import DBContextV2 as DBContext
+from libs.flow import FlowAPI
+from models.order_model import OrderInfoModel
+from libs.sync_utils_set import deco
 
 
 class OrderStatusHandler(object):
@@ -42,29 +46,34 @@ class OrderStatusHandler(object):
 
     def watch_flow_status(self):
         """监听任务状态"""
-        with DBContext('w', None, True, **settings) as session:
-            order_obj = session.query(OrderInfoModel).filter(OrderInfoModel.status == "0").all()
-            for item in order_obj:
-                state = self.check_status(flow_id=item.flow_id)
-                if state != "0":
-                    item.status = state
-                    session.add(item)
-            session.commit()
+        try:
+            with DBContext('w', None, True, **settings) as session:
+                order_obj = session.query(OrderInfoModel).filter(OrderInfoModel.status == "0").all()
+                for item in order_obj:
+                    state = self.check_status(flow_id=item.flow_id)
+                    if state != "0":
+                        item.status = state
+                        session.add(item)
+                session.commit()
+        except:
+            logging.error(f"===同步订单状态任务失败: {traceback.format_exc()}")
         return
 
     def run(self):
-        logging.info("开始执行 同步订单状态任务")
+        logging.info("===开始执行 同步订单状态任务===")
         self.watch_flow_status()
+        logging.info("===执行完成 同步订单状态任务===")
         return
 
 
+@deco(RedisLock("async_order_status_redis_lock_key"), key_timeout=20, func_timeout=18)
 def run_sysnc_order_status():
     order_status = OrderStatusHandler()
     order_status.run()
     return
 
 
-def order_tasks():
-    logging.info("添加订单定时任务")
-    scheduler.add_job(run_sysnc_order_status, 'interval', seconds=20, replace_existing=True)
-    return
+def async_order_status():
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(run_sysnc_order_status)
+
