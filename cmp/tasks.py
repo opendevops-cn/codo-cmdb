@@ -31,14 +31,13 @@ class OrderStatusHandler(object):
         state: 0:表示进行中，1:表示任务完成，2:表示执行失败
         """
         state = "0"
-        codo_api = FlowAPI()
         # 先查历史订单状态，存在则认为任务完成
-        res = codo_api.get_flow_history_status(flow_id=flow_id).json()
+        res = FlowAPI.get_flow_history_status(flow_id=flow_id)
         if res["count"] == 1:
             state = "1"
             return state
         # 查当前订单状态，可能有 进行中，执行失败的状态
-        res = codo_api.get_flow_create_status(flow_id=flow_id).json()
+        res = FlowAPI.get_flow_create_status(flow_id=flow_id)
         if res["count"] == 1 and res["data"][0]["order_state"] == "4":
             state = "2"
             return state
