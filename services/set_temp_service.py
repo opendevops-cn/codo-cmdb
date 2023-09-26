@@ -7,6 +7,7 @@ Date    : 2023年4月7日
 Desc    : 集群模板
 """
 
+import json
 from sqlalchemy import or_
 from websdk2.sqlalchemy_pagination import paginate
 from websdk2.db_context import DBContextV2 as DBContext
@@ -86,7 +87,15 @@ def set_temp_batch(data: dict) -> dict:
         if not temp_data:
             return dict(code=-8, msg='查询不到相关模板')
         set_temp_items = temp_data[0]['items']
-        module_list = [item['module_name'] for item in set_temp_items]
+        # module_list = [item['module_name'] for item in set_temp_items]
+
+        module_list = []
+        for item in set_temp_items:
+            try:
+                module_ext_info = json.loads(item['ext_info'])
+            except Exception as err:
+                module_ext_info = dict()
+            module_list.append((item['module_name'], module_ext_info))
         if not module_list:
             return dict(code=-9, msg='不能从模板里面获取到模块信息')
 
@@ -94,9 +103,9 @@ def set_temp_batch(data: dict) -> dict:
                               node_sort=100)
                    for set_name in set_list]
 
-        module_set = [TreeModels(biz_id=biz_id, grand_node=env_name, parent_node=set_name, title=module_name,
-                                 node_type=3, node_sort=100)
-                      for module_name in module_list
+        module_set = [TreeModels(biz_id=biz_id, grand_node=env_name, parent_node=set_name, title=module_info[0],
+                                 node_type=3, ext_info=module_info[1], node_sort=100)
+                      for module_info in module_list
                       for set_name in set_list]
         set_set.extend(module_set)
         session.add_all(set_set)

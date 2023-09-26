@@ -5,7 +5,7 @@ Contact : 191715030@qq.com
 Author  : shenshuo
 Date    : 2023年4月7日
 """
-
+import json
 import logging
 from sqlalchemy import func, or_
 from typing import *
@@ -55,16 +55,23 @@ def add_tree_by_api(data) -> dict:
             set_temp_items = []
             temp_data = session.query(SetTempModels.temp_data).filter(SetTempModels.id == temp_id).first()
             if temp_data:  set_temp_items = temp_data[0]['items']
-            module_list = [item['module_name'] for item in set_temp_items]
+            # module_list = [item['module_name'] for item in set_temp_items]
+            module_list = []
+            for item in set_temp_items:
+                try:
+                    module_ext_info = json.loads(item['ext_info'])
+                except Exception as err:
+                    module_ext_info = dict()
+                module_list.append((item['module_name'], module_ext_info))
             if module_list:
                 # 先添加集群
                 session.add(TreeModels(biz_id=biz_id, title=title, node_type=node_type, ext_info=ext_info,
                                        node_sort=node_sort, parent_node=parent_node, expand=expand, detail=detail))
                 # 再往集群里面自动加入模块 2023年3月20日 修改模块类型为3
                 session.add_all(
-                    [TreeModels(biz_id=biz_id, title=module_name, grand_node=parent_node, ext_info={},
+                    [TreeModels(biz_id=biz_id, title=module_info[0], grand_node=parent_node, ext_info=module_info[1],
                                 parent_node=title, node_type=3, node_sort=100, expand=False)
-                     for module_name in module_list])
+                     for module_info in module_list])
             else:
                 return {"code": 0, "msg": "不能从模板里面获取到模块信息"}
         else:

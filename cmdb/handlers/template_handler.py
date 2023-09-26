@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 Author: shenshuo
-Since: 2023/2/12 15:10
-Description: 集群模板
+Date:   2023/2/12 15:10
+Desc:   集群模板
 """
 
 import json
@@ -30,6 +30,15 @@ class SetTempHandler(BaseHandler, ABC):
         temp_items = list(filter(lambda rule: rule["status"] == 1, temp_items))
         if not temp_items:
             return self.write({"code": 1, "msg": "模块不能为空"})
+        for item in temp_items:
+            ext_info = item.get("ext_info")
+            if ext_info:
+                try:
+                    json.loads(ext_info)
+                except Exception as err:
+                    return self.write({"code": 1, "msg": "模块的扩展属性必须为json格式"})
+            else:
+                item['ext_info'] = "{}"
 
         res = opt_obj.handle_add(dict(temp_name=temp_name, temp_data={"items": temp_items}, create_user=create_user))
         return self.write(res)
@@ -49,6 +58,16 @@ class SetTempHandler(BaseHandler, ABC):
         temp_items = list(filter(lambda rule: rule["status"] == 1, temp_items))
         if not temp_items:
             return self.write({"code": 1, "msg": "模块不能为空"})
+
+        for item in temp_items:
+            ext_info = item.get("ext_info")
+            if ext_info:
+                try:
+                    json.loads(ext_info)
+                except Exception as err:
+                    return self.write({"code": 1, "msg": "模块的扩展属性必须为json格式"})
+            else:
+                item['ext_info'] = "{}"
 
             # 换成Json存数据库
         res = opt_obj.handle_update(
