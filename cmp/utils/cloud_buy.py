@@ -41,7 +41,7 @@ class CloudBuyUtils(FlowAPI):
         instance_name = tf_params['data']['instance_name']
         count = tf_params['data']["count"]
         inner_ip = data.get("inner_ip")
-        if self.check_ip(inner_ip) is False:
+        if inner_ip and self.check_ip(inner_ip) is False:
             error = "私有IP地址不合法"
             return error, ret_data
 
