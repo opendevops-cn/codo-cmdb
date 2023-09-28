@@ -35,7 +35,7 @@ class Application(myApplication, ABC):
         # agent_callback = PeriodicCallback(async_agent, 180000)  # 180000 3分钟
         # agent_callback.start()
         # 同步域名信息
-        program_callback = PeriodicCallback(async_domain_info, 180000)  # 10分钟 600000  300000
+        program_callback = PeriodicCallback(async_domain_info, 300000)  # 5分钟
         program_callback.start()
         # 资源订单状态
         biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒

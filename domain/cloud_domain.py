@@ -11,6 +11,7 @@ import time
 import datetime
 from typing import *
 from shortuuid import uuid
+from loguru import logger
 from websdk2.configs import configs
 from websdk2.web_logs import ins_log
 from websdk2.model_utils import queryset_to_list, insert_or_update
@@ -307,14 +308,22 @@ def mark_expired(resource_model, domain_name: Optional[str], record_id: Optional
     根据时间标记过期的数据
     """
     with DBContext('w', None, True, **settings) as session:
-        # 1天前
-        _days_ago = datetime.datetime.now() - datetime.timedelta(days=1)
+        # 2小时
+        _hours_ago = datetime.datetime.now() - datetime.timedelta(hours=2)
         # 过期
         session.query(resource_model).filter(
-            resource_model.domain_name == domain_name, record_id == record_id,
-            resource_model.update_time <= _days_ago).update({resource_model.state: '过期'})
+            resource_model.domain_name == domain_name, record_id == record_id, resource_model.state != '过期',
+            resource_model.update_time <= _hours_ago).update({resource_model.state: '过期'})
 
-        session.query(resource_model).filter(resource_model.domain_name == domain_name, record_id == record_id,
-                                             resource_model.state == '过期',
-                                             resource_model.update_time <= _days_ago).delete(
-            synchronize_session=False)
+        records_to_delete = session.query(resource_model).filter(
+            resource_model.domain_name == domain_name, record_id == record_id,
+            resource_model.state == '过期', resource_model.update_time <= _hours_ago).all()
+
+        for r in records_to_delete:
+            logger.warning(
+                f'删除{domain_name} 记录ID：{record_id} 记录：{r.domain_rr}，值：{r.domain_value}，类型：{r.domain_type}')
+            session.delete(r)
+        # session.query(resource_model).filter(resource_model.domain_name == domain_name, record_id == record_id,
+        #                                      resource_model.state == '过期',
+        #                                      resource_model.update_time <= _hours_ago).delete(
+        #     synchronize_session=False)
