@@ -71,7 +71,7 @@ class CloudBuyUtils(FlowAPI):
                 global_params=json.dumps(params),
                 creator="CMDB"
             )
-            response = self.create_flow(data=json.dumps(body)).json()
+            response = self.create_flow(data=json.dumps(body))
             status = "0"
             if response.get("code") != 0:
                 status = "4"
