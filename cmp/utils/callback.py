@@ -119,18 +119,23 @@ class CloudCallback(object):
         cloud_region_id = data["cloud_region_id"]
         region = data["region"]
         asset_type = data["res_type"]
+        agent_id = data["cloud_region_id"]
         tags = None
-
+        public_ip = None
         for resources in data["data"]["resources"]:
+            if resources["type"] == "tencentcloud_eip":
+                public_ip = resources["instances"][0]["attributes"]["public_ip"]
+            if resources["type"] != "tencentcloud_instance":
+                continue
             for _item in resources["instances"]:
                 item = _item["attributes"]
+                _public_ip = item["public_ip"] if item["public_ip"] else public_ip
                 instance_id = item["id"]
                 private_ip = item["private_ip"]
-                agent_id = f"{private_ip}:{cloud_region_id}"
                 rows_list.append(dict(
                     cloud_name=DEFAULT_CLOUD_NAME, account_id=account_id, instance_id=instance_id,
                     state=get_run_type(item["instance_status"]), name=item["instance_name"],
-                    region=region, zone=item["availability_zone"],
+                    region=region, zone=item["availability_zone"], outer_biz_addr=_public_ip,
                     inner_ip=private_ip, outer_ip=item["public_ip"], agent_id=agent_id, ext_info=item,
                     is_expired=False  # 新机器标记正常
                 ))
