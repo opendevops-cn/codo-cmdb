@@ -87,12 +87,12 @@ def sync_agent_status():
     @deco(RedisLock("async_agent_status_redis_lock_key"))
     def index():
         logger.info(f'sync agent status start {datetime.datetime.now()}')
-        get_agent_list = dict(method='GET', url=f'/api/agent/v1/codo/agent_list', description='获取Agent List')
+        get_agent_list = dict(method='GET', url=f'/api/agent/v1/agent/info', description='获取Agent List')
         res = client.do_action_v2(**get_agent_list)
         if res.status_code != 200:
             return
         data = res.json()
-        agent_list = data.get('list')
+        agent_list = data.keys()
         the_model = AssetServerModels
         with DBContext('w', None, True) as session:
             __info = session.query(the_model.id, the_model.agent_id, the_model.agent_status).all()
