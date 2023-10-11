@@ -26,7 +26,7 @@ def _get_template_value(value: str = None):
         TemplateModel.res_type.like(f'%{value}%'),
         TemplateModel.vendor.like(f'%{value}%'),
         TemplateModel.region.like(f'%{value}%'),
-        TemplateModel.desc.like(f'%{value}%'),
+        TemplateModel.description.like(f'%{value}%'),
     )
 
 

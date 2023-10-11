@@ -23,7 +23,7 @@ class CloudBuyUtils(FlowAPI):
 
     def __init__(self):
         # 此处可以引用SDK
-        self.callback = f"{configs.get('api_gw')}/api/cmdb/api/v2/cmdb/order/callback/"
+        self.callback = f"{configs.get('cmdb_host')}/api/cmdb/api/v2/cmdb/order/callback/"
         super(CloudBuyUtils, self).__init__()
 
     @staticmethod
@@ -81,7 +81,7 @@ class CloudBuyUtils(FlowAPI):
                 flow_id=flow_id,
                 name=data['name'],
                 instance_name=re_name,
-                model=server,
+                res_type=server,
                 vendor=data["vendor"],
                 status=status,
                 data=data
@@ -144,7 +144,7 @@ class CloudBuyUtils(FlowAPI):
                     db_session.add(insert_or_update(OrderInfoModel, f"flow_id='{flow_id}' and name='{name}'", **data))
                 except Exception as err:
                     logger.error(err)
-
+                    ret_state, ret_msg = False, f"写入订单数据库失败:{err}"
         except Exception as err:
             ret_state, ret_msg = False, f"写入订单数据库失败:{err}"
         return ret_state, ret_msg
