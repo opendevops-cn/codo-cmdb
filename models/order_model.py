@@ -43,7 +43,7 @@ class TemplateModel(TimeBaseModel, Base):
     vpc_name = Column('vpc_name', String(120), comment='私有网络名称')
     subnet_id = Column('subnet_id', String(120), comment='私有子网')
     subnet_name = Column('subnet_name', String(120), comment='私有子网名称')
-    max_flow_out = Column('max_flow_out', String(120), comment='外网带宽限制（M）')
+    max_flow_out = Column('max_flow_out', Integer, comment='外网带宽限制（M）')
     image_passwd = Column('image_passwd', String(120), comment='镜像密码')
     instance_charge_type = Column('instance_charge_type', String(120), comment='实例计费模式')
     internet_charge_type = Column('internet_charge_type', String(120), comment='网络计费类型')
