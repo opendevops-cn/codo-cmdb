@@ -13,6 +13,7 @@ import datetime
 from concurrent.futures import ThreadPoolExecutor
 from settings import settings
 from websdk2.web_logs import ins_log
+from loguru import logger
 from websdk2.tools import RedisLock
 from websdk2.configs import configs
 from websdk2.cache_context import cache_conn
@@ -22,7 +23,6 @@ from websdk2.model_utils import insert_or_update
 from websdk2.client import AcsClient
 from models.business import BizModels
 from models.asset import AssetServerModels
-
 
 if configs.can_import: configs.import_dict(**settings)
 
@@ -86,34 +86,45 @@ def biz_sync():
 def sync_agent_status():
     @deco(RedisLock("async_agent_status_redis_lock_key"))
     def index():
-        ins_log.read_log('info', f'sync agent status start {datetime.datetime.now()}')
-        get_agent_list = dict(method='GET', url=f'/api/agent/v1/codo/agent_list',
-                              description='获取Agent List')
+        logger.info(f'sync agent status start {datetime.datetime.now()}')
+        get_agent_list = dict(method='GET', url=f'/api/agent/v1/codo/agent_list', description='获取Agent List')
         res = client.do_action_v2(**get_agent_list)
-        if res.status_code != 200: return
+        if res.status_code != 200:
+            return
         data = res.json()
         agent_list = data.get('list')
-        model = AssetServerModels
+        the_model = AssetServerModels
         with DBContext('w', None, True) as session:
-            __info = session.query(model.id, model.agent_id, model.agent_status).all()
+            __info = session.query(the_model.id, the_model.agent_id, the_model.agent_status).all()
+            all_info = [
+                dict(id=asset_id, agent_status='2') if agent_status == '1' and agent_id not in agent_list else
+                dict(id=asset_id, agent_status='1') if (
+                                                               agent_status == '2' or not agent_status) and agent_id in agent_list else
+                None for asset_id, agent_id, agent_status in __info
+            ]
 
-            all_info = []
-            for asset_id, agent_id, agent_status, in __info:
-                if agent_status == '1' and agent_id not in agent_list:  # 如果状态在线  但是agent找不到
-                    ins_log.read_log('info', f'{agent_id}改为离线  {asset_id}')
-                    all_info.append(dict(id=asset_id, agent_status='2'))
-                    session.query(model).filter(model.id == asset_id).update(**dict(agent_status='2'))
-                elif (agent_status == '2' or not agent_status) and agent_id in agent_list:  # 如果状态离线  但是agent存在
-                    all_info.append(dict(id=asset_id, agent_status='1'))
-                    ins_log.read_log('info', f'{agent_id}改为在线  { {asset_id} }')
-                    session.query(model).filter(model.id == asset_id).update(**dict(agent_status='1'))
-            # session.bulk_update_mappings(AssetServerModels, all_info) # 数据量过大造成阻塞
-        ins_log.read_log('info', f'sync agent status end {datetime.datetime.now()}')
+            all_info = list(filter(None, all_info))
+
+            for info in all_info:
+                logger.info(f"{info['id']} 改为{'在线' if info['agent_status'] == '1' else '离线'} ")
+
+            # all_info = []
+            # for asset_id, agent_id, agent_status, in __info:
+            #     if agent_status == '1' and agent_id not in agent_list:  # 如果状态在线  但是agent找不到
+            #         ins_log.read_log('info', f'{agent_id}改为离线  {asset_id}')
+            #         all_info.append(dict(id=asset_id, agent_status='2'))
+            #         # session.query(model).filter(model.id == asset_id).update(**dict(agent_status='2'))
+            #     elif (agent_status == '2' or not agent_status) and agent_id in agent_list:  # 如果状态离线  但是agent存在
+            #         all_info.append(dict(id=asset_id, agent_status='1'))
+            #         ins_log.read_log('info', f'{agent_id}改为在线  { {asset_id} }')
+            #         # session.query(model).filter(model.id == asset_id).update(**dict(agent_status='1'))
+            session.bulk_update_mappings(the_model, all_info)
+        logger.info(f'sync agent status end {datetime.datetime.now()}')
 
     try:
         index()
     except Exception as err:
-        ins_log.read_log('error', f'sync agent status error {str(err)}')
+        logger.error(f'sync agent status error {str(err)}')
 
 
 def async_agent():
