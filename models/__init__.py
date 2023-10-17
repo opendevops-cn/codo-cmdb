@@ -3,6 +3,7 @@ from .asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetL
     AssetVSwitchModels, AssetEIPModels, SecurityGroupModels
 from .tree import TreeModels, TreeAssetModels
 from .tag import TagModels
+from .domain import DomainRecords
 
 asset_type_enum = Enum(
     'server',
@@ -60,7 +61,7 @@ des_model_type_mapping = {
 
 asset_mapping = {'server': AssetServerModels, 'mysql': AssetMySQLModels, 'redis': AssetRedisModels,
                  'lb': AssetLBModels, 'eip': AssetEIPModels, 'vpc': AssetVPCModels, 'vswitch': AssetVSwitchModels,
-                 'security_group': SecurityGroupModels}
+                 'security_group': SecurityGroupModels, 'domain': DomainRecords}
 
 ORDER_STATUS_MAP = (
     ("0", "进行中"),

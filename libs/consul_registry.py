@@ -47,7 +47,7 @@ def sync_consul():
     def index():
         ins_log.read_log('info', f'sync to consul start  {datetime.datetime.now()}')
         c = ConsulOpt()
-        for asset_type in ['server', 'mysql', 'redis']:
+        for asset_type in ['server', 'mysql', 'redis', 'domain']:
             try:
                 cmdb_ins = []
                 for server in consul_sync_factory(asset_type):
@@ -74,6 +74,9 @@ def consul_sync_factory(asset_type):
 
     elif asset_type == 'redis':
         return get_registry_redis_info()
+
+    elif asset_type == 'domain':
+        return get_registry_domain_info()
     else:
         return None
 
@@ -239,6 +242,34 @@ def get_registry_redis_info():
                          region_name=data['region_name'], module_name=data['module_name'])
         server_name = f"{asset_type}-exporter"
         register_data = (server_name, f"{server_name}-{biz_id}-{inner_ip}-{port}", inner_ip, port, [biz_id], node_meta)
+        yield register_data
+
+
+def get_registry_domain_info():
+    # 暂时没有和服务树关联
+    redis_conn = cache_conn()
+    asset_type = 'domain'
+    __model = asset_mapping[asset_type]
+    with DBContext('r') as session:
+        __info = session.query(__model).all()
+
+    biz_info_str = redis_conn.get("BIZ_INFO_STR")
+    biz_info_map = convert(biz_info_str) if biz_info_str else {}
+    if isinstance(biz_info_map, str):
+        biz_info_map = json.loads(biz_info_map)
+
+    for i in __info:
+        data = model_to_dict(i)
+        biz_id = "504"
+        # if not i[3]:
+        #     logging.error(f"{asset_type} {data} {biz_id} err")
+        #     continue
+        inner_ip, port = f"{data.get('record_id')}-{data.get('domain_rr')}.{data.get('domain_name')}", 443
+        # node_meta = dict(biz_id=biz_id, biz_cn_name=biz_info_map.get(biz_id, biz_id), env_name=data['env_name'],
+        #                  region_name=data['region_name'], module_name=data['module_name'])
+        node_meta = dict(biz_id=biz_id, biz_cn_name=biz_info_map.get(biz_id, biz_id), env_name='prod')
+        server_name = f"{asset_type}-exporter"
+        register_data = (server_name, f"{server_name}-{biz_id}-{inner_ip}", inner_ip, port, [biz_id], node_meta)
         yield register_data
 
 

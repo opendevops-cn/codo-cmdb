@@ -51,6 +51,7 @@ class Application(myApplication, ABC):
         :return:
         """
         try:
+
             init_logging()  # LOG
             init_scheduler()
             logging.info('[App Init] progressid: %(progid)s' % dict(progid=options.progid))

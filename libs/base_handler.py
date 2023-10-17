@@ -8,7 +8,7 @@ Desc    : Base Handler
 """
 
 import json
-import logging
+from loguru import logger
 from abc import ABC
 from tornado.web import HTTPError
 from websdk2.jwt_token import AuthToken, jwt
@@ -32,7 +32,7 @@ class BaseHandler(SDKBaseHandler, ABC):
                 _body["ssh_key"] = "***************"
             data["body"] = json.dumps(_body)
         except Exception as error:
-            logging.error("hide_key error: {}".format(error))
+            logger.error("hide_key error: {}".format(error))
 
     # def prepare(self):
 
@@ -58,7 +58,7 @@ class BaseHandler(SDKBaseHandler, ABC):
         if log_dict["body"]: self.hide_key(log_dict)
         # 非GET请求的日志都写数据库记录
         if self.request.method != "GET":
-            logging.info(json.dumps(log_dict, indent=4, separators=(',', ':')))
+            logger.info(json.dumps(log_dict, indent=4, separators=(',', ':')))
             # 保存到数据库?
             pass
 
