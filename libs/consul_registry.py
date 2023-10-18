@@ -17,7 +17,6 @@ from models.tree import TreeAssetModels
 from models import asset_mapping
 from concurrent.futures import ThreadPoolExecutor
 from websdk2.consts import const
-from websdk2.web_logs import ins_log
 from websdk2.tools import RedisLock, convert
 from websdk2.configs import configs
 from websdk2.db_context import DBContextV2 as DBContext
@@ -45,7 +44,7 @@ def deco(cls, release=False):
 def sync_consul():
     @deco(RedisLock("sync_to_consul_lock_key"))
     def index():
-        ins_log.read_log('info', f'sync to consul start  {datetime.datetime.now()}')
+        logging.info(f'sync to consul start  {datetime.datetime.now()}')
         c = ConsulOpt()
         for asset_type in ['server', 'mysql', 'redis', 'domain']:
             try:
@@ -58,9 +57,9 @@ def sync_consul():
                     if ins.get('ServiceID') not in cmdb_ins:
                         c.deregister_service(ins.get('ServiceID'))
             except Exception as err:
-                ins_log.read_log('error', f'sync to consul {asset_type} error,{err} {datetime.datetime.now()}')
+                logging.error(f'sync to consul {asset_type} error,{err} {datetime.datetime.now()}')
 
-        ins_log.read_log('info', f'sync to consul end  {datetime.datetime.now()}')
+        logging.info(f'sync to consul end  {datetime.datetime.now()}')
 
     index()
 

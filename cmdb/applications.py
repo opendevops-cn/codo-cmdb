@@ -12,7 +12,7 @@ from tornado.options import options
 from tornado.ioloop import PeriodicCallback
 from concurrent.futures import ThreadPoolExecutor
 from websdk2.application import Application as myApplication
-from libs.logger import init_logging
+# from libs.logger import init_logging
 from libs.scheduler import scheduler, init_scheduler
 from cmdb.handlers import urls
 from domain.handlers import urls as domain_urls
@@ -52,7 +52,7 @@ class Application(myApplication, ABC):
         """
         try:
 
-            init_logging()  # LOG
+            # init_logging()  # LOG
             init_scheduler()
             logging.info('[App Init] progressid: %(progid)s' % dict(progid=options.progid))
             logging.info('[App Init] server address: %(addr)s:%(port)d' % dict(addr=options.addr, port=options.port))
