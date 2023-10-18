@@ -23,6 +23,8 @@ def add_tree_asset_by_api(data: dict) -> dict:
     region_name = data.get('region_name')
     module_name = data.get('module_name', None)
     asset_type = data.get('asset_type', None)
+    node_type = data.get('node_type', 3)
+    module_list = data.get('module_list')
     asset_ids = data.get('asset_ids', None)
     is_enable = data.get('is_enable', 0)  # 默认0：不上线
     ext_info = data.get('ext_info', {})
@@ -30,23 +32,37 @@ def add_tree_asset_by_api(data: dict) -> dict:
     if not biz_id and asset_type and not asset_ids:
         return {'code': 1, 'msg': '缺少biz_id/asset_type/asset_ids'}
 
+    if node_type == 2 and not module_list:
+        return {'code': 2, 'msg': '当在集群下添加资源，必须指定模块列表'}
+
     with DBContext('w', None, True) as session:
         exist_asset_ids = session.query(TreeAssetModels.asset_id).filter(TreeAssetModels.biz_id == biz_id,
                                                                          TreeAssetModels.asset_type == asset_type,
                                                                          TreeAssetModels.env_name == env_name,
                                                                          TreeAssetModels.region_name == region_name,
                                                                          TreeAssetModels.module_name == module_name).all()
+
         exist_asset_ids = [i[0] for i in exist_asset_ids]
         # 删除已存在的asset_ids
         asset_ids = list(set(asset_ids) - set(exist_asset_ids))
         # 添加不存在的asset_ids
-        session.add_all([
-            TreeAssetModels(
-                biz_id=biz_id, env_name=env_name, region_name=region_name, module_name=module_name,
-                asset_type=asset_type, asset_id=asset_id, is_enable=is_enable, ext_info=ext_info,
-            )
-            for asset_id in asset_ids
-        ])
+        if node_type == 2 and module_list and isinstance(module_list, list):
+            session.add_all([
+                TreeAssetModels(
+                    biz_id=biz_id, env_name=env_name, region_name=region_name, module_name=module_name,
+                    asset_type=asset_type, asset_id=asset_id, is_enable=is_enable, ext_info=ext_info,
+                )
+                for asset_id in asset_ids
+                for module_name in module_list
+            ])
+        else:
+            session.add_all([
+                TreeAssetModels(
+                    biz_id=biz_id, env_name=env_name, region_name=region_name, module_name=module_name,
+                    asset_type=asset_type, asset_id=asset_id, is_enable=is_enable, ext_info=ext_info,
+                )
+                for asset_id in asset_ids
+            ])
     return {"code": 0, "msg": "添加成功"}
 
 

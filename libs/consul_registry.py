@@ -263,12 +263,12 @@ def get_registry_domain_info():
         # if not i[3]:
         #     logging.error(f"{asset_type} {data} {biz_id} err")
         #     continue
-        inner_ip, port = f"{data.get('record_id')}-{data.get('domain_rr')}.{data.get('domain_name')}", 443
+        inner_ip, port = f"{data.get('domain_rr')}.{data.get('domain_name')}", 443
         # node_meta = dict(biz_id=biz_id, biz_cn_name=biz_info_map.get(biz_id, biz_id), env_name=data['env_name'],
         #                  region_name=data['region_name'], module_name=data['module_name'])
         node_meta = dict(biz_id=biz_id, biz_cn_name=biz_info_map.get(biz_id, biz_id), env_name='prod')
         server_name = f"{asset_type}-exporter"
-        register_data = (server_name, f"{server_name}-{biz_id}-{inner_ip}", inner_ip, port, [biz_id], node_meta)
+        register_data = (server_name, f"{server_name}-{biz_id}-{data.get('record_id')}-{inner_ip}", inner_ip, port, [biz_id], node_meta)
         yield register_data
 
 
