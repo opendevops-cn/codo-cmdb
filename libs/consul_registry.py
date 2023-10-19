@@ -93,7 +93,7 @@ class ConsulOpt(object):
         self.consul_api_url = f"{scheme}://{consul_host}:{consul_port}"
         self.headers = {'X-Consul-Token': token}
 
-        self._consul = consul.Consul(consul_host, consul_port, scheme=scheme, token=token, timeout=5)
+        self._consul = consul.Consul(consul_host, consul_port, scheme=scheme, token=token, timeout=10)
 
     def register_service(self, name, service_id, host, port, tags, meta, check=None):
         tags = tags or []
@@ -266,9 +266,12 @@ def get_registry_domain_info():
         inner_ip, port = f"{data.get('domain_rr')}.{data.get('domain_name')}", 443
         # node_meta = dict(biz_id=biz_id, biz_cn_name=biz_info_map.get(biz_id, biz_id), env_name=data['env_name'],
         #                  region_name=data['region_name'], module_name=data['module_name'])
-        node_meta = dict(biz_id=biz_id, biz_cn_name=biz_info_map.get(biz_id, biz_id), env_name='prod')
+        node_meta = dict(biz_id=biz_id, biz_cn_name=biz_info_map.get(biz_id, biz_id), env_name='prod',
+                         domain_type=data.get('domain_type'))
         server_name = f"{asset_type}-exporter"
-        register_data = (server_name, f"{server_name}-{biz_id}-{data.get('record_id')}-{inner_ip}", inner_ip, port, [biz_id], node_meta)
+        register_data = (
+            server_name, f"{server_name}-{biz_id}-{data.get('record_id')}-{inner_ip}", inner_ip, port, [biz_id],
+            node_meta)
         yield register_data
 
 
