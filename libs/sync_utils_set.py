@@ -10,9 +10,9 @@ Desc    : 同步数据专用
 
 import json
 import datetime
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from settings import settings
-from websdk2.web_logs import ins_log
 from loguru import logger
 from websdk2.tools import RedisLock
 from websdk2.configs import configs
@@ -49,7 +49,7 @@ def deco(cls, release=False, **kw):
 def biz_sync():
     @deco(RedisLock("async_biz_to_cmdb_redis_lock_key"))
     def index():
-        ins_log.read_log('info', f'sync biz to cmdb start  {datetime.datetime.now()}')
+        logging.info(f'开始从权限中心同步业务信息到配置平台')
         get_mg_biz = dict(method='GET', url=f'/api/p/v4/biz/', description='获取租户数据')
         try:
             response = client.do_action(**get_mg_biz)
@@ -70,15 +70,15 @@ def biz_sync():
                                                      corporate=biz.get('corporate')))
 
                     except Exception as err:
-                        ins_log.read_log('info', f'async_biz_to_cmdb 1 {err}')
+                        logging.error(f'同步业务信息到配置平台出错 1 {err}')
 
             biz_info_map = json.dumps(biz_info_map)
             redis_conn = cache_conn()
             redis_conn.set("BIZ_INFO_STR", biz_info_map)
 
         except Exception as err:
-            ins_log.read_log('info', f'async_biz_to_cmdb 2  {err}')
-        ins_log.read_log('info', f'sync biz to cmdb end {datetime.datetime.now()}')
+            logging.error(f'同步业务信息到配置平台出错 2 {err}')
+        logging.info(f'从权限中心同步业务信息到配置平台结束 {datetime.datetime.now()}')
 
     index()
 
@@ -86,7 +86,7 @@ def biz_sync():
 def sync_agent_status():
     @deco(RedisLock("async_agent_status_redis_lock_key"))
     def index():
-        logger.info(f'sync agent status start {datetime.datetime.now()}')
+        logging.info(f'开始同步agent状态到配置平台')
         get_agent_list = dict(method='GET', url=f'/api/agent/v1/agent/info', description='获取Agent List')
         res = client.do_action_v2(**get_agent_list)
         if res.status_code != 200:
@@ -106,7 +106,7 @@ def sync_agent_status():
             all_info = list(filter(None, all_info))
 
             for info in all_info:
-                logger.info(f"{info['id']} 改为{'在线' if info['agent_status'] == '1' else '离线'} ")
+                logging.info(f"{info['id']} 改为{'在线' if info['agent_status'] == '1' else '离线'} ")
 
             # all_info = []
             # for asset_id, agent_id, agent_status, in __info:
@@ -119,12 +119,12 @@ def sync_agent_status():
             #         ins_log.read_log('info', f'{agent_id}改为在线  { {asset_id} }')
             #         # session.query(model).filter(model.id == asset_id).update(**dict(agent_status='1'))
             session.bulk_update_mappings(the_model, all_info)
-        logger.info(f'sync agent status end {datetime.datetime.now()}')
+        logging.info(f'同步agent状态到配置平台 结束 {datetime.datetime.now()}')
 
     try:
         index()
     except Exception as err:
-        logger.error(f'sync agent status error {str(err)}')
+        logging.error(f'同步agent状态到配置平台出错 {str(err)}')
 
 
 def async_agent():

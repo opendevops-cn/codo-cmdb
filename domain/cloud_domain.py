@@ -9,11 +9,10 @@ Desc    : 云解析DNS记录
 
 import time
 import datetime
+import logging
 from typing import *
 from shortuuid import uuid
-from loguru import logger
 from websdk2.configs import configs
-from websdk2.web_logs import ins_log
 from websdk2.model_utils import queryset_to_list, insert_or_update
 from websdk2.db_context import DBContext
 from models.domain import DomainName, DomainRecords, DomainSyncLog
@@ -64,7 +63,7 @@ def domain_factory(cloud, **kwargs):
 def all_domain_sync_index():
     @deco(RedisLock("all_domain_sync_redis_lock_key"))
     def index():
-        ins_log.read_log('info', f'domain sync redis_lock_key, {datetime.datetime.now()}')
+        logging.info(f'开始同步域名信息')
         domain_main('aliyun')
         domain_main('qcloud')
         domain_main('dnspod')
@@ -162,7 +161,7 @@ def data_sync_domain(cloud_name, account_id, domain):
                                              ))
 
             except Exception as err:
-                ins_log.read_log('info', f'{cloud_name} 更新域名出错 {err}')
+                logging.error(f'{cloud_name} 更新域名出错 {err}')
             # insert_or_update
             # if session.query(DomainName).filter(DomainName.domain_name == domain_name).first():
             #     session.query(DomainName).filter(DomainName.domain_name == domain_name).update(
@@ -241,7 +240,7 @@ def data_sync_record(cloud_name, account_id, record_list):
                                          account=account_id))
                     # session.commit()
                 except Exception as err:
-                    ins_log.read_log('info', f'{cloud_name} 更新域名记录出错 {err}')
+                    logging.info(f'{cloud_name} 更新域名记录出错 {err}')
 
             elif cloud_name in ['腾讯云', 'qcloud', 'QCloud', 'dnspod', 'DNSPod']:
                 record_id = str(record.RecordId)
@@ -263,7 +262,7 @@ def data_sync_record(cloud_name, account_id, record_list):
                                          ))
                     # session.commit()
                 except Exception as err:
-                    ins_log.read_log('error', f'{cloud_name} 更新域名记录出错 {err}')
+                    logging.error(f'{cloud_name} 更新域名记录出错 {err}')
 
             elif cloud_name == 'GoDaddy':
                 record_ex = session.query(DomainRecords).filter(DomainRecords.domain_rr == record.get('name'),
@@ -320,7 +319,7 @@ def mark_expired(resource_model, domain_name: Optional[str], record_id: Optional
             resource_model.state == '过期', resource_model.update_time <= _hours_ago).all()
 
         for r in records_to_delete:
-            logger.warning(
+            logging.warning(
                 f'删除{domain_name} 记录ID：{record_id} 记录：{r.domain_rr}，值：{r.domain_value}，类型：{r.domain_type}')
             session.delete(r)
         # session.query(resource_model).filter(resource_model.domain_name == domain_name, record_id == record_id,
