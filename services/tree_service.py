@@ -174,12 +174,14 @@ def del_tree_by_api(data) -> dict:
             return {"code": 1, "msg": f"当前业务，{title}节点为其他节点的父节点,禁止删除！"}
         # 判断节点下是否有数据
         if node_type == 3:
+            env_name = session.query(TreeModels.grand_node).filter(TreeModels.id == tree_id).first()[0]
             exist_data = session.query(TreeAssetModels.id).filter(
                 TreeAssetModels.biz_id == biz_id,
+                TreeAssetModels.env_name == env_name,
                 TreeAssetModels.region_name == parent_node,
                 TreeAssetModels.module_name == title).first()
             if exist_data:
-                return {"code": 1, "msg": f"{parent_node}/{title}节点下存在业务数据,删除失败!"}
+                return {"code": 1, "msg": f"/{env_name}/{parent_node}/{title}节点下存在业务数据,删除失败!"}
         # del TreeID
         session.query(TreeModels).filter(TreeModels.id == tree_id).delete(synchronize_session=False)
 
