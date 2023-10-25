@@ -174,7 +174,10 @@ def del_tree_by_api(data) -> dict:
             return {"code": 1, "msg": f"当前业务，{title}节点为其他节点的父节点,禁止删除！"}
         # 判断节点下是否有数据
         if node_type == 3:
-            env_name = session.query(TreeModels.grand_node).filter(TreeModels.id == tree_id).first()[0]
+            env_name = session.query(TreeModels.grand_node).filter(TreeModels.id == tree_id).first()
+            if not env_name:
+                return {"code": 1, "msg": "数据格式有误，请刷新页面后重试"}
+            env_name = env_name[0]
             exist_data = session.query(TreeAssetModels.id).filter(
                 TreeAssetModels.biz_id == biz_id,
                 TreeAssetModels.env_name == env_name,
