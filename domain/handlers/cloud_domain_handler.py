@@ -151,8 +151,8 @@ class CloudRecordHandler(BaseHandler, ABC):
                              domain_type=data.get('domain_type'),
                              domain_value=data.get('domain_value'),
                              domain_ttl=int(data.get('domain_ttl')),
-                             domain_mx=int(data.get('domain_mx', 0)),
-                             weight=int(data.get('weight', 10)),
+                             domain_mx=int(data.get('domain_mx', 0) or 0),
+                             weight=int(data.get('weight', 10) or 10),
                              line=data.get('line'))
         log_data = dict(
             domain_name=domain_name,
