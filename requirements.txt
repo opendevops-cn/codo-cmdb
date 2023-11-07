@@ -41,3 +41,5 @@ dnspod-python==1.0.0
 GoDaddyPy==2.3.4
 #
 python-consul2==0.1.5
+# 资源通知模板渲染
+Jinja2==3.1.2

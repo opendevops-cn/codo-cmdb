@@ -89,7 +89,7 @@ class OrderBuyHandler(BaseHandler, ABC):
     def post(self):
         """购买"""
         data = json.loads(self.request.body.decode("utf-8"))
-        api = CloudBuyUtils()
+        api = CloudBuyUtils(user=self.request_nickname)
         res = api.buy(data)
         return self.write(res)
 

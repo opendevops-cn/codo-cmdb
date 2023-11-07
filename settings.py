@@ -47,6 +47,8 @@ DEFAULT_CONSUL_SCHEME = os.getenv('DEFAULT_CONSUL_SCHEME', 'http')  # 修改
 # 和其他系统交互使用
 api_gw = ""
 settings_auth_key = ""
+# 资产变更通知webhook
+asset_change_notify = {}
 
 try:
     from local_settings import *
@@ -59,6 +61,7 @@ settings = dict(
     cookie_secret=cookie_secret,
     expire_seconds=expire_seconds,
     api_gw=api_gw,
+    asset_change_notify=asset_change_notify,
     settings_auth_key=settings_auth_key,
     app_name='cmdb',
     databases={

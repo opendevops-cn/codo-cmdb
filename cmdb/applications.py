@@ -20,6 +20,7 @@ from libs.sync_utils_set import async_biz_info, async_agent
 from domain.cloud_domain import all_domain_sync_index
 from libs.consul_registry import async_consul_info
 from cmp.tasks import async_order_status
+from libs.asset_change import init_cmdb_change_tasks
 from cmp.handlers import urls as order_urls
 
 
@@ -40,6 +41,8 @@ class Application(myApplication, ABC):
         # 资源订单状态
         biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒
         biz_callback.start()
+        # 资产备份同步和变更通知任务
+        init_cmdb_change_tasks()
 
         urls.extend(domain_urls)
         urls.extend(order_urls)

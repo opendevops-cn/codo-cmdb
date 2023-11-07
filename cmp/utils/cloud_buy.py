@@ -21,8 +21,8 @@ from websdk2.configs import configs
 
 class CloudBuyUtils(FlowAPI):
 
-    def __init__(self):
-        # 此处可以引用SDK
+    def __init__(self, user=None):
+        self.user = user if user else "CMDB"
         self.callback = f"{configs.get('cmdb_host')}/api/cmdb/api/v2/cmdb/order/callback/"
         super(CloudBuyUtils, self).__init__()
 
@@ -69,7 +69,7 @@ class CloudBuyUtils(FlowAPI):
                 flow_version_name="Terraform多云管理-运维项目",
                 order_name=f'Terraform多云管理',
                 global_params=json.dumps(params),
-                creator="CMDB"
+                creator=self.user
             )
             response = self.create_flow(data=json.dumps(body))
             status = "0"
