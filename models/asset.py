@@ -7,10 +7,10 @@ Date    : 2023/2/15 14:59
 Desc    : 基础资产Models
 """
 
-from datetime import datetime
 from models.base import TimeBaseModel
-from sqlalchemy import Column, String, Integer, Boolean, JSON, TEXT, UniqueConstraint, DateTime
+from sqlalchemy import Column, String, Integer, Boolean, JSON, TEXT, UniqueConstraint, Date
 from sqlalchemy.ext.declarative import declarative_base
+from libs.utils import human_date
 
 Base = declarative_base()
 
@@ -151,8 +151,6 @@ class AssetVSwitchModels(AssetBaseModel):
     is_default = Column('is_default', Boolean(), default=False, comment='是否是默认')
 
 
-#
-#
 class SecurityGroupModels(AssetBaseModel):
     """安全组"""
     __tablename__ = 't_asset_security_group'
@@ -163,6 +161,20 @@ class SecurityGroupModels(AssetBaseModel):
     security_info = Column('security_info', JSON(), comment='安全组规则存JSON')
     ref_info = Column('ref_info', JSON(), comment='安全组关联存JSON')
     description = Column('description', String(255), default='', comment='详情简介')
+
+
+class AssetBackupModels(TimeBaseModel):
+    """资产备份"""
+    __tablename__ = 't_asset_backup'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    asset_id = Column('asset_id', Integer, comment='资产ID')
+    name = Column('name', String(128), default='', comment='名称')
+    inner_ip = Column('inner_ip', String(64), default='', comment="IP")
+    instance_id = Column('instance_id', String(128), default='', comment="实例ID")
+    data = Column('data', JSON(), comment='数据')
+    asset_type = Column('asset_type', String(32), default='', comment="资产类型")
+    created_day = Column(Date, default=human_date(), comment="日期")
+
 
 # class SecurityGroupInfoModel(TimeBaseModel, Base):
 #     """安全组规则"""
