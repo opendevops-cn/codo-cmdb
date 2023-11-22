@@ -80,7 +80,7 @@ class AssetChangeNotify:
                 # 比对差异
                 data = json.loads(item.data)
                 for key, val in data.items():
-                    if key in ["update_time", "create_time"]:
+                    if key in ["update_time", "create_time", "instance_expired_time"]:
                         continue
                     old_val = str(old_data.get(key, ""))
                     if str(val) != old_val:
@@ -259,6 +259,7 @@ def cmdb_backup():
                     inner_ip=info["inner_ip"],
                     instance_id=info["instance_id"],
                     asset_type="server",
+                    created_day=human_date(),
                     data=json.dumps(info),
                 )
                 if instance_id not in ins_id_list:
