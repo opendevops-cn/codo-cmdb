@@ -24,6 +24,8 @@ from libs.cds.synchronize import mapping as cbs_mapping
 from libs.cds.synchronize import main as cbs_synchronize
 from libs.vmware.synchronize import mapping as vm_mapping
 from libs.vmware.synchronize import main as vm_synchronize
+from libs.volc.synchronize import mapping as vol_mapping
+from libs.volc.synchronize import main as vol_synchronize
 from models.models_utils import get_all_cloud_interval
 from services.cloud_service import opt_obj, get_cloud_settings, get_cloud_sync_log
 from apscheduler.schedulers.tornado import TornadoScheduler
@@ -31,7 +33,7 @@ from libs.mycrypt import mc
 
 # 同步关系
 mapping = {"aws": aws_synchronize, "aliyun": aliyun_synchronize, "qcloud": qcloud_synchronize,
-           "cds": cbs_synchronize, "vmware": vm_synchronize}
+           "cds": cbs_synchronize, "vmware": vm_synchronize, "volc": vol_synchronize}
 # 定时器
 scheduler = TornadoScheduler(timezone="Asia/Shanghai")
 
@@ -118,7 +120,7 @@ class CloudSyncHandler(BaseHandler, ABC):
 
     def get(self):
         """
-        cloud_name: 'aliyun' / 'qcloud' / 'aws' / 'cds' / 'vmware'
+        cloud_name: 'aliyun' / 'qcloud' / 'aws' / 'cds' / 'vmware' / 'volc'
         """
         cloud_name: Optional[str] = self.get_argument('cloud_name', None)
         if not cloud_name:
@@ -130,6 +132,7 @@ class CloudSyncHandler(BaseHandler, ABC):
             "aliyun": aliyun_mapping,
             "cds": cbs_mapping,
             "vmware": vm_mapping,
+            "volc": vol_mapping
         }
         # 不同产品支持的类型
         resources = mappings.get(cloud_name).keys()  # type dict_keys
@@ -144,7 +147,7 @@ class CloudSyncHandler(BaseHandler, ABC):
         if not cloud_name or not resources:
             return self.write({"code": 1, "msg": "缺少账号/资源类型信息"})
 
-        if cloud_name not in ['aliyun', 'aws', 'qcloud', 'cds', 'vmware']:
+        if cloud_name not in ['aliyun', 'aws', 'qcloud', 'cds', 'vmware', 'volc']:
             return self.write({"code": 1, "msg": "不支持的云厂商"})
 
         await self.asset_sync_main(cloud_name, account_id, resources)
@@ -154,6 +157,7 @@ class CloudSyncHandler(BaseHandler, ABC):
 
 cloud_urls = [
     (r"/api/v2/cmdb/cloud/conf/", CloudSettingHandler, {"handle_name": "配置平台-多云配置", "method": ["ALL"]}),
-    (r"/api/v2/cmdb/cloud/sync/log/", SyncLogHandler, {"handle_name": "配置平台-多云配置-查看同步日志", "method": ["GET"]}),
+    (r"/api/v2/cmdb/cloud/sync/log/", SyncLogHandler,
+     {"handle_name": "配置平台-多云配置-查看同步日志", "method": ["GET"]}),
     (r"/api/v2/cmdb/cloud/sync/", CloudSyncHandler, {"handle_name": "配置平台-多云配置-资产同步", "method": ["ALL"]}),
 ]

@@ -85,4 +85,5 @@ CLOUD_VENDOR_MAP = (
     ("aws", "亚马逊"),
     ("cds", "首都云"),
     ("vmware", "VMWare"),
+    ("volc", "火山云")
 )
