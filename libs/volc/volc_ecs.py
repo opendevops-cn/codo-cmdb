@@ -56,8 +56,10 @@ class VolCECS:
     def get_describe_info(self, next_token):
 
         try:
-            instances_request = volcenginesdkecs.DescribeInstancesRequest(
-                next_token=next_token)
+            instances_request = volcenginesdkecs.DescribeInstancesRequest()
+            if next_token:
+                instances_request.next_token = next_token
+            instances_request.max_results = self.page_size
             resp = self.api_instance.describe_instances(instances_request)
             return resp
         except ApiException as e:
@@ -91,11 +93,9 @@ class VolCECS:
         :param data:
         :return:
         """
-        logging.error(f" format_data >>>>>>{type(data)} {data.eip_address}")
         # 定义返回
         res: Dict[str, str] = dict()
         try:
-            logging.error(f" format_data {data}")
             network_interface = data.network_interfaces[0]
             vpc_id = data.vpc_id
             network_type = '经典网络' if not vpc_id else 'vpc'
@@ -152,7 +152,7 @@ class VolCECS:
         """
         all_ecs_list: List[dict] = self.get_all_ecs()
         logging.info(all_ecs_list)
-        if not all_ecs_list: 
+        if not all_ecs_list:
             return False, "ECS列表为空"
         # 更新资源
         ret_state, ret_msg = server_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_ecs_list)
