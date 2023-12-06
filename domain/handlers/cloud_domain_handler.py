@@ -106,7 +106,7 @@ class CloudRecordHandler(BaseHandler, ABC):
                 state="失败"
             )
             add_log(log_data)
-            return self.write(dict(code=-1, msg='添加失败，详情请看日志'))
+            return self.write(dict(code=-1, msg=f'添加失败，详情请看日志，错误信息：{err}'))
 
         if result_data:
             log_state = "成功"
@@ -124,7 +124,8 @@ class CloudRecordHandler(BaseHandler, ABC):
         # with DBContext('w', None, True) as session:
         #     session.add(DomainOptLog(**log_data))
 
-        if not result_data:  return self.write(dict(code=-1, msg='添加失败，详情请看日志'))
+        if not result_data:
+            return self.write(dict(code=-1, msg='添加失败，详情请看日志'))
         return self.write(dict(code=0, msg='添加成功，详细变更信息请看日志'))
 
     @run_on_executor(executor='_thread_pool')
@@ -178,7 +179,7 @@ class CloudRecordHandler(BaseHandler, ABC):
                 log_data = dict(domain_name=domain_name, username=self.request_nickname, action="API",
                                 record=f'账号别名：{account_obj.name}， 错误信息：{err}', state="失败")
                 session.add(DomainOptLog(**log_data))
-                return self.write(dict(code=-1, msg='修改失败，详情请看日志'))
+                return self.write(dict(code=-1, msg=f'修改失败，详情请看日志，错误信息：{err}'))
 
             if result_data:
                 log_state = "成功"

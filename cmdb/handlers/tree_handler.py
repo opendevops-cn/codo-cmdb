@@ -20,7 +20,7 @@ from services.tree_service import get_biz_name, get_tree_by_api, add_tree_by_api
     del_tree_by_api
 from services.tree_asset_service import get_tree_env_list, get_tree_form_env_list, get_tree_form_module_list, \
     get_tree_form_set_list, register_asset, del_tree_asset, get_tree_asset_by_api, add_tree_asset_by_api, \
-    update_tree_asset_by_api, get_server_tree_for_api, get_tree_module_list
+    update_tree_asset_by_api, get_server_tree_for_api, get_tree_module_list, update_tree_leaf, del_tree_leaf
 
 from models import asset_mapping as mapping
 
@@ -74,6 +74,24 @@ class TreeAssetHandler(BaseHandler, ABC):
     def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))
         res = del_tree_asset(data)
+        return self.write(res)
+
+
+class TreeLeafHandler(BaseHandler, ABC):
+    def get(self):
+        pass
+
+    def post(self):
+        pass
+
+    def put(self):
+        data = json.loads(self.request.body.decode("utf-8"))
+        res = update_tree_leaf(data)
+        return self.write(res)
+
+    def delete(self):
+        data = json.loads(self.request.body.decode("utf-8"))
+        res = del_tree_leaf(data)
         return self.write(res)
 
 
@@ -333,4 +351,5 @@ tree_urls = [
      {"handle_name": "配置平台-树-数据注册-未测试", "handle_status": "y", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tree/v2/register/", TreeRegisterV2Handler,
      {"handle_name": "配置平台-树-数据注册V2-未测试", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/tree/leaf/", TreeLeafHandler, {"handle_name": "配置平台-树-叶子处理", "method": ["ALL"]}),
 ]

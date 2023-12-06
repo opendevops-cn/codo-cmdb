@@ -143,6 +143,128 @@ def del_tree_asset(data: dict) -> dict:
     return {"code": 0, "msg": "删除成功"}
 
 
+def update_tree_leaf(data: dict) -> dict:
+    """
+    修改树叶子节点
+    :return:
+    """
+    required_params = ["biz_id", "env_name", "region_name", "modify_type", "new_name"]
+    for param in required_params:
+        if not data.get(param):
+            return {'code': -1, 'msg': f'缺少必要参数 {param}'}
+
+    biz_id = data["biz_id"]
+    env_name = data["env_name"]
+    region_name = data["region_name"]
+    modify_type = data["modify_type"]
+    new_name = data["new_name"]
+    module_name = data.get('module_name', None)
+
+    if modify_type not in [2, 3]:
+        return {'code': -1, 'msg': '修改的类型有误'}
+
+    # 前端还是根据用户选择的ID主键去删除
+    with DBContext('w', None, True) as session:
+        biz_info = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
+        if not biz_info:
+            return dict(code=-1, msg="业务信息有误，请联系管理员")
+
+        if modify_type == 2 and region_name and new_name:
+            session.query(TreeAssetModels).filter(TreeAssetModels.biz_id == biz_id,
+                                                  TreeAssetModels.env_name == env_name,
+                                                  TreeAssetModels.region_name == region_name
+                                                  ).update({TreeAssetModels.region_name: new_name},
+                                                           synchronize_session=False)
+            session.query(TreeModels).filter(TreeModels.biz_id == biz_id,
+                                             TreeModels.node_type == modify_type,
+                                             TreeModels.parent_node == env_name,
+                                             TreeModels.title == region_name
+                                             ).update({TreeModels.title: new_name}, synchronize_session=False)
+
+            session.query(TreeModels).filter(TreeModels.biz_id == biz_id,
+                                             TreeModels.node_type == modify_type + 1,
+                                             TreeModels.grand_node == env_name,
+                                             TreeModels.parent_node == region_name
+                                             ).update({TreeModels.parent_node: new_name}, synchronize_session=False)
+
+        elif modify_type == 3 and module_name and new_name:
+            session.query(TreeAssetModels).filter(TreeAssetModels.biz_id == biz_id,
+                                                  TreeAssetModels.env_name == env_name,
+                                                  TreeAssetModels.region_name == region_name,
+                                                  TreeAssetModels.module_name == module_name
+                                                  ).update({TreeAssetModels.module_name: new_name},
+                                                           synchronize_session=False)
+            session.query(TreeModels).filter(TreeModels.biz_id == biz_id,
+                                             TreeModels.node_type == modify_type,
+                                             TreeModels.grand_node == env_name,
+                                             TreeModels.parent_node == region_name,
+                                             TreeModels.title == module_name
+                                             ).update({TreeModels.title: new_name}, synchronize_session=False)
+        else:
+            return {"code": -2, "msg": "参数错误"}
+
+    return {"code": 0, "msg": "变更成功"}
+
+
+def del_tree_leaf(data: dict) -> dict:
+    """
+    修改树叶子节点
+    :return:
+    """
+    required_params = ["biz_id", "env_name", "region_name", "modify_type", "risk"]
+    for param in required_params:
+        if not data.get(param):
+            return {'code': -1, 'msg': f'缺少必要参数 {param}'}
+
+    biz_id = data["biz_id"]
+    env_name = data["env_name"]
+    region_name = data["region_name"]
+    modify_type = data["modify_type"]
+    module_name = data.get('module_name', None)
+
+    if modify_type not in [2, 3]:
+        return {'code': -1, 'msg': '修改的类型有误'}
+
+    # 前端还是根据用户选择的ID主键去删除
+    with DBContext('w', None, True) as session:
+        biz_info = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
+        if not biz_info:
+            return dict(code=-1, msg="业务信息有误，请联系管理员")
+
+        if modify_type == 2 and region_name:
+            session.query(TreeAssetModels).filter(TreeAssetModels.biz_id == biz_id,
+                                                  TreeAssetModels.env_name == env_name,
+                                                  TreeAssetModels.region_name == region_name
+                                                  ).delete(synchronize_session=False)
+            session.query(TreeModels).filter(TreeModels.biz_id == biz_id,
+                                             TreeModels.node_type == modify_type,
+                                             TreeModels.parent_node == env_name,
+                                             TreeModels.title == region_name
+                                             ).delete(synchronize_session=False)
+
+            session.query(TreeModels).filter(TreeModels.biz_id == biz_id,
+                                             TreeModels.node_type == modify_type + 1,
+                                             TreeModels.grand_node == env_name,
+                                             TreeModels.parent_node == region_name
+                                             ).delete(synchronize_session=False)
+
+        elif modify_type == 3 and module_name:
+            session.query(TreeAssetModels).filter(TreeAssetModels.biz_id == biz_id,
+                                                  TreeAssetModels.env_name == env_name,
+                                                  TreeAssetModels.region_name == region_name,
+                                                  TreeAssetModels.module_name == module_name
+                                                  ).delete(synchronize_session=False)
+            session.query(TreeModels).filter(TreeModels.biz_id == biz_id,
+                                             TreeModels.node_type == modify_type,
+                                             TreeModels.grand_node == env_name,
+                                             TreeModels.parent_node == region_name,
+                                             TreeModels.title == module_name
+                                             ).delete(synchronize_session=False)
+        else:
+            return {"code": -2, "msg": "参数错误"}
+    return {"code": 0, "msg": "删除成功"}
+
+
 def get_tree_env_list(**params) -> dict:
     biz_id = params.get('biz_id')
     if not biz_id:

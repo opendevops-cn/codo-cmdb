@@ -79,7 +79,6 @@ class VolCECS:
                 if not data or not data.instances or not next_token:
                     break
 
-                logging.warning(f"33333333{data.instances}")
                 ecs_list.extend(map(self.format_data, data.instances))
             return ecs_list
         except Exception as err:
@@ -151,7 +150,6 @@ class VolCECS:
         :return:
         """
         all_ecs_list: List[dict] = self.get_all_ecs()
-        logging.info(all_ecs_list)
         if not all_ecs_list:
             return False, "ECS列表为空"
         # 更新资源
