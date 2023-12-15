@@ -26,6 +26,8 @@ from libs.vmware.synchronize import mapping as vm_mapping
 from libs.vmware.synchronize import main as vm_synchronize
 from libs.volc.synchronize import mapping as vol_mapping
 from libs.volc.synchronize import main as vol_synchronize
+from libs.gcp.synchronize import mapping as gcp_mapping
+from libs.gcp.synchronize import main as gcp_synchronize
 from models.models_utils import get_all_cloud_interval
 from services.cloud_service import opt_obj, get_cloud_settings, get_cloud_sync_log
 from apscheduler.schedulers.tornado import TornadoScheduler
@@ -33,7 +35,7 @@ from libs.mycrypt import mc
 
 # 同步关系
 mapping = {"aws": aws_synchronize, "aliyun": aliyun_synchronize, "qcloud": qcloud_synchronize,
-           "cds": cbs_synchronize, "vmware": vm_synchronize, "volc": vol_synchronize}
+           "cds": cbs_synchronize, "vmware": vm_synchronize, "volc": vol_synchronize, "gcp": gcp_synchronize}
 # 定时器
 scheduler = TornadoScheduler(timezone="Asia/Shanghai")
 
@@ -57,8 +59,17 @@ class CloudSettingHandler(BaseHandler, ABC):
 
     def post(self):
         data = json.loads(self.request.body.decode("utf-8"))
-        access_key = data.get('access_key').strip()
-        data['access_key'] = mc.my_encrypt(access_key)
+        if data.get('cloud_name') == 'gcp':
+            account_file = data.get('account_file')
+            if not account_file:
+                return self.write(dict(code=-1, msg='谷歌云必须输入密钥文件'))
+            data['account_file'] = mc.my_encrypt(account_file)
+            data['access_id'] = 'not_need'
+            data['access_key'] = 'not_need'
+            data['region'] = 'not_need'
+        else:
+            access_key = data.get('access_key').strip()
+            data['access_key'] = mc.my_encrypt(access_key)
         data['account_id'] = uuid(name=data['name'])
         res = opt_obj.handle_add(data)
         add_cloud_jobs()
@@ -132,7 +143,8 @@ class CloudSyncHandler(BaseHandler, ABC):
             "aliyun": aliyun_mapping,
             "cds": cbs_mapping,
             "vmware": vm_mapping,
-            "volc": vol_mapping
+            "volc": vol_mapping,
+            "gcp": gcp_mapping
         }
         # 不同产品支持的类型
         resources = mappings.get(cloud_name).keys()  # type dict_keys
@@ -147,7 +159,7 @@ class CloudSyncHandler(BaseHandler, ABC):
         if not cloud_name or not resources:
             return self.write({"code": 1, "msg": "缺少账号/资源类型信息"})
 
-        if cloud_name not in ['aliyun', 'aws', 'qcloud', 'cds', 'vmware', 'volc']:
+        if cloud_name not in ['aliyun', 'aws', 'qcloud', 'cds', 'vmware', 'volc', 'gcp']:
             return self.write({"code": 1, "msg": "不支持的云厂商"})
 
         await self.asset_sync_main(cloud_name, account_id, resources)

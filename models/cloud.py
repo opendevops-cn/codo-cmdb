@@ -21,11 +21,12 @@ class CloudSettingModels(TimeBaseModel):
     account_id = Column('account_id', String(100), unique=True, nullable=False,
                         comment='AccountUUID')  # 云厂商ID,UUID
     name = Column('name', String(120), nullable=False, comment='名称')
-    cloud_name = Column('cloud_name', String(120), nullable=False,
-                        comment='云厂商Name')  # aliyun /qcloud /aws / ucloud / dnspod
-    region = Column('region', String(255), nullable=False, comment='区域')
+    cloud_name = Column('cloud_name', String(120), nullable=False, comment='云厂商Name')  # aliyun / qcloud /aws
+    project_id = Column('project_id', String(120), default='', comment='项目ID，用来标识您的项目的唯一字符串')
+    region = Column('region', String(500), nullable=False, comment='区域')
     access_id = Column('access_id', String(120), nullable=False, comment='IAM角色访问密钥')
     access_key = Column('access_key', String(255), nullable=False, comment='IAM角色访问密钥')
+    account_file = Column('account_file', Text(), comment='IAM角色访问密钥文件')
     is_enable = Column('is_enable', Boolean(), default=False, comment='是否开启')
     interval = Column(Integer, nullable=False, default=30, comment='同步间隔(单位：minutes)')
     detail = Column('detail', Text(), comment='备注')
