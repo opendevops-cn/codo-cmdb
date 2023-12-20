@@ -8,28 +8,25 @@ Desc    : 事件管理
 """
 
 from abc import ABC
-from tornado.web import RequestHandler
+from libs.base_handler import BaseHandler
 from services.event_service import get_aws_event_list, get_aliyun_event_list, get_qcloud_event_list
 
 
-class AwsHealthEventsHandler(RequestHandler, ABC):
+class AwsHealthEventsHandler(BaseHandler, ABC):
     def get(self):
-        params = {k: self.get_argument(k) for k in self.request.arguments}
-        res = get_aws_event_list(**params)
+        res = get_aws_event_list(**self.params)
         return self.write(res)
 
 
-class AliyunEventsHandler(RequestHandler, ABC):
+class AliyunEventsHandler(BaseHandler, ABC):
     def get(self):
-        params = {k: self.get_argument(k) for k in self.request.arguments}
-        res = get_aliyun_event_list(**params)
+        res = get_aliyun_event_list(**self.params)
         return self.write(res)
 
 
-class QcloudEventsHandler(RequestHandler, ABC):
+class QcloudEventsHandler(BaseHandler, ABC):
     def get(self):
-        params = {k: self.get_argument(k) for k in self.request.arguments}
-        res = get_qcloud_event_list(**params)
+        res = get_qcloud_event_list(**self.params)
         return self.write(res)
 
 
