@@ -59,6 +59,7 @@ class CloudSettingHandler(BaseHandler, ABC):
 
     def post(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        data['account_file'] = ""
         if data.get('cloud_name') == 'gcp':
             account_file = data.get('account_file')
             if not account_file:
