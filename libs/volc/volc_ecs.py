@@ -11,8 +11,8 @@ import logging
 from typing import *
 from models.models_utils import server_task, mark_expired
 import volcenginesdkcore
-import volcenginesdkecs
 from volcenginesdkcore.rest import ApiException
+from volcenginesdkecs import ECSApi, DescribeInstancesRequest
 
 
 def get_run_type(val):
@@ -45,46 +45,76 @@ class VolCECS:
         self.page_size = 100  # 分页查询时设置的每页行数。最大值：100 默认值：10
         self._region = region
         self._account_id = account_id
+        self.api_instance = self.initialize_api_instance(access_id, access_key, region)
+
+    @staticmethod
+    def initialize_api_instance(access_id, access_key, region):
         configuration = volcenginesdkcore.Configuration()
         configuration.ak = access_id
         configuration.sk = access_key
-        configuration.region = self._region
-        # set default configuration
+        configuration.region = region
         volcenginesdkcore.Configuration.set_default(configuration)
-        self.api_instance = volcenginesdkecs.ECSApi()
+        return ECSApi()
 
     def get_describe_info(self, next_token):
-
         try:
-            instances_request = volcenginesdkecs.DescribeInstancesRequest()
-            if next_token:
-                instances_request.next_token = next_token
+            instances_request = DescribeInstancesRequest()
+            instances_request.next_token = next_token
             instances_request.max_results = self.page_size
             resp = self.api_instance.describe_instances(instances_request)
             return resp
         except ApiException as e:
-            logging.error("Exception when calling api: %s\n" % e)
-        return []
+            logging.error("Exception when calling ECSApi.describe_instances: %s", e)
+            return None
 
     def get_all_ecs(self):
-        """
-        循环分页获取所有的ECS信息，返回迭代器
-        """
         ecs_list = []
-        next_token = None
-        try:
-            while True:
-                data = self.get_describe_info(next_token)
-                next_token = data.next_token
-                if not data or not data.instances or not next_token:
-                    break
+        next_token = ''
+        while True:
+            data = self.get_describe_info(next_token)
+            if data is None:
+                break
 
-                ecs_list.extend(map(self.format_data, data.instances))
-            return ecs_list
-        except Exception as err:
-            logging.error(f"火山云ECS  get all ecs{self._account_id} {err}")
-            return ecs_list
-            # yield map(self.format_data, list(data.instances))
+            ecs_list.extend(map(self.format_data, data.instances))
+            next_token = data.next_token
+            # logging.info(f"Fetched {len(data.instances)} instances, Next token: {next_token}")
+
+            # Break the loop if there is no next token
+            if not next_token:
+                break
+
+        return ecs_list
+
+    # def get_describe_info(self, next_token):
+    #
+    #     try:
+    #         instances_request = volcenginesdkecs.DescribeInstancesRequest()
+    #         if next_token:
+    #             instances_request.next_token = next_token
+    #         instances_request.max_results = self.page_size
+    #         resp = self.api_instance.describe_instances(instances_request)
+    #         return resp
+    #     except ApiException as e:
+    #         logging.error("Exception when calling api: %s\n" % e)
+    #     return []
+    #
+    # def get_all_ecs(self):
+    #     ecs_list = []
+    #     next_token = None
+    #     try:
+    #         while True:
+    #             data = self.get_describe_info(next_token)
+    #             next_token = data.next_token
+    #             logging.error(f"{data.instances}{next_token}")
+    #             if not data or not data.instances or not next_token:
+    #                 break
+    #
+    #             ecs_list.extend(map(self.format_data, data.instances))
+    #         return ecs_list
+    #     except Exception as err:
+    #         logging.debug(f"火山云ECS  get all ecs{self._account_id} {err}")
+    #         return ecs_list
+    #         # yield map(self.format_data, list(data.instances))
 
     def format_data(self, data) -> Dict[str, str]:
         """
