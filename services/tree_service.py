@@ -325,3 +325,38 @@ def get_tree(
     for biz_id, biz_name in biz_data.items():
         tree_list.append(build_tree(session, biz_id, biz_name))
     return tree_list
+
+
+def get_tree_info_by_api(**params) -> dict:
+    biz_id = params.get('biz_id')
+    grand_node = params.get('grand_node')
+    parent_node = params.get('parent_node')
+    title = params.get('title')
+    node_type = int(params.get('node_type', 3))
+
+    # 先检查是否支持当前类型
+    if node_type not in [2, 3]:
+        return {"code": -1, "msg": "不支持当前类型"}
+
+    with DBContext('r') as session:
+        # 检查业务信息是否存在
+        if not session.query(BizModels.biz_id).filter(BizModels.biz_id == biz_id).scalar():
+            return {"code": -2, "msg": "业务信息有误，请联系管理员"}
+
+        # 构建查询的基础部分
+        query = session.query(TreeModels).filter_by(biz_id=biz_id, node_type=node_type, title=title)
+
+        # 根据node_type添加额外的过滤条件
+        if node_type == 2:
+            query = query.filter_by(parent_node=parent_node)
+        else:  # node_type == 3
+            if not grand_node:
+                return {"code": -4, "msg": "缺少参数 grand_node"}
+            query = query.filter_by(grand_node=grand_node, parent_node=parent_node)
+
+        # 执行查询并获取第一个结果
+        tree_info = query.first()
+        if not tree_info:
+            return {"code": -3, "msg": "未找到对应的树信息"}
+
+    return {"code": 0, "msg": "获取成功", "data": model_to_dict(tree_info)}

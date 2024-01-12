@@ -17,7 +17,7 @@ from models.tree import TreeModels, TreeAssetModels
 from websdk2.db_context import DBContext
 from websdk2.model_utils import queryset_to_list
 from services.tree_service import get_biz_name, get_tree_by_api, add_tree_by_api, put_tree_by_api, patch_tree_by_api, \
-    del_tree_by_api
+    del_tree_by_api, get_tree_info_by_api
 from services.tree_asset_service import get_tree_env_list, get_tree_form_env_list, get_tree_form_module_list, \
     get_tree_form_set_list, register_asset, del_tree_asset, get_tree_asset_by_api, add_tree_asset_by_api, \
     update_tree_asset_by_api, get_server_tree_for_api, get_tree_module_list, update_tree_leaf, del_tree_leaf
@@ -48,6 +48,12 @@ class TreeHandler(BaseHandler, ABC):
     def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))
         res = del_tree_by_api(data)
+        return self.write(res)
+
+
+class TreeSearchInfoHandler(BaseHandler, ABC):
+    def get(self):
+        res = get_tree_info_by_api(**self.params)
         return self.write(res)
 
 
@@ -347,6 +353,7 @@ tree_urls = [
      {"handle_name": "配置平台-树-查询所在拓扑结构", "handle_status": "y", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tree/server/relation/", TreeServerRelationHandler,
      {"handle_name": "配置平台-树-根据内网IP查询关联", "handle_status": "y", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/tree/search_info/", TreeSearchInfoHandler, {"handle_name": "配置平台-服务树-查询ID"}),
     (r"/api/v2/cmdb/tree/register/", TreeRegisterHandler,
      {"handle_name": "配置平台-树-数据注册-未测试", "handle_status": "y", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tree/v2/register/", TreeRegisterV2Handler,
