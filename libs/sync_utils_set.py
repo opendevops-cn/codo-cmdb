@@ -23,6 +23,7 @@ from websdk2.model_utils import insert_or_update
 from websdk2.client import AcsClient
 from models.business import BizModels
 from models.asset import AssetServerModels
+from models.cloud import SyncLogModels
 
 if configs.can_import: configs.import_dict(**settings)
 
@@ -127,11 +128,25 @@ def sync_agent_status():
         logging.error(f'同步agent状态到配置平台出错 {str(err)}')
 
 
+def clean_sync_logs():
+    def index():
+        week_ago = datetime.datetime.now() - datetime.timedelta(days=7)
+        logging.info(f'开始清理资源同步日志  {week_ago}之前 !!!')
+        with DBContext('w', None, True) as session:
+            session.query(SyncLogModels).filter(SyncLogModels.sync_time < week_ago).delete(synchronize_session=False)
+
+    try:
+        index()
+    except Exception as err:
+        logging.error(f'清理资源同步过期日志出错 {str(err)}')
+
+
 def async_agent():
     executor = ThreadPoolExecutor(max_workers=1)
     executor.submit(sync_agent_status)
 
 
 def async_biz_info():
-    executor = ThreadPoolExecutor(max_workers=1)
+    executor = ThreadPoolExecutor(max_workers=2)
     executor.submit(biz_sync)
+    executor.submit(clean_sync_logs)

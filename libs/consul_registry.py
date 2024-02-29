@@ -44,8 +44,12 @@ def deco(cls, release=False):
 def sync_consul():
     @deco(RedisLock("sync_to_consul_lock_key"))
     def index():
-        logging.info(f'sync to consul start  {datetime.datetime.now()}')
+        logging.info(f'同步数据到consul开始 ！！！')
         c = ConsulOpt()
+        server_info = c.get_services()
+        if server_info.get('code') != 0:
+            logging.error(f'访问consul失败 ！！！ {server_info.get("msg")}')
+            return
         for asset_type in ['server', 'mysql', 'redis', 'domain']:
             try:
                 cmdb_ins = []
@@ -59,7 +63,7 @@ def sync_consul():
             except Exception as err:
                 logging.error(f'sync to consul {asset_type} error,{err} {datetime.datetime.now()}')
 
-        logging.info(f'sync to consul end  {datetime.datetime.now()}')
+        logging.info(f'同步数据到consul结束 ！！！')
 
     index()
 
