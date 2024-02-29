@@ -260,12 +260,7 @@ def get_registry_domain_info():
     for i in __info:
         data = model_to_dict(i)
         biz_id = "504"
-        # if not i[3]:
-        #     logging.error(f"{asset_type} {data} {biz_id} err")
-        #     continue
         inner_ip, port = f"{data.get('domain_rr')}.{data.get('domain_name')}", 443
-        # node_meta = dict(biz_id=biz_id, biz_cn_name=biz_info_map.get(biz_id, biz_id), env_name=data['env_name'],
-        #                  region_name=data['region_name'], module_name=data['module_name'])
         node_meta = dict(biz_id=biz_id, biz_cn_name=biz_info_map.get(biz_id, biz_id), env_name='prod',
                          domain_type=data.get('domain_type'))
         server_name = f"{asset_type}-exporter"

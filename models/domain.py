@@ -51,7 +51,7 @@ class DomainRecords(BizBaseModel):
     domain_mx = Column('domain_mx', Integer, default=5)  # MX记录的优先级。
     weight = Column('weight', String(10), default=None)  # 权重 企业版功能。
     line = Column('line', String(50), default='default')  # 解析线路  默认/境外
-    state = Column('state', String(50), default='default')  # 当前的解析记录状态
+    state = Column('state', String(50), default='default', index=True)  # 当前的解析记录状态
     remark = Column('remark', String(255), default='unknown')  # 备注
 
     biz_id = Column('biz_id', String(15), index=True, default='502', comment='业务/项目ID')

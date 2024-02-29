@@ -12,7 +12,6 @@ from tornado.options import options
 from tornado.ioloop import PeriodicCallback
 from concurrent.futures import ThreadPoolExecutor
 from websdk2.application import Application as myApplication
-# from libs.logger import init_logging
 from libs.scheduler import scheduler, init_scheduler
 from cmdb.handlers import urls
 from domain.handlers import urls as domain_urls
@@ -41,8 +40,6 @@ class Application(myApplication, ABC):
         # 资源订单状态
         biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒
         biz_callback.start()
-        # 资产备份同步和变更通知任务
-        init_cmdb_change_tasks()
 
         urls.extend(domain_urls)
         urls.extend(order_urls)
@@ -57,6 +54,8 @@ class Application(myApplication, ABC):
 
             # init_logging()  # LOG
             init_scheduler()
+            # 资产备份同步和变更通知任务
+            init_cmdb_change_tasks()
             logging.info('[App Init] progressid: %(progid)s' % dict(progid=options.progid))
             logging.info('[App Init] server address: %(addr)s:%(port)d' % dict(addr=options.addr, port=options.port))
             logging.info('[App Init] web server start sucessfuled.')

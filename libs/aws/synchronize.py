@@ -12,7 +12,9 @@ import time
 from typing import *
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
+from websdk2.tools import RedisLock
 from models.models_utils import get_cloud_config, sync_log_task
+from libs import deco
 from libs.qcloud import mapping, DEFAULT_CLOUD_NAME
 from libs.mycrypt import mc
 
@@ -55,6 +57,7 @@ def sync(data: Dict[str, Any]):
             continue
 
 
+@deco(RedisLock("async_aws_to_cmdb_redis_lock_key"))
 def main(account_id: Optional[str] = None, resources: List[str] = None):
     """
     这些类型都是为了前端点击的，定时都是自动同步全账号，全类型

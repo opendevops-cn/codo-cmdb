@@ -4,27 +4,33 @@
 # @Author  : harilou
 # @Describe: 资产变更通知
 
-from websdk2.db_context import DBContextV2 as DBContext
-from models.asset import AssetServerModels, AssetBackupModels
-from models import asset_mapping, RES_TYPE_MAP
-from jinja2 import Template
-from db_sync import engine, default_configs
-from websdk2.consts import const
-from sqlalchemy import inspect
-from websdk2.sqlalchemy_pagination import paginate
-from libs.utils import human_date
-from services.asset_server_service import _models_to_list
-from websdk2.configs import configs
-from libs.scheduler import scheduler
-import traceback
-import requests
-import logging
 import datetime
 import json
+import logging
+import traceback
+
+import requests
+from jinja2 import Template
+from sqlalchemy import inspect
+
+from websdk2.configs import configs
+from websdk2.consts import const
+from websdk2.db_context import DBContextV2 as DBContext
+from websdk2.sqlalchemy_pagination import paginate
+
+from websdk2.tools import RedisLock
+from db_sync import engine, default_configs
+from libs import deco
+from libs.scheduler import scheduler
+from libs.utils import human_date
+from models import asset_mapping, RES_TYPE_MAP
+from models.asset import AssetServerModels, AssetBackupModels
+from services.asset_server_service import _models_to_list
 
 
 class AssetChangeNotify:
     """资源变更通知"""
+
     def __init__(self, asset_type):
         self.asset_type = asset_type
 
@@ -52,9 +58,9 @@ class AssetChangeNotify:
         today = datetime.datetime.today().strftime("%Y-%m-%d")
         with DBContext('r', None, True) as session:
             today_obj = session.query(AssetBackupModels).filter(AssetBackupModels.asset_type == self.asset_type,
-                                                             AssetBackupModels.created_day == today).all()
+                                                                AssetBackupModels.created_day == today).all()
             dest_date_obj = session.query(AssetBackupModels).filter(AssetBackupModels.asset_type == self.asset_type,
-                                                            AssetBackupModels.created_day == dest_date).all()
+                                                                    AssetBackupModels.created_day == dest_date).all()
 
             if not dest_date_obj or not today_obj:
                 return dict()
@@ -119,7 +125,7 @@ class AssetChangeNotify:
                     "action": "回收",
                     "hostname_list": ", ".join(del_list),
                     "count": len(del_list)
-            }]
+                }]
             logging.info(f"data_list: {data_list}")
             # 获取资源的汇总数量
             asset_count = session.query(asset_model).count()
@@ -174,9 +180,9 @@ class AssetChangeNotify:
                     "wide_screen_mode": True
                 },
                 "elements": [{
-                        "tag": "markdown",
-                        "content": text
-                    },
+                    "tag": "markdown",
+                    "content": text
+                },
                     {
                         "tag": "action",
                         "actions": [{
@@ -271,18 +277,21 @@ def cmdb_backup():
     return
 
 
+@deco(RedisLock("asset_change_to_yesterday_redis_lock_key"))
 def send_asset_change_to_yesterday_task():
     asset_notify = AssetChangeNotify(asset_type="server")
     asset_notify.send_change_to_yesterday()
     return
 
 
+@deco(RedisLock("asset_change_to_week_redis_lock_key"))
 def send_asset_change_to_week_task():
     asset_notify = AssetChangeNotify(asset_type="server")
     asset_notify.send_change_to_week()
     return
 
 
+@deco(RedisLock("asset_change_to_month_redis_lock_key"))
 def send_asset_change_to_month_task():
     asset_notify = AssetChangeNotify(asset_type="server")
     asset_notify.send_change_to_month()
@@ -293,5 +302,4 @@ def init_cmdb_change_tasks() -> None:
     scheduler.add_job(cmdb_backup, 'cron', hour=5, minute=1)
     scheduler.add_job(send_asset_change_to_yesterday_task, 'cron', hour=10, minute=1)
     scheduler.add_job(send_asset_change_to_week_task, 'cron', day_of_week=4, hour=17, minute=1)
-    scheduler.add_job(send_asset_change_to_month_task, 'cron',  month="*", day=1, hour=10)
-    return
+    scheduler.add_job(send_asset_change_to_month_task, 'cron', month="*", day=1, hour=10)

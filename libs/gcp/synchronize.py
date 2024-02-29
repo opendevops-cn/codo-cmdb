@@ -13,6 +13,8 @@ from typing import *
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 from models.models_utils import sync_log_task, get_cloud_config
+from websdk2.tools import RedisLock
+from libs import deco
 from libs.gcp import mapping, DEFAULT_CLOUD_NAME
 from libs.mycrypt import mc
 
@@ -62,6 +64,7 @@ def sync_regions(conf: Dict[str, str], obj: Callable, cloud_type: str) -> None:
     logging.info(f'同步结束, 信息：「{DEFAULT_CLOUD_NAME}」-「{cloud_type}」-「{region}」.')
 
 
+@deco(RedisLock("async_gcp_to_cmdb_redis_lock_key"))
 def main(account_id: Optional[str] = None, resources: List[str] = None):
     """
     这些类型都是为了前端点击的，定时都是自动同步全账号，全类型

@@ -11,10 +11,12 @@ import logging
 import time
 from typing import *
 import concurrent
+from websdk2.tools import RedisLock
 from concurrent.futures import ThreadPoolExecutor
 from models.models_utils import sync_log_task, get_cloud_config
 from libs.volc import mapping, DEFAULT_CLOUD_NAME
 from libs.mycrypt import mc
+from libs import deco
 
 
 def sync(data: Dict[str, Any]) -> None:
@@ -61,6 +63,7 @@ def sync_region(conf: Dict[str, str], region: str, obj: Callable, cloud_type: st
     logging.info(f'同步结束, 信息：「{DEFAULT_CLOUD_NAME}」-「{cloud_type}」-「{region}」.')
 
 
+@deco(RedisLock("async_volc_to_cmdb_redis_lock_key"))
 def main(account_id: Optional[str] = None, resources: List[str] = None):
     """
     这些类型都是为了前端点击的，定时都是自动同步全账号，全类型
