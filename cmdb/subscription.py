@@ -10,10 +10,10 @@ Desc    : Redis消息订阅服务
 import json
 import logging
 import time
-from models.asset import AssetServerModels as serverModel
 from websdk2.db_context import DBContext
 from websdk2.cache_context import cache_conn
 from concurrent.futures import ThreadPoolExecutor
+from models.asset import AssetServerModels as serverModel
 
 
 class RedisSubscriber:
@@ -64,8 +64,7 @@ class RedisSubscriber:
                 try:
                     # logging.error(f"{self.group_name, self.consumer_name, {self.stream_name: consumer_id} }")
                     items = self.redis_conn.xreadgroup(self.group_name, self.consumer_name,
-                                                       {self.stream_name: consumer_id},
-                                                       block=0, count=1)
+                                                       {self.stream_name: consumer_id}, block=0, count=1)
                 except Exception as err:
                     logging.warning(err)
                     items = []
@@ -76,12 +75,13 @@ class RedisSubscriber:
                     time.sleep(3)  # 空值等待 3s
                     self.redis_conn.xack(self.stream_name, self.group_name, last_id)  ### 删除错误信息
                     continue
+
                 elif not items[0][1]:
                     check_backlog = False
 
                 for msg_id, fields in items[0][1]:
                     try:
-                        logging.debug(f"Processing message {msg_id}: {fields}")
+                        logging.info(f"Processing message {msg_id}: {fields}")
                         try:
                             # data = json.loads(fields['host_snap_info'].decode())
                             data = self.process_message(msg_id, fields)
@@ -106,8 +106,11 @@ class RedisSubscriber:
                     finally:
                         last_id = msg_id
                         self.redis_conn.xack(self.stream_name, self.group_name, msg_id)
+                        # self.redis_conn.xdel(self.stream_name, msg_id) # 删除消息
 
                 time.sleep(2)  # Wait before the next iteration
+                one_day_ago = int((time.time() - 86400) * 1000)
+                self.redis_conn.xtrim(self.stream_name, minid=one_day_ago)
             except Exception as e:
                 logging.error(f"An unexpected error occurred: {e}")
                 time.sleep(3)
