@@ -31,7 +31,7 @@ class AssetBaseModel(TimeBaseModel, Base):
 class AssetServerModels(AssetBaseModel):
     """"基础主机"""
     __tablename__ = 't_asset_server'  # server 基础主机
-    name = Column('name', String(250), comment='名称', index=True)
+    name = Column('name', String(250), comment='实例名称', index=True)
     # hostname = Column('hostname', String(180), nullable=False, comment='主机名')
     inner_ip = Column('inner_ip', String(120), comment='内网IP', index=True)
     outer_ip = Column('outer_ip', String(120), comment='外网IP')
@@ -39,6 +39,7 @@ class AssetServerModels(AssetBaseModel):
     state = Column('state', String(30), comment='主机状态', index=True)
     agent_id = Column('agent_id', String(160), index=True, comment='AgentID')
     agent_status = Column('agent_status', String(20), index=True, default='1', comment='Agent状态')  # 1在线 2离线
+    agent_info = Column('agent_info', JSON(), comment='agent上报信息字段存JSON', default={})
     is_product = Column("is_product", Integer, default=0, comment="标记是否上线", index=True)
     # 联合键约束 2023年5月23日 添加关机支持
     __table_args__ = (
@@ -174,7 +175,6 @@ class AssetBackupModels(TimeBaseModel):
     data = Column('data', JSON(), comment='数据')
     asset_type = Column('asset_type', String(32), default='', comment="资产类型")
     created_day = Column(Date, default=human_date(), comment="日期")
-
 
 # class SecurityGroupInfoModel(TimeBaseModel, Base):
 #     """安全组规则"""

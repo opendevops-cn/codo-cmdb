@@ -12,6 +12,7 @@ import datetime
 import logging
 from typing import *
 from shortuuid import uuid
+from concurrent.futures import ThreadPoolExecutor
 from websdk2.configs import configs
 from websdk2.model_utils import queryset_to_list, insert_or_update
 from websdk2.db_context import DBContext
@@ -326,3 +327,8 @@ def mark_expired(resource_model, domain_name: Optional[str], record_id: Optional
         #                                      resource_model.state == '过期',
         #                                      resource_model.update_time <= _hours_ago).delete(
         #     synchronize_session=False)
+
+
+def async_domain_info():
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(all_domain_sync_index)

@@ -10,17 +10,17 @@ import logging
 from abc import ABC
 from tornado.options import options
 from tornado.ioloop import PeriodicCallback
-from concurrent.futures import ThreadPoolExecutor
 from websdk2.application import Application as myApplication
 from libs.scheduler import scheduler, init_scheduler
 from cmdb.handlers import urls
 from domain.handlers import urls as domain_urls
 from libs.sync_utils_set import async_biz_info, async_agent
-from domain.cloud_domain import all_domain_sync_index
+from domain.cloud_domain import async_domain_info
 from libs.consul_registry import async_consul_info
 from cmp.tasks import async_order_status
 from libs.asset_change import init_cmdb_change_tasks
 from cmp.handlers import urls as order_urls
+from cmdb.subscription import RedisSubscriber as SubApp
 
 
 class Application(myApplication, ABC):
@@ -51,11 +51,10 @@ class Application(myApplication, ABC):
         :return:
         """
         try:
-
-            # init_logging()  # LOG
             init_scheduler()
             # 资产备份同步和变更通知任务
             init_cmdb_change_tasks()
+            SubApp().start_server()
             logging.info('[App Init] progressid: %(progid)s' % dict(progid=options.progid))
             logging.info('[App Init] server address: %(addr)s:%(port)d' % dict(addr=options.addr, port=options.port))
             logging.info('[App Init] web server start sucessfuled.')
@@ -66,11 +65,6 @@ class Application(myApplication, ABC):
         except:
             import traceback
             logging.error('traceback %(tra)s' % dict(tra=traceback.format_exc()))
-
-
-def async_domain_info():
-    executor = ThreadPoolExecutor(max_workers=1)
-    executor.submit(all_domain_sync_index)
 
 
 if __name__ == '__main__':
