@@ -10,20 +10,24 @@ Desc    : Redis消息订阅服务
 import json
 import logging
 import time
+import redis
 from shortuuid import uuid
 from concurrent.futures import ThreadPoolExecutor
 from websdk2.db_context import DBContext
-from websdk2.cache_context import cache_conn
-from websdk2.configs import configs
-from settings import settings
+from websdk2.consts import const
 from models.asset import AssetServerModels as serverModel
 
 
 class RedisSubscriber:
 
-    def __init__(self, service="cc-cmdb-agent-consumer-name", channel='cc.v1.discover.stream', **kwargs):
-        if configs.can_import: configs.import_dict(**settings)
-        self.redis_conn = cache_conn(db=2)
+    def __init__(self, service="cc-cmdb-agent-consumer-name", channel='cc.v1.discover.stream', **settings):
+        redis_info = settings.get(const.REDIS_CONFIG_ITEM, None).get(const.DEFAULT_RD_KEY, None)
+        if not redis_info:  exit('not redis')
+        self.pool = redis.ConnectionPool(host=redis_info.get(const.RD_HOST_KEY),
+                                         port=redis_info.get(const.RD_PORT_KEY, 6379), db=2,
+                                         password=redis_info.get(const.RD_PASSWORD_KEY, None), decode_responses=True)
+        self.redis_conn = redis.StrictRedis(connection_pool=self.pool)
+        # self.redis_conn = cache_conn(db=2)
         self.channel = channel  # 定义频道名称
         self.consumer_name = f"{service}-{uuid()[0:6]}"
         # self.consumer_name = service
