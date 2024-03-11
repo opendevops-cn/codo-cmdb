@@ -43,7 +43,9 @@ class Application(myApplication, ABC):
 
         urls.extend(domain_urls)
         urls.extend(order_urls)
+        # self.settings = settings
         super(Application, self).__init__(urls, **settings)
+        self.sub_app = SubApp(**settings)
 
     def start_server(self):
         """
@@ -54,7 +56,7 @@ class Application(myApplication, ABC):
             init_scheduler()
             # 资产备份同步和变更通知任务
             init_cmdb_change_tasks()
-            SubApp().start_server()
+            self.sub_app.start_server()
             logging.info('[App Init] progressid: %(progid)s' % dict(progid=options.progid))
             logging.info('[App Init] server address: %(addr)s:%(port)d' % dict(addr=options.addr, port=options.port))
             logging.info('[App Init] web server start sucessfuled.')

@@ -10,20 +10,23 @@ Desc    : Redis消息订阅服务
 import json
 import logging
 import time
+from shortuuid import uuid
+from concurrent.futures import ThreadPoolExecutor
 from websdk2.db_context import DBContext
 from websdk2.cache_context import cache_conn
-from concurrent.futures import ThreadPoolExecutor
+from websdk2.configs import configs
+from settings import settings
 from models.asset import AssetServerModels as serverModel
 
 
 class RedisSubscriber:
 
     def __init__(self, service="cc-cmdb-agent-consumer-name", channel='cc.v1.discover.stream', **kwargs):
-
+        if configs.can_import: configs.import_dict(**settings)
         self.redis_conn = cache_conn(db=2)
         self.channel = channel  # 定义频道名称
-        # self.consumer_name = f"{service}-{uuid()[0:8]}"
-        self.consumer_name = service
+        self.consumer_name = f"{service}-{uuid()[0:6]}"
+        # self.consumer_name = service
         self.group_name = "cc-cmdb-agent-consumer-group"
         self.stream_name = channel
         self.create_consumer_group(self.stream_name, self.group_name)
@@ -106,11 +109,11 @@ class RedisSubscriber:
                     finally:
                         last_id = msg_id
                         self.redis_conn.xack(self.stream_name, self.group_name, msg_id)
-                        # self.redis_conn.xdel(self.stream_name, msg_id) # 删除消息
+                        self.redis_conn.xdel(self.stream_name, msg_id)  # 删除消息
 
                 time.sleep(2)  # Wait before the next iteration
-                one_day_ago = int((time.time() - 86400) * 1000)
-                self.redis_conn.xtrim(self.stream_name, minid=one_day_ago)
+                # one_day_ago = int((time.time() - 86400) * 1000)
+                # self.redis_conn.xtrim(self.stream_name, minid=one_day_ago)
             except Exception as e:
                 logging.error(f"An unexpected error occurred: {e}")
                 time.sleep(3)
