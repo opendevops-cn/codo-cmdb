@@ -4,6 +4,9 @@
 # @Author  : harilou
 # @Describe: 通用方法
 from datetime import datetime
+import types
+from functools import wraps
+import traceback
 
 
 def human_date(date=None):
@@ -12,3 +15,21 @@ def human_date(date=None):
     else:
         date = datetime.now()
     return date.strftime('%Y-%m-%d')
+
+
+class CommonDecorator(object):
+    """适用于类方法和普通函数的decorator"""
+    def __init__(self, func):
+        wraps(func)(self)
+
+    def __call__(self, *args, **kwargs):
+        try:
+            return self.__wrapped__(*args, **kwargs)
+        except Exception as e:
+            print(f'call function {self.__name__} error. args: {args}, kwargs: {kwargs}, msg: {traceback.format_exc()}')
+
+    def __get__(self, instance, cls):
+        if instance is None:
+            return self
+        else:
+            return types.MethodType(self, instance)
