@@ -67,6 +67,7 @@ class VolCCLB:
     def get_describe_load_balancers(self):
         """
         接口查询CLB实例的基本信息
+        Doc: https://api.volcengine.com/api-docs/view?serviceCode=clb&version=2020-04-01&action=DescribeLoadBalancers
         :return:
         """
         try:
@@ -74,13 +75,14 @@ class VolCCLB:
             resp = self.api_instance.describe_load_balancers(instances_request)
             return resp
         except ApiException as e:
-            logging.error("Exception when calling VolCCLB.get_describe_load_balancers: %s", e)
+            logging.error(f"火山云负载均衡CLB调用异常 get_describe_load_balancers: {self._account_id} -- {e}")
 
             return None
 
     def get_describe_load_balancer_detail(self, load_balancer_id: str) -> dict:
         """
         接口查询CLB实例的详细信息
+        Doc: https://api.volcengine.com/api-docs/view?serviceCode=clb&version=2020-04-01&action=DescribeLoadBalancerAttributes
         :return:
         """
         try:
@@ -89,24 +91,27 @@ class VolCCLB:
             resp = self.api_instance.describe_load_balancer_attributes(instances_request)
             return resp
         except ApiException as e:
-            logging.error("Exception when calling VolCCLB.get_describe_load_balancer_detail: %s", e)
+            logging.error(f"火山云负载均衡CLB实例详情调用异常 get_describe_load_balancer_detail: {self._account_id} -- {e}")
             return None
 
     def get_all_clbs(self):
-        clbs = []
-        while True:
-            data = self.get_describe_load_balancers()
-            if data is None:
-                break
+        clbs = list()
+        try:
+            while True:
+                data = self.get_describe_load_balancers()
+                if data is None:
+                    break
 
-            instances = data.load_balancers
-            if not instances:
-                break
-            clbs.extend([self.handle_data(data) for data in instances])
-            total_count = data.total_count
-            if total_count < self.page_size:
-                break
-            self.page_number += 1
+                instances = data.load_balancers
+                if not instances:
+                    break
+                clbs.extend([self.handle_data(data) for data in instances])
+                total_count = data.total_count
+                if total_count < self.page_size:
+                    break
+                self.page_number += 1
+        except Exception as e:
+            logging.error(f"火山云负载均衡调用异常 get_all_clbs: {self._account_id} -- {e}")
         return clbs
 
 

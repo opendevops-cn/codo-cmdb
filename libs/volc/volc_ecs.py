@@ -64,7 +64,7 @@ class VolCECS:
             resp = self.api_instance.describe_instances(instances_request)
             return resp
         except ApiException as e:
-            logging.error("Exception when calling ECSApi.describe_instances: %s", e)
+            logging.error(f"火山云云服务器调用异常.describe_instances: {self._account_id} -- {e}")
             return None
 
     def get_all_ecs(self):

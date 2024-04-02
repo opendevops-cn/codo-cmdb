@@ -105,7 +105,7 @@ class VolCRedis:
             resp = self.api_instance.describe_db_instances(instances_request)
             return resp
         except ApiException as e:
-            logging.error("Exception when calling VolCRedis.get_describe_db_instance: %s", e)
+            logging.error(f"火山云调用Redis实例列表异常 get_describe_db_instance: {self._account_id} -- {e}")
             return None
 
     def get_describe_db_instance_detail(self, instance_id: str) -> dict:
@@ -120,7 +120,7 @@ class VolCRedis:
             resp = self.api_instance.describe_db_instance_detail(instances_request)
             return resp
         except ApiException as e:
-            logging.error("Exception when calling VolCRedis.get_describe_db_instance_detail: %s", e)
+            logging.error(f"火山云调用Redis实例详情异常 get_describe_db_instance_detail: {self._account_id} -- {e}")
             return None
 
     def get_all_redis(self):
@@ -128,20 +128,22 @@ class VolCRedis:
         :return:
         """
         redis_list = []
-        self.page_number = 1
-        while True:
-            data = self.get_describe_db_instance()
-            if data is None:
-                break
+        try:
+            while True:
+                data = self.get_describe_db_instance()
+                if data is None:
+                    break
 
-            instances = data.instances
-            if not instances:
-                break
-            redis_list.extend([self.handle_data(data) for data in instances])
-            total_instances_num = data.total_instances_num
-            if total_instances_num < self.page_size:
-                break
-            self.page_number += 1
+                instances = data.instances
+                if not instances:
+                    break
+                redis_list.extend([self.handle_data(data) for data in instances])
+                total_instances_num = data.total_instances_num
+                if total_instances_num < self.page_size:
+                    break
+                self.page_number += 1
+        except Exception as e:
+            logging.error(f"火山云调用Redis异常 get_all_redis: {self._account_id} -- {e}")
 
         return redis_list
 
@@ -189,7 +191,7 @@ class VolCRedis:
 
 
         except Exception as err:
-            logging.error(f"火山云Redis  data format err {self._account_id} {err}")
+            logging.error(f"火山云Redis handle_data err {self._account_id} -- {err}")
 
         return res
 

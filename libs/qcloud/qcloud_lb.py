@@ -112,7 +112,7 @@ class QCloudLB:
             # yield all_lb_list
         return all_lb_list
 
-    def sync_cmdb(self, cloud_name: Optional[str] = 'qcloud', resource_type: Optional[str] = 'clb') -> \
+    def sync_cmdb(self, cloud_name: Optional[str] = 'qcloud', resource_type: Optional[str] = 'lb') -> \
             Tuple[bool, str]:
         """
         同步CMDB
