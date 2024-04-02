@@ -78,12 +78,12 @@ class VolCRDS:
             resp = self.api_instance.describe_db_instances(instances_request)
             return resp
         except ApiException as e:
-            logging.error("Exception when calling VolcRDS.get_describe_db_instance: %s", e)
+            logging.error(f"火山云调用RDSmysql实例列表异常 get_describe_db_instance: {self._account_id} -- {e}")
 
             return None
 
     def get_all_rds(self):
-        rds_list = []
+        rds = list()
         try:
             while True:
                data = self.get_describe_db_instance()
@@ -92,14 +92,14 @@ class VolCRDS:
                instances = data.instances
                if not instances:
                    break
-               rds_list.extend([self.handle_data(data) for data in instances])
+               rds.extend([self.handle_data(data) for data in instances])
                total = data.total
                if total < self.page_size:
                    break
                self.page_number += 1
         except Exception as err:
-            logging.error(f"火山云RDS  get all rds {self._account_id} {err}")
-        return rds_list
+            logging.error(f"火山云RDS调用异常 get_all_rds {self._account_id} {err}")
+        return rds
 
     def handle_data(self, data) -> Dict[str, Any]:
         """
@@ -162,10 +162,10 @@ class VolCRDS:
         :param resource_type:
         :return:
         """
-        all_rds_list: List[dict] = self.get_all_rds()
-        if not all_rds_list: return False, "RDS列表为空"
+        rds: List[dict] = self.get_all_rds()
+        if not rds: return False, "RDS列表为空"
         # 更新资源
-        ret_state, ret_msg = mysql_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_rds_list)
+        ret_state, ret_msg = mysql_task(account_id=self._account_id, cloud_name=cloud_name, rows=rds)
         # 标记过期
         mark_expired(resource_type=resource_type, account_id=self._account_id)
 

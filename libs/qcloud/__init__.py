@@ -34,7 +34,7 @@ mapping: Dict[str, dict] = {
         "obj": QCloudRedis
     },
     '负载均衡': {
-        "type": "clb",
+        "type": "lb",
         "obj": QCloudLB
     },
     '弹性IP': {

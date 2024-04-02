@@ -8,9 +8,9 @@ import logging
 from typing import *
 
 import volcenginesdkcore
-from tencentcloud.vpc.v20170312.models import Vpc
 from volcenginesdkcore.rest import ApiException
 from volcenginesdkvpc import VPCApi, DescribeVpcsRequest, DescribeVpcAttributesRequest
+
 from models.models_utils import vpc_task, mark_expired
 
 VPCStatusMapping = {
@@ -28,8 +28,8 @@ class VolCVPC:
         self._account_id = account_id
         self.api_instance = self.__initialize_api_instance(access_id, access_key, region)
 
-
-    def __initialize_api_instance(self, access_id: str, access_key: str, region: str):
+    @staticmethod
+    def __initialize_api_instance(access_id: str, access_key: str, region: str):
         """
         初始化api实例对象
         https://api.volcengine.com/api-sdk/view?serviceCode=vpc&version=2020-04-01&language=Python
@@ -58,7 +58,7 @@ class VolCVPC:
             resp = self.api_instance.describe_vpcs(instances_request)
             return resp
         except ApiException as e:
-            logging.error("Exception when calling VolCVPC.get_describe_vpc: %s", e)
+            logging.error(f"火山云调用虚拟网络列表异常 get_describe_vpc: {self._account_id} -- {e}")
 
             return None
 
@@ -73,7 +73,7 @@ class VolCVPC:
             resp = self.api_instance.describe_vpc_attributes(instances_request)
             return resp
         except ApiException as e:
-            logging.error("Exception when calling VolCVPC.get_describe_vpc_detail: %s", e)
+            logging.error(f"火山云调用虚拟网络详情异常 get_describe_vpc_detail: {self._account_id} -- {e}")
 
             return None
 
@@ -105,24 +105,27 @@ class VolCVPC:
 
         return res
 
-    def get_all_vpcs(self) -> List[Dict[str, Any]]:
+    def get_all_vpcs(self) -> Union[List[Dict[str, Any]], List]:
         """
         分页查询所有vpc
         :return:
         """
         vpcs = []
-        while True:
-            data = self.get_describe_vpc()
-            if data is None:
-                break
+        try:
+            while True:
+                data = self.get_describe_vpc()
+                if data is None:
+                    break
 
-            instances = data.vpcs
-            if not instances:
-                break
-            vpcs.extend([self.handle_data(data) for data in instances])
-            if data.total_count < self.page_size:
-                break
-            self.page_number += 1
+                instances = data.vpcs
+                if not instances:
+                    break
+                vpcs.extend([self.handle_data(data) for data in instances])
+                if data.total_count < self.page_size:
+                    break
+                self.page_number += 1
+        except Exception as e:
+            logging.error(f"火山云虚拟网络调用异常 get_all_vpcs： {self._account_id} -- {e}")
         return vpcs
 
 
@@ -133,7 +136,7 @@ class VolCVPC:
         :param resource_type:
         :return:
         """
-        vpcs: List[list, Any, None] = self.get_all_vpcs()
+        vpcs: Union[List[Dict[str, Any]], List] = self.get_all_vpcs()
 
         if not vpcs:  return False, "VPC列表为空"
         # 同步资源

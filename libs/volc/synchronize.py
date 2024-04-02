@@ -87,6 +87,5 @@ def main(account_id: Optional[str] = None, resources: List[str] = None):
             sync, sync_mapping.values()
         )
 
-
 if __name__ == '__main__':
-    pass
+    main()

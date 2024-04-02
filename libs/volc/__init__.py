@@ -7,6 +7,8 @@ from libs.volc.volc_redis import VolCRedis
 from libs.volc.volc_rds import VolCRDS
 from libs.volc.volc_clb import VolCCLB
 from libs.volc.volc_vpc import VolCVPC
+from libs.volc.volc_vswitch import VolCSubnet
+from libs.volc.volc_security_group import VolCSecurityGroup
 
 # 用来标记这是火山云的作业
 DEFAULT_CLOUD_NAME = 'volc'
@@ -32,5 +34,13 @@ mapping: Dict[str, dict] = {
     '虚拟局域网': {
         "type": "vpc",
         "obj": VolCVPC
+    },
+    '虚拟子网': {
+        "type": "vswitch",
+        "obj": VolCSubnet
+    },
+    '安全组': {
+        "type": "security_group",
+        "obj": VolCSecurityGroup
     },
 }
