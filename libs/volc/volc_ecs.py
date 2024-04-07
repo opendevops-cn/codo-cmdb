@@ -9,10 +9,14 @@ Desc   :  火山云ECS主机自动发现
 import json
 import logging
 from typing import *
-from models.models_utils import server_task, mark_expired
+
 import volcenginesdkcore
 from volcenginesdkcore.rest import ApiException
 from volcenginesdkecs import ECSApi, DescribeInstancesRequest
+from volcenginesdkvpc import DescribeNetworkInterfaceAttributesRequest
+
+from models.models_utils import server_task, mark_expired
+from libs.volc.volc_vpc import VolCVPC
 
 
 def get_run_type(val):
@@ -39,13 +43,17 @@ def get_pay_type(val):
 
 
 class VolCECS:
-    def __init__(self, access_id: str, access_key: str, region: str, account_id: str):
+    def __init__(self, access_id: str, access_key: str, region: str,
+                 account_id: str):
         self.cloud_name = 'volc'
         self.page_number = 1  # 实例状态列表的页码。起始值：1 默认值：1
         self.page_size = 100  # 分页查询时设置的每页行数。最大值：100 默认值：10
         self._region = region
         self._account_id = account_id
-        self.api_instance = self.initialize_api_instance(access_id, access_key, region)
+        self._access_id = access_id
+        self._access_key = access_key
+        self.api_instance = self.initialize_api_instance(access_id, access_key,
+                                                         region)
 
     @staticmethod
     def initialize_api_instance(access_id, access_key, region):
@@ -67,6 +75,25 @@ class VolCECS:
             logging.error(f"火山云云服务器调用异常.describe_instances: {self._account_id} -- {e}")
             return None
 
+    def get_describe_network_interface_detail(self, network_interface_id: str):
+        """
+        查询网卡详细信息
+        Doc: https://api.volcengine.com/api-docs/view?serviceCode=vpc&version=2020-04-01&action=DescribeNetworkInterfaceAttributes
+        :return:
+        """
+        try:
+            instance_request = DescribeNetworkInterfaceAttributesRequest(
+                network_interface_id=network_interface_id)
+            resp = VolCVPC(
+                access_id=self._access_id, access_key=self._access_key,
+                region=self._region,
+                account_id=self._account_id).api_instance.describe_network_interface_attributes(
+                instance_request)
+            return resp
+        except ApiException as e:
+            logging.error(f"火山云网卡详情调用异常.get_describe_network_interface_detail: {self._account_id} -- {e}")
+            return None
+
     def get_all_ecs(self):
         ecs_list = []
         next_token = ''
@@ -85,37 +112,6 @@ class VolCECS:
 
         return ecs_list
 
-    # def get_describe_info(self, next_token):
-    #
-    #     try:
-    #         instances_request = volcenginesdkecs.DescribeInstancesRequest()
-    #         if next_token:
-    #             instances_request.next_token = next_token
-    #         instances_request.max_results = self.page_size
-    #         resp = self.api_instance.describe_instances(instances_request)
-    #         return resp
-    #     except ApiException as e:
-    #         logging.error("Exception when calling api: %s\n" % e)
-    #     return []
-    #
-    # def get_all_ecs(self):
-    #     ecs_list = []
-    #     next_token = None
-    #     try:
-    #         while True:
-    #             data = self.get_describe_info(next_token)
-    #             next_token = data.next_token
-    #             logging.error(f"{data.instances}{next_token}")
-    #             if not data or not data.instances or not next_token:
-    #                 break
-    #
-    #             ecs_list.extend(map(self.format_data, data.instances))
-    #         return ecs_list
-    #     except Exception as err:
-    #         logging.debug(f"火山云ECS  get all ecs{self._account_id} {err}")
-    #         return ecs_list
-    #         # yield map(self.format_data, list(data.instances))
-
     def format_data(self, data) -> Dict[str, str]:
         """
         处理数据
@@ -123,7 +119,7 @@ class VolCECS:
         :return:
         """
         # 定义返回
-        res: Dict[str, str] = dict()
+        res: Dict[str, Any] = dict()
         try:
             network_interface = data.network_interfaces[0]
             vpc_id = data.vpc_id
@@ -152,28 +148,27 @@ class VolCECS:
             res['region'] = self._region
             res['zone'] = data.zone_id
             res['description'] = data.description
-            # res['security_group_ids'] = data.SecurityGroupIds
+
+            items = list()
+            res['security_group_ids'] = list()
+            network_interfaces = data.network_interfaces
+            for network_interface in network_interfaces:
+                network_interface_id = network_interface.network_interface_id
+                detail = self.get_describe_network_interface_detail(network_interface_id)
+                if detail is not None:
+                    security_group_ids = detail.security_group_ids
+                    items.extend(security_group_ids)
+
+
+            res['security_group_ids'] = items
 
         except Exception as err:
             logging.error(f"火山云ECS   data format err {self._account_id} {err}")
 
-        # 系统盘和数据盘
-        # try:
-        #     # system_disk = data.SystemDisk
-        #     # print('系统盘', system_disk, type(system_disk))
-        #     res['system_disk'] = data.SystemDisk.DiskSize  # 系统盘只有一块
-        # except (IndexError, KeyError, TypeError):
-        #     res['system_disk'] = ""
-        #
-        # try:
-        #     # print('数据盘', data.DataDisks, type(data.DataDisks))
-        #     res['data_disk'] = data.DataDisks[0].DiskSize
-        # except (IndexError, KeyError, TypeError):
-        #     res['data_disk'] = ""
-
         return res
 
-    def sync_cmdb(self, cloud_name: Optional[str] = 'volc', resource_type: Optional[str] = 'server') -> Tuple[
+    def sync_cmdb(self, cloud_name: Optional[str] = 'volc',
+                  resource_type: Optional[str] = 'server') -> Tuple[
         bool, str]:
         """
         资产信息更新到DB
@@ -183,7 +178,9 @@ class VolCECS:
         if not all_ecs_list:
             return False, "ECS列表为空"
         # 更新资源
-        ret_state, ret_msg = server_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_ecs_list)
+        ret_state, ret_msg = server_task(account_id=self._account_id,
+                                         cloud_name=cloud_name,
+                                         rows=all_ecs_list)
         # 标记过期
         mark_expired(resource_type=resource_type, account_id=self._account_id)
 
