@@ -20,6 +20,7 @@ SecurityGroupTypeMapping = {
     "NatGW": "Nat网关"
 }
 
+
 class VolCSecurityGroup(VolCVPC):
 
     def get_describe_security_group(self):
@@ -73,12 +74,12 @@ class VolCSecurityGroup(VolCVPC):
                 item = dict()
                 item['security_group_id'] = detail.security_group_id
                 item['ip_protocol'] = permission.protocol
-                item['source_cidr_ip'] = permission.cidr_ip if permission.direction == "ingress" else "" # 入方向规则设置源地址
+                item['source_cidr_ip'] = permission.cidr_ip if permission.direction == "ingress" else ""  # 入方向规则设置源地址
                 item['source_group_name'] = ''
                 item['dest_group_name'] = ''
                 item['ipv6_source_cidr_ip'] = ''
-                item['dest_cidr_ip'] = permission.cidr_ip if permission.direction == "egress" else "" # 出方向规则设置目标地址
-                item['ipv6_dest_cidr_ip'] =''
+                item['dest_cidr_ip'] = permission.cidr_ip if permission.direction == "egress" else ""  # 出方向规则设置目标地址
+                item['ipv6_dest_cidr_ip'] = ''
                 item['policy'] = permission.policy
                 item['port_range'] = ''
                 item['port_start'] = permission.port_start
@@ -110,7 +111,8 @@ class VolCSecurityGroup(VolCVPC):
             logging.error(f"火山云安全组调用异常 get_all_security_group: {self._account_id} -- {e}")
         return security_groups
 
-    def sync_cmdb(self, cloud_name: Optional[str] = 'volc', resource_type: Optional[str] = 'security_group') -> Tuple[bool, str]:
+    def sync_cmdb(self, cloud_name: Optional[str] = 'volc', resource_type: Optional[str] = 'security_group') -> Tuple[
+        bool, str]:
         """
         同步CMDB
         :param cloud_name:
