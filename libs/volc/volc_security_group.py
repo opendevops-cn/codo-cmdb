@@ -20,6 +20,21 @@ SecurityGroupTypeMapping = {
     "NatGW": "Nat网关"
 }
 
+def get_port_range(port_start: str, port_end: str) -> str:
+    """
+    火山云安全组端口范围
+    :param port_start:
+    :param port_end:
+    :return:
+    """
+    if port_start != port_end:
+        return f"{port_start}-{port_end}"
+    else:
+        if port_start == port_end == -1:
+            return "ALL"
+        else:
+            return port_start
+
 
 class VolCSecurityGroup(VolCVPC):
 
@@ -64,6 +79,7 @@ class VolCSecurityGroup(VolCVPC):
         res['region'] = self._region
         res['create_time'] = data.creation_time
         res['security_group_type'] = SecurityGroupTypeMapping.get(data.type, "Unknown")
+        res['ref_info'] = dict(items=[])
 
         # 安全组权限
         detail = self.get_describe_security_group_detail(instance_id)
@@ -81,7 +97,7 @@ class VolCSecurityGroup(VolCVPC):
                 item['dest_cidr_ip'] = permission.cidr_ip if permission.direction == "egress" else ""  # 出方向规则设置目标地址
                 item['ipv6_dest_cidr_ip'] = ''
                 item['policy'] = permission.policy
-                item['port_range'] = ''
+                item['port_range'] = get_port_range(permission.port_start, permission.port_end)
                 item['port_start'] = permission.port_start
                 item['port_end'] = permission.port_end
                 item['description'] = permission.description
