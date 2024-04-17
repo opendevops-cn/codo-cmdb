@@ -10,7 +10,7 @@ from google.oauth2 import service_account
 from google.cloud import redis_v1
 
 from models.models_utils import redis_task, mark_expired
-from libs.gcp.gcp_vpc import GCPVpc
+from libs.gcp.gcp_vpc import GCPVPC
 
 StateMapping = {
     "CREATING": "创建中",
@@ -68,7 +68,7 @@ class GCPRedis:
         """
         获取vpc
         """
-        vpc_client = GCPVpc(project_id=self.project_id, region=self._region,
+        vpc_client = GCPVPC(project_id=self.project_id, region=self._region,
                             account_path=self.account_path,
                             account_id=self._account_id)
         return vpc_client.get_vpc(project=self.project_id, network=network)
