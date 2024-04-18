@@ -2,7 +2,6 @@
 # @Author: Dongdong Liu
 # @Date: 2024/4/16
 # @Description: 谷歌云防火墙
-
 from typing import *
 import logging
 
@@ -51,7 +50,7 @@ class GCPSecurityGroup:
         """
         res: Dict[str, Any] = dict()
         res['instance_id'] = data.id
-        res['vpc_id'] = ''
+        res['network'] = data.network.split('/')[-1]
         res['security_group_name'] = data.name
         res['description'] = data.description
         res['region'] = ''

@@ -11,7 +11,6 @@ from typing import *
 from google.oauth2 import service_account
 from google.cloud import compute_v1
 
-from libs.gcp.gcp_vpc import GCPVPC
 from models.models_utils import vswitch_task, mark_expired
 
 
@@ -54,10 +53,11 @@ class GCPSubnet:
         """
         获取vpc
         """
-        vpc_client = GCPVPC(project_id=self.project_id, region=self._region,
-                            account_path=self.account_path,
-                            account_id=self._account_id)
-        return vpc_client.get_vpc(project=self.project_id, network=network)
+        client = compute_v1.NetworksClient(
+            credentials=self.__credentials)
+        request = compute_v1.GetNetworkRequest(network=network, project=self.project_id)
+        response = client.get(request=request)
+        return response
 
     def handle_data(self, data) -> Dict[str, Any]:
         """
