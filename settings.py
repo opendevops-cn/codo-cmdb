@@ -14,7 +14,7 @@ ROOT_DIR = os.path.dirname(__file__)
 debug = True
 xsrf_cookies = False
 expire_seconds = 365 * 24 * 60 * 60
-cookie_secret = 'Vo=zmZdtmAhRT4RMMn755G'
+cookie_secret = os.getenv('DEFAULT_COOKIE_SECRET', '61oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2X6TP1o/Vo=')
 
 # 这是写库，
 DEFAULT_DB_DBHOST = os.getenv('DEFAULT_DB_DBHOST', '')  # 修改
@@ -45,8 +45,8 @@ DEFAULT_CONSUL_TOKEN = os.getenv('DEFAULT_CONSUL_TOKEN', None)  # 修改
 DEFAULT_CONSUL_SCHEME = os.getenv('DEFAULT_CONSUL_SCHEME', 'http')  # 修改
 
 # 和其他系统交互使用
-api_gw = ""
-settings_auth_key = ""
+api_gw = os.getenv('CODO_API_GW', "")  # 网关
+settings_auth_key = os.getenv('CODO_AUTH_KEY', "")  # 服务之间认证token
 # 资产变更通知webhook
 asset_change_notify = {}
 
