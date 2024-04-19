@@ -19,10 +19,16 @@ StateMapping = {
     "MAINTENANCE": "维护中",
     "READY": "运行中",
     "REPAIRING": "删除中",
-    "STATE_UNSPECIFIED": "未知",
+    "STATE_UNSPECIFIED": "未设置",
     "UPDATING": "更新中",
 }
 
+# https://cloud.google.com/memorystore/docs/redis/reference/rest/v1/projects.locations.instances?hl=zh-cn#Instance
+TierMapping = {
+    "TIER_UNSPECIFIED": "未设置",
+    "BASIC": "基本版",
+    "STANDARD_HA": "标准版"
+}
 
 class GCPRedis:
 
@@ -91,10 +97,10 @@ class GCPRedis:
         res['qps'] = ''
         res['name'] = data.display_name
         res['instance_class'] = f'{data.memory_size_gb * 1024}MB'
-        res['instance_arch'] = ''
+        res['instance_arch'] = TierMapping.get(data.tier.name, "未知")
         res['instance_type'] = 'Redis'
         res['instance_version'] = '.'.join(data.redis_version.split('_')[1::])
-        res['state'] = StateMapping.get(data.state.name, 'Unknown')
+        res['state'] = StateMapping.get(data.state.name, '未知')
         res['network_type'] = '专有网络'
         res['instance_address'] = {
             "items": [
