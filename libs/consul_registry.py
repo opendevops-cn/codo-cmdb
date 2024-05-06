@@ -29,7 +29,7 @@ if configs.can_import: configs.import_dict(**settings)
 def deco(cls, release=False):
     def _deco(func):
         def __deco(*args, **kwargs):
-            if not cls.get_lock(cls, key_timeout=120, func_timeout=60): return False
+            if not cls.get_lock(cls, key_timeout=180, func_timeout=120): return False
             try:
                 return func(*args, **kwargs)
             finally:
@@ -97,7 +97,7 @@ class ConsulOpt(object):
         self.consul_api_url = f"{scheme}://{consul_host}:{consul_port}"
         self.headers = {'X-Consul-Token': token}
 
-        self._consul = consul.Consul(consul_host, consul_port, scheme=scheme, token=token, timeout=10)
+        self._consul = consul.Consul(consul_host, consul_port, scheme=scheme, token=token, timeout=20)
 
     def register_service(self, name, service_id, host, port, tags, meta, check=None):
         tags = tags or []
