@@ -29,7 +29,7 @@ class Application(myApplication, ABC):
         biz_callback = PeriodicCallback(async_biz_info, 360000)  # 360000 6分钟
         biz_callback.start()
         # 同步consul 信息
-        consul_callback = PeriodicCallback(async_consul_info, 120000)  # 120000 2分钟
+        consul_callback = PeriodicCallback(async_consul_info, 180000)  # 180000 3分钟
         consul_callback.start()
         # 同步agent 状态信息
         agent_callback = PeriodicCallback(async_agent, 180000)  # 180000 3分钟
