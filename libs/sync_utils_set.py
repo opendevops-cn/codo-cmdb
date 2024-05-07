@@ -27,9 +27,6 @@ from models.cloud import SyncLogModels
 
 if configs.can_import: configs.import_dict(**settings)
 
-# 实例化client
-client = AcsClient()
-
 
 def deco(cls, release=False, **kw):
     def _deco(func):
@@ -53,6 +50,8 @@ def biz_sync():
         logging.info(f'开始从权限中心同步业务信息到配置平台')
         get_mg_biz = dict(method='GET', url=f'/api/p/v4/biz/', description='获取租户数据')
         try:
+            # 实例化client
+            client = AcsClient()
             response = client.do_action(**get_mg_biz)
             all_biz_list = json.loads(response).get('data')
             biz_info_map = {}
@@ -88,6 +87,8 @@ def sync_agent_status():
     @deco(RedisLock("async_agent_status_redis_lock_key"))
     def index():
         logging.info(f'开始同步agent状态到配置平台')
+        # 实例化client
+        client = AcsClient()
         get_agent_list = dict(method='GET', url=f'/api/agent/v1/agent/info', description='获取Agent List')
         res = client.do_action_v2(**get_agent_list)
         if res.status_code != 200:
