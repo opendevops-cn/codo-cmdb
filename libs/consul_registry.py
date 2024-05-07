@@ -97,7 +97,7 @@ class ConsulOpt(object):
         self.consul_api_url = f"{scheme}://{consul_host}:{consul_port}"
         self.headers = {'X-Consul-Token': token}
 
-        self._consul = consul.Consul(consul_host, consul_port, scheme=scheme, cert=token, verify=False, timeout=15)
+        self._consul = consul.Consul(host=consul_host, port=consul_port, token=token, scheme=scheme, timeout=15)
 
     def register_service(self, name, service_id, host, port, tags, meta, check=None):
         tags = tags or []
