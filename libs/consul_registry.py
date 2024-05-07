@@ -13,8 +13,6 @@ import logging
 import consul
 import requests
 from settings import settings
-from models.tree import TreeAssetModels
-from models import asset_mapping
 from concurrent.futures import ThreadPoolExecutor
 from websdk2.consts import const
 from websdk2.tools import RedisLock, convert
@@ -22,6 +20,8 @@ from websdk2.configs import configs
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import model_to_dict
 from websdk2.cache_context import cache_conn
+from models.tree import TreeAssetModels
+from models import asset_mapping
 
 if configs.can_import: configs.import_dict(**settings)
 
@@ -97,7 +97,7 @@ class ConsulOpt(object):
         self.consul_api_url = f"{scheme}://{consul_host}:{consul_port}"
         self.headers = {'X-Consul-Token': token}
 
-        self._consul = consul.Consul(consul_host, consul_port, scheme=scheme, token=token, timeout=20)
+        self._consul = consul.Consul(consul_host, consul_port, scheme=scheme, token=token, verify=False, timeout=20)
 
     def register_service(self, name, service_id, host, port, tags, meta, check=None):
         tags = tags or []
