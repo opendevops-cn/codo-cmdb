@@ -42,9 +42,9 @@ class AssetServerModels(AssetBaseModel):
     agent_info = Column('agent_info', JSON(), comment='agent上报信息字段存JSON', default={})
     is_product = Column("is_product", Integer, default=0, comment="标记是否上线", index=True)
     # 联合键约束 2023年5月23日 添加关机支持
-    __table_args__ = (
-        UniqueConstraint('region', 'inner_ip', 'state', 'is_expired', name='host_key'),
-    )
+    # __table_args__ = (
+    #     UniqueConstraint('region', 'inner_ip', 'state', 'is_expired', name='host_key'),
+    # )
 
 
 class AssetImagesModels(AssetBaseModel):

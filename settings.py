@@ -50,6 +50,11 @@ settings_auth_key = os.getenv('CODO_AUTH_KEY', "")  # 服务之间认证token
 # 资产变更通知webhook
 asset_change_notify = {}
 
+# JumpServer配置
+JUMP_SERVER_API_BASE_URL = os.getenv('JUMP_SERVER_API_BASE_UR','http://10.0.172.181:8003')
+JUMP_SERVER_API_KEY_ID = os.getenv('JUMP_SERVER_API_KEY_ID', 'b845da26-1292-491d-ae27-584c409f8f75')
+JUMP_SERVER_API_SECRET = os.getenv('JUMP_SERVER_API_SECRET', 'CCKqr2DY7dH2AtrI3BMAKuS23FI2GnykK2bO')
+
 try:
     from local_settings import *
 except ImportError:

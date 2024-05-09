@@ -97,3 +97,21 @@ class DynamicRulesModels(TimeBaseModel):
     __table_args__ = (
         # UniqueConstraint('biz_id', 'dynamic_group_name', name='biz_id_and_name_unique'),
     )
+
+
+class PermissionGroupModels(BizBaseModel):
+    __tablename__ = 't_permission_group'  # 业务权限分组
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    exec_uuid = Column('exec_uuid', String(100), index=True, comment='查询ID')
+    perm_group_name = Column('perm_group_name', String(80), nullable=True, comment='名称')
+    perm_type = Column('perm_type', String(20), default='dev', nullable=True, comment='权限类型')
+    user_group = Column('user_group', String(80), comment='用户组')
+    env_name = Column('env_name', String(128), comment='环境/大区')
+    region_name = Column('region_name', String(500), comment='区服/集群/机房')
+    module_name = Column('module_name', String(500), comment='模块/服务/机架/机柜')
+
+    perm_group_detail = Column('perm_group_detail', String(255), comment='备注')
+    modify_user = Column('modify_user', String(128), nullable=True, comment='修改人')
+
+    # 联合键约束 (业务ID+名称必须是唯一的)
+    __table_args__ = ()

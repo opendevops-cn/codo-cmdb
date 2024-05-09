@@ -28,6 +28,7 @@ from models import asset_mapping as mapping
 class TreeHandler(BaseHandler, ABC):
     def get(self):
         res = get_tree_by_api(**self.params)
+        print(res)
         return self.write(res)
 
     def post(self):
