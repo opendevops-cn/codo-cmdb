@@ -13,8 +13,6 @@ import logging
 import consul
 import requests
 from settings import settings
-from models.tree import TreeAssetModels
-from models import asset_mapping
 from concurrent.futures import ThreadPoolExecutor
 from websdk2.consts import const
 from websdk2.tools import RedisLock, convert
@@ -22,6 +20,8 @@ from websdk2.configs import configs
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import model_to_dict
 from websdk2.cache_context import cache_conn
+from models.tree import TreeAssetModels
+from models import asset_mapping
 
 if configs.can_import: configs.import_dict(**settings)
 
@@ -29,7 +29,7 @@ if configs.can_import: configs.import_dict(**settings)
 def deco(cls, release=False):
     def _deco(func):
         def __deco(*args, **kwargs):
-            if not cls.get_lock(cls, key_timeout=120, func_timeout=60): return False
+            if not cls.get_lock(cls, key_timeout=120, func_timeout=90): return False
             try:
                 return func(*args, **kwargs)
             finally:
@@ -42,7 +42,7 @@ def deco(cls, release=False):
 
 
 def sync_consul():
-    @deco(RedisLock("sync_to_consul_lock_key"))
+    @deco(RedisLock("async_asset_to_consul_lock_key"))
     def index():
         logging.info(f'同步数据到consul开始 ！！！')
         c = ConsulOpt()
@@ -97,7 +97,7 @@ class ConsulOpt(object):
         self.consul_api_url = f"{scheme}://{consul_host}:{consul_port}"
         self.headers = {'X-Consul-Token': token}
 
-        self._consul = consul.Consul(consul_host, consul_port, scheme=scheme, token=token, timeout=10)
+        self._consul = consul.Consul(host=consul_host, port=consul_port, token=token, scheme=scheme, timeout=15)
 
     def register_service(self, name, service_id, host, port, tags, meta, check=None):
         tags = tags or []

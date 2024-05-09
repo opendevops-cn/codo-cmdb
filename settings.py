@@ -21,14 +21,14 @@ DEFAULT_DB_DBHOST = os.getenv('DEFAULT_DB_DBHOST', '')  # 修改
 DEFAULT_DB_DBPORT = os.getenv('DEFAULT_DB_DBPORT', '3306')  # 修改
 DEFAULT_DB_DBUSER = os.getenv('DEFAULT_DB_DBUSER', 'root')  # 修改
 DEFAULT_DB_DBPWD = os.getenv('DEFAULT_DB_DBPWD', '')  # 修改
-DEFAULT_DB_DBNAME = os.getenv('DEFAULT_DB_DBNAME', 'codo_cmdb')  # 默认
+DEFAULT_DB_DBNAME = os.getenv('DEFAULT_DB_DBNAME', 'codo-cmdb')  # 默认
 
 # 这是从库，读， 一般情况下是一个数据库即可，需要主从读写分离的，请自行建立好服务
 READONLY_DB_DBHOST = os.getenv('READONLY_DB_DBHOST', '')  # 修改
 READONLY_DB_DBPORT = os.getenv('READONLY_DB_DBPORT', '3306')  # 修改
 READONLY_DB_DBUSER = os.getenv('READONLY_DB_DBUSER', 'root')  # 修改
 READONLY_DB_DBPWD = os.getenv('READONLY_DB_DBPWD', '')  # 修改
-READONLY_DB_DBNAME = os.getenv('READONLY_DB_DBNAME', 'codo_cmdb')  # 默认
+READONLY_DB_DBNAME = os.getenv('READONLY_DB_DBNAME', 'codo-cmdb')  # 默认
 
 # 这是Redis配置信息，默认情况下和codo-admin里面的配置一致
 DEFAULT_REDIS_HOST = os.getenv('DEFAULT_REDIS_HOST', 'localhost')  # 修改
