@@ -14,7 +14,8 @@ from websdk2.application import Application as myApplication
 from libs.scheduler import scheduler, init_scheduler
 from cmdb.handlers import urls
 from domain.handlers import urls as domain_urls
-from libs.sync_utils_set import async_biz_info, async_agent
+from libs.sync_utils_set import async_biz_info, async_agent, sync_service_trees,\
+    sync_user_info, sync_perm_groups
 from domain.cloud_domain import async_domain_info
 from libs.consul_registry import async_consul_info
 from cmp.tasks import async_order_status
@@ -29,7 +30,7 @@ class Application(myApplication, ABC):
         biz_callback = PeriodicCallback(async_biz_info, 360000)  # 360000 6分钟
         biz_callback.start()
         # 同步consul 信息
-        consul_callback = PeriodicCallback(async_consul_info, 160000)  # 160000
+        consul_callback = PeriodicCallback(async_consul_info, 120000)  # 120000 2分钟
         consul_callback.start()
         # 同步agent 状态信息
         agent_callback = PeriodicCallback(async_agent, 180000)  # 180000 3分钟
@@ -40,7 +41,15 @@ class Application(myApplication, ABC):
         # 资源订单状态
         biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒
         biz_callback.start()
-
+        # 同步用户到jms
+        user_callback = PeriodicCallback(sync_user_info, 300000) # 5分钟
+        user_callback.start()
+        # 同步服务树
+        service_tree_callback = PeriodicCallback(sync_service_trees, 300000) # 5分钟
+        service_tree_callback.start()
+        # 同步权限组
+        perm_group_callback = PeriodicCallback(sync_perm_groups, 300000) # 5分钟
+        perm_group_callback.start()
         urls.extend(domain_urls)
         urls.extend(order_urls)
         # self.settings = settings
