@@ -9,15 +9,15 @@ import logging
 import requests
 from httpsig import requests_auth
 
-import settings
+from settings import settings as app_settings
 
 
 class JumpServerBaseAPI:
 
     def __init__(self, timeout=30):
-        self.base_url = settings.JUMP_SERVER_API_BASE_URL
-        self.key_id = settings.JUMP_SERVER_API_KEY_ID
-        self.secret = settings.JUMP_SERVER_API_SECRET
+        self.base_url = app_settings['jms']['JMS_API_BASE_URL']
+        self.key_id = app_settings['jms']['JMS_API_KEY_ID']
+        self.secret = app_settings['jms']['JMS_API_SECRET']
         self.timeout = timeout
 
     @property
