@@ -7,8 +7,8 @@
 import json
 from abc import ABC
 from libs.base_handler import BaseHandler
-from services.perm_group_service import add_perm_group_for_api, opt_obj, \
-    get_perm_group_list_for_api, preview_perm_group_for_api, update_perm_group_for_api
+from services.perm_group_service import (add_perm_group_for_api, opt_obj, get_perm_group_list_for_api,
+                                         preview_perm_group_for_api, update_perm_group_for_api)
 
 
 class PermGroupHandler(BaseHandler, ABC):

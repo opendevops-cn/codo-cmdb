@@ -77,7 +77,8 @@ def get_perm_group_list_for_api(**params) -> dict:
 
     if 'page_size' not in params: params['page_size'] = 300  # 默认获取到全部数据
     with DBContext('r') as session:
-        page = paginate(session.query(PermissionGroupModels).filter(_get_value(value)).filter_by(**filter_map), **params)
+        page = paginate(session.query(PermissionGroupModels).filter(_get_value(value)).filter_by(**filter_map),
+                        **params)
 
     return dict(msg='获取成功', code=0, data=page.items, count=page.total)
 

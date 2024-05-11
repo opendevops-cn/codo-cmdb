@@ -14,8 +14,7 @@ class RoleHandler(BaseHandler, ABC):
     def get(self):
         client = AcsClient()
         try:
-            response = client.do_action(
-                **api_set.get_normal_role_list)
+            response = client.do_action(**api_set.get_normal_role_list)
         except Exception as err:
             return self.write(dict(code=-1, msg="请求失败", data=[]))
 
