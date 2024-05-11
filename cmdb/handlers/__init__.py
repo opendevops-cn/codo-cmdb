@@ -19,6 +19,8 @@ from cmdb.handlers.tree_handler import tree_urls
 from cmdb.handlers.tag_handler import tag_urls
 from cmdb.handlers.cloud_region_handler import cloud_region_urls
 from cmdb.handlers.consul_handler import consul_urls
+from cmdb.handlers.role_handler import role_urls
+from cmdb.handlers.perm_group_handler import perm_group_urls
 
 urls = []
 urls.extend(biz_urls)
@@ -39,4 +41,6 @@ urls.extend(tag_urls)
 urls.extend(tree_urls)
 urls.extend(cloud_region_urls)
 urls.extend(consul_urls)
+urls.extend(role_urls)
+urls.extend(perm_group_urls)
 
