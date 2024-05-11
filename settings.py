@@ -14,7 +14,8 @@ ROOT_DIR = os.path.dirname(__file__)
 debug = True
 xsrf_cookies = False
 expire_seconds = 365 * 24 * 60 * 60
-cookie_secret = os.getenv('DEFAULT_COOKIE_SECRET', '61oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2X6TP1o/Vo=')
+cookie_secret = os.getenv('DEFAULT_COOKIE_SECRET',
+                          '61oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2X6TP1o/Vo=')
 
 # 这是写库，
 DEFAULT_DB_DBHOST = os.getenv('DEFAULT_DB_DBHOST', '')  # 修改
@@ -51,9 +52,12 @@ settings_auth_key = os.getenv('CODO_AUTH_KEY', "")  # 服务之间认证token
 asset_change_notify = {}
 
 # JumpServer配置
-JUMP_SERVER_API_BASE_URL = os.getenv('JUMP_SERVER_API_BASE_UR','http://10.0.172.181:8003')
-JUMP_SERVER_API_KEY_ID = os.getenv('JUMP_SERVER_API_KEY_ID', 'b845da26-1292-491d-ae27-584c409f8f75')
-JUMP_SERVER_API_SECRET = os.getenv('JUMP_SERVER_API_SECRET', 'CCKqr2DY7dH2AtrI3BMAKuS23FI2GnykK2bO')
+JMS_API_BASE_URL = os.getenv('JMS_API_BASE_URL',
+                             'http://10.0.172.181:8003')
+JMS_API_KEY_ID = os.getenv('JMS_API_KEY_ID',
+                           'b845da26-1292-491d-ae27-584c409f8f75')
+JMS_API_KEY_SECRET = os.getenv('JMS_API_KEY_SECRET',
+                               'CCKqr2DY7dH2AtrI3BMAKuS23FI2GnykK2bO')
 
 try:
     from local_settings import *
@@ -101,6 +105,13 @@ settings = dict(
             const.CONSUL_PORT_KEY: DEFAULT_CONSUL_PORT,
             const.CONSUL_TOKEN_KEY: DEFAULT_CONSUL_TOKEN,
             const.CONSUL_SCHEME_KEY: DEFAULT_CONSUL_SCHEME
+        }
+    },
+    jmss={
+        const.DEFAULT_JMS_KEY: {
+            const.JMS_API_BASE_URL: JMS_API_BASE_URL,
+            const.JMS_API_KEY_ID: JMS_API_KEY_ID,
+            const.JMS_API_KEY_SECRET: JMS_API_KEY_SECRET
         }
     }
 )

@@ -8,6 +8,7 @@ import logging
 
 import requests
 from httpsig import requests_auth
+from websdk2.consts import const
 
 from settings import settings as app_settings
 
@@ -15,9 +16,10 @@ from settings import settings as app_settings
 class JumpServerBaseAPI:
 
     def __init__(self, timeout=30):
-        self.base_url = app_settings['jms']['JMS_API_BASE_URL']
-        self.key_id = app_settings['jms']['JMS_API_KEY_ID']
-        self.secret = app_settings['jms']['JMS_API_SECRET']
+        self.jmss_dict = app_settings[const.JMS_CONFIG_ITEM]
+        self.base_url = self.jmss_dict[const.DEFAULT_JMS_KEY][const.JMS_API_BASE_URL]
+        self.key_id = self.jmss_dict[const.DEFAULT_JMS_KEY][const.JMS_API_KEY_ID]
+        self.secret = self.jmss_dict[const.DEFAULT_JMS_KEY][const.JMS_API_KEY_SECRET]
         self.timeout = timeout
 
     @property
