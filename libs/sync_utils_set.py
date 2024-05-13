@@ -229,7 +229,7 @@ def user_groups_sync():
             return
         res = UserGroupAPI().create(name=name)
         if res:
-            logging.debug(f'同步用户组: {name} 到JumpServer成功')
+            logging.info(f'同步用户组: {name} 到JumpServer成功')
         else:
             logging.error(f'同步用户组: {name} 到JumpServer失败: {res}')
 
@@ -269,9 +269,10 @@ def user_group_members_sync():
                     logging.info(f'JumpServer没有该用户: {name}')
         else:
             logging.info(f'JumpServer没有该用户组: {user_group_name}')
+            return
         res = UserGroupAPI().update(name=user_group_name, users=user_ids)
         if res:
-            logging.debug(f'同步用户组成员: {user_group_name} 到JumpServer成功')
+            logging.info(f'同步用户组成员: {user_group_name} 到JumpServer成功')
         else:
             logging.error(
                 f'同步用户组成员: {user_group_name} 到JumpServer失败: {res}')
@@ -304,7 +305,7 @@ def perm_groups_sync(perm_group_id=None):
             return
         res = UserGroupAPI().create(name=name)
         if res:
-            logging.debug(f'同步权限组: {name} 到JumpServer成功')
+            logging.info(f'同步权限组: {name} 到JumpServer成功')
         else:
             logging.error(f'同步权限组: {name} 到JumpServer失败: {res}')
 
@@ -351,7 +352,7 @@ def perm_group_members_sync():
 
         res = UserGroupAPI().update(name=user_group_name, users=user_ids)
         if res:
-            logging.debug(f'同步权限组成员: {user_group_name} 到JumpServer成功')
+            logging.info(f'同步权限组成员: {user_group_name} 到JumpServer成功')
         else:
             logging.error(
                 f'同步权限组成员: {user_group_name} 到JumpServer失败: {res}')
@@ -398,13 +399,13 @@ def service_tree_sync(biz_id=None):
                 parent_name = full_name.rsplit('/', 1)[0]
                 jump_server_parent_node = AssetAPI().get(name=parent_name)
                 if not jump_server_parent_node:
-                    logging.debug(f'父节点不存在：{parent_name}')
+                    logging.error(f'父节点不存在：{parent_name}')
                     continue
                 parent_id = jump_server_parent_node[0]['id']
                 jump_server_node = AssetAPI().create(name=title,
                                                      parent_id=parent_id)
                 if jump_server_node:
-                    logging.debug(f'节点创建成功：{full_name}')
+                    logging.info(f'节点创建成功：{full_name}')
             else:
                 logging.debug(f'节点已存在: {full_name}')
 
@@ -483,7 +484,7 @@ def service_tree_assets_sync(biz_id=None):
                                                            address=inner_ip,
                                                            nodes=[node_id])
                 if jump_server_asset:
-                    logging.debug(f"资产创建成功:{inner_ip} -- {name}")
+                    logging.info(f"资产创建成功:{inner_ip} -- {name}")
 
         else:
             logging.debug(f'资产已存在: {inner_ip} -- {name}')
@@ -523,15 +524,15 @@ def grant_perms_for_assets(perm_group_id=None):
                                                name=name, nodes=nodes_ids,
                                                user_groups=user_group_ids)
             if res:
-                logging.debug(f'资产授权更新成功: {name}')
+                logging.info(f'资产授权更新成功: {name}')
 
             return
         res = AssetPermissionsAPI().create(name=name, nodes=nodes_ids,
                                            user_groups=user_group_ids)
         if res:
-            logging.debug(f"资产授权成功:{name} -- {user_groups}")
+            logging.info(f"资产授权成功:{name} -- {user_groups}")
         else:
-            logging.debug(f"资产授权失败:{name} -- {user_groups}")
+            logging.error(f"资产授权失败:{name} -- {user_groups}")
 
     def _get_asset_nodes(biz_cn_name: str, env_name: str, region_name: str,
                          module_name: str, org_name='/Default/'):
@@ -631,6 +632,21 @@ def sync_perm_groups():
         grant_perms_for_assets()
 
     index()
+
+
+def async_user_info():
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(sync_user_info)
+
+
+def async_perm_groups():
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(sync_perm_groups)
+
+
+def async_service_trees():
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(sync_service_trees)
 
 
 if __name__ == '__main__':
