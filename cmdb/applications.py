@@ -14,8 +14,8 @@ from websdk2.application import Application as myApplication
 from libs.scheduler import scheduler, init_scheduler
 from cmdb.handlers import urls
 from domain.handlers import urls as domain_urls
-from libs.sync_utils_set import async_biz_info, async_agent, sync_service_trees,\
-    sync_user_info, sync_perm_groups
+from libs.sync_utils_set import async_biz_info, async_agent, async_service_trees,\
+    async_user_info, async_perm_groups
 from domain.cloud_domain import async_domain_info
 from libs.consul_registry import async_consul_info
 from cmp.tasks import async_order_status
@@ -42,13 +42,13 @@ class Application(myApplication, ABC):
         biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒
         biz_callback.start()
         # 同步用户到jms
-        user_callback = PeriodicCallback(sync_user_info, 300000) # 5分钟
+        user_callback = PeriodicCallback(async_user_info, 300000) # 5分钟
         user_callback.start()
         # 同步服务树
-        service_tree_callback = PeriodicCallback(sync_service_trees, 300000) # 5分钟
+        service_tree_callback = PeriodicCallback(async_service_trees, 300000) # 5分钟
         service_tree_callback.start()
         # 同步权限组
-        perm_group_callback = PeriodicCallback(sync_perm_groups, 300000) # 5分钟
+        perm_group_callback = PeriodicCallback(async_perm_groups, 300000) # 5分钟
         perm_group_callback.start()
         urls.extend(domain_urls)
         urls.extend(order_urls)
