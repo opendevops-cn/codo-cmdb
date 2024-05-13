@@ -187,16 +187,17 @@ def users_sync():
         user['name'] = user['nickname']
         is_exists = UserAPI().get(username=username)
         if is_exists:
-            logging.info(f'JumpServer用户{username}已存在')
+            logging.debug(f'JumpServer用户{username}已存在')
             return
         res = UserAPI().create(**user)
         if res:
-            logging.info(f'同步用户: {username} 到JumpServer成功')
+            logging.debug(f'同步用户: {username} 到JumpServer成功')
         else:
             logging.error(f'同步用户: {username} 到JumpServer失败: {res}')
 
     def index():
         logging.info(f'开始同步codo用户到JumpServer')
+        client = AcsClient()
         resp = client.do_action_v2(**api_set.get_users)
         if resp.status_code != 200:
             return
@@ -224,16 +225,17 @@ def user_groups_sync():
         name = user_role['role_name']
         is_exists = UserGroupAPI().get(name=name)
         if is_exists:
-            logging.info(f'JumpServer用户组{name}已存在')
+            logging.debug(f'JumpServer用户组{name}已存在')
             return
         res = UserGroupAPI().create(name=name)
         if res:
-            logging.info(f'同步用户组: {name} 到JumpServer成功')
+            logging.debug(f'同步用户组: {name} 到JumpServer成功')
         else:
             logging.error(f'同步用户组: {name} 到JumpServer失败: {res}')
 
     def index():
         logging.info("开始同步codo用户组到JumpServer")
+        client = AcsClient()
         resp = client.do_action_v2(**api_set.get_normal_role_list)
         if resp.status_code != 200:
             return
@@ -269,13 +271,14 @@ def user_group_members_sync():
             logging.info(f'JumpServer没有该用户组: {user_group_name}')
         res = UserGroupAPI().update(name=user_group_name, users=user_ids)
         if res:
-            logging.info(f'同步用户组成员: {user_group_name} 到JumpServer成功')
+            logging.debug(f'同步用户组成员: {user_group_name} 到JumpServer成功')
         else:
             logging.error(
                 f'同步用户组成员: {user_group_name} 到JumpServer失败: {res}')
 
     def index():
         logging.info("开始同步codo用户组到JumpServer")
+        client = AcsClient()
         resp = client.do_action_v2(**api_set.get_all_role_user_v4)
         if resp.status_code != 200:
             return
@@ -301,7 +304,7 @@ def perm_groups_sync(perm_group_id=None):
             return
         res = UserGroupAPI().create(name=name)
         if res:
-            logging.info(f'同步权限组: {name} 到JumpServer成功')
+            logging.debug(f'同步权限组: {name} 到JumpServer成功')
         else:
             logging.error(f'同步权限组: {name} 到JumpServer失败: {res}')
 
@@ -344,17 +347,18 @@ def perm_group_members_sync():
                 else:
                     logging.info(f'JumpServer没有该用户: {name}')
         else:
-            logging.info(f'JumpServer没有该权限组: {user_group_name}')
+            logging.debug(f'JumpServer没有该权限组: {user_group_name}')
 
         res = UserGroupAPI().update(name=user_group_name, users=user_ids)
         if res:
-            logging.info(f'同步权限组成员: {user_group_name} 到JumpServer成功')
+            logging.debug(f'同步权限组成员: {user_group_name} 到JumpServer成功')
         else:
             logging.error(
                 f'同步权限组成员: {user_group_name} 到JumpServer失败: {res}')
 
     def index():
         logging.info("开始同步codo权限组到JumpServer")
+        client = AcsClient()
         resp = client.do_action_v2(**api_set.get_all_role_user_v4)
         if resp.status_code != 200:
             return
@@ -394,15 +398,15 @@ def service_tree_sync(biz_id=None):
                 parent_name = full_name.rsplit('/', 1)[0]
                 jump_server_parent_node = AssetAPI().get(name=parent_name)
                 if not jump_server_parent_node:
-                    logging.info(f'父节点不存在：{parent_name}')
+                    logging.debug(f'父节点不存在：{parent_name}')
                     continue
                 parent_id = jump_server_parent_node[0]['id']
                 jump_server_node = AssetAPI().create(name=title,
                                                      parent_id=parent_id)
                 if jump_server_node:
-                    logging.info(f'节点创建成功：{full_name}')
+                    logging.debug(f'节点创建成功：{full_name}')
             else:
-                logging.info(f'节点已存在: {full_name}')
+                logging.debug(f'节点已存在: {full_name}')
 
             # 递归创建子节点
             _sync_main(children)
@@ -479,10 +483,10 @@ def service_tree_assets_sync(biz_id=None):
                                                            address=inner_ip,
                                                            nodes=[node_id])
                 if jump_server_asset:
-                    logging.info(f"资产创建成功:{inner_ip} -- {name}")
+                    logging.debug(f"资产创建成功:{inner_ip} -- {name}")
 
         else:
-            logging.info(f'资产已存在: {inner_ip} -- {name}')
+            logging.debug(f'资产已存在: {inner_ip} -- {name}')
 
     def index():
         logging.info("开始同步服务树主机资产到JumpServer")
@@ -514,20 +518,20 @@ def grant_perms_for_assets(perm_group_id=None):
                 user_group_ids.append(jump_server_user_group[0]['id'])
         is_exists = AssetPermissionsAPI().get(name=name)
         if is_exists:
-            logging.info(f'资产授权已存在: {name}, 执行更新操作')
+            logging.debug(f'资产授权已存在: {name}, 执行更新操作')
             res = AssetPermissionsAPI().update(assets_permissions_id=is_exists[0]['id'],
                                                name=name, nodes=nodes_ids,
                                                user_groups=user_group_ids)
             if res:
-                logging.info(f'资产授权更新成功: {name}')
+                logging.debug(f'资产授权更新成功: {name}')
 
             return
         res = AssetPermissionsAPI().create(name=name, nodes=nodes_ids,
                                            user_groups=user_group_ids)
         if res:
-            logging.info(f"资产授权成功:{name} -- {user_groups}")
+            logging.debug(f"资产授权成功:{name} -- {user_groups}")
         else:
-            logging.info(f"资产授权失败:{name} -- {user_groups}")
+            logging.debug(f"资产授权失败:{name} -- {user_groups}")
 
     def _get_asset_nodes(biz_cn_name: str, env_name: str, region_name: str,
                          module_name: str, org_name='/Default/'):
@@ -627,7 +631,6 @@ def sync_perm_groups():
         grant_perms_for_assets()
 
     index()
-
 
 
 if __name__ == '__main__':
