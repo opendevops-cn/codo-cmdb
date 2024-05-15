@@ -58,4 +58,6 @@ class JumpServerBaseAPI:
             return response.json()
         except requests.RequestException as e:
             logging.error(
-                f"请求JumpSever发生异常: {e}, url: {url}, method: {method}, response: {response.text}")
+                f"请求JumpSever发生异常: {e}, url: {url}, params:{params}, data:{data}, method: {method},"
+                f" response: {response.text}")
+            return

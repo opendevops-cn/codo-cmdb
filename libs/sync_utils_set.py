@@ -11,6 +11,8 @@ Desc    : 同步数据专用
 import json
 import datetime
 import logging
+import time
+from shortuuid import uuid
 from concurrent.futures import ThreadPoolExecutor
 from settings import settings
 from loguru import logger
@@ -151,6 +153,7 @@ def sync_agent_status():
 
 
 def clean_sync_logs():
+    @deco(RedisLock("clean_sync_logs_redis_lock_key"))
     def index():
         week_ago = datetime.datetime.now() - datetime.timedelta(days=7)
         logging.info(f'开始清理资源同步日志  {week_ago}之前 !!!')
@@ -205,7 +208,7 @@ def users_sync():
         users = resp['data']
         if not users:
             return
-        users = [user for user in users if user['source'] == 'ucenter']  # 过滤
+        users = [user for user in users if user['source'] == 'ucenter' and user['status'] == "0"]  # 过滤
         for user in users:
             _sync_main(user)
 
@@ -261,7 +264,7 @@ def user_group_members_sync():
             members = members_dict.keys()
             for user_member in members:
                 name = user_member.split('(')[0]
-                user = UserAPI().get(name=name)
+                user = UserAPI().get(username=name)
                 if user:
                     user_id = user[0]['id']
                     user_ids.append(user_id)
@@ -341,7 +344,7 @@ def perm_group_members_sync():
             members = members_dict.keys()
             for user_member in members:
                 name = user_member.split('(')[0]
-                user = UserAPI().get(name=name)
+                user = UserAPI().get(username=name)
                 if user:
                     user_id = user[0]['id']
                     user_ids.append(user_id)
@@ -390,6 +393,7 @@ def service_tree_sync(biz_id=None):
     """
     def _sync_main(nodes):
         for node in nodes:
+            time.sleep(0.1)
             title = node.get('title')
             children = node.get('children', [])
             full_name = node.get('full_name')
@@ -399,15 +403,27 @@ def service_tree_sync(biz_id=None):
                 parent_name = full_name.rsplit('/', 1)[0]
                 jump_server_parent_node = AssetAPI().get(name=parent_name)
                 if not jump_server_parent_node:
-                    logging.error(f'父节点不存在：{parent_name}')
+                    logging.info(f'父节点不存在：{parent_name}')
                     continue
                 parent_id = jump_server_parent_node[0]['id']
-                jump_server_node = AssetAPI().create(name=title,
-                                                     parent_id=parent_id)
+                jump_server_node = AssetAPI().create(name=title, parent_id=parent_id)
                 if jump_server_node:
                     logging.info(f'节点创建成功：{full_name}')
+                else:
+                    # jmss 存在同名节点创建异常的bug，这里用创建临时节点然后修改节点名称的方式兼容
+                    name = f'新建节点-{str(uuid())}'
+                    jump_server_node = AssetAPI().create(name=name, parent_id=parent_id)
+                    if jump_server_node:
+                        res = AssetAPI().update(node_id=jump_server_node['id'], name=title, value=title,
+                                                full_value=full_name)
+                        if res:
+                            logging.info(f"节点更新失败：{full_name}")
+                        else:
+                            logging.error(f"节点更新失败：{full_name}")
+                    else:
+                        logging.error(f"节点创建失败：{name}, parent_id: {parent_id}, full_name: {full_name}")
             else:
-                logging.debug(f'节点已存在: {full_name}')
+                logging.info(f'节点已存在: {full_name}')
 
             # 递归创建子节点
             _sync_main(children)
@@ -457,6 +473,8 @@ def service_tree_assets_sync(biz_id=None):
             with DBContext('w', None, True) as session:
                 biz_obj = session.query(BizModels).filter(
                     BizModels.biz_id == asset['biz_id']).first()
+                if not biz_obj:
+                    continue
                 biz_cn_name = biz_obj.biz_cn_name
                 env_name = asset['env_name']
                 region_name = asset['region_name']
@@ -473,18 +491,21 @@ def service_tree_assets_sync(biz_id=None):
         """
         name = asset['name']
         inner_ip = asset['inner_ip']
-        jump_server_asset = AssetHostsAPI().get(name=name, address=inner_ip)
+        full_name = asset.get('full_name')
+        if not full_name:
+            return
+        asset_name = full_name.split('/Default/')[1] + f'/{name}'
+        jump_server_asset = AssetHostsAPI().get(name=asset_name, address=inner_ip)
         if not jump_server_asset:
             # 查找节点创建资产
-            full_name = asset['full_name']
             jump_server_node = AssetAPI().get(name=full_name)
             if jump_server_node:
                 node_id = jump_server_node[0]['id']
-                jump_server_asset = AssetHostsAPI().create(name=name,
+                jump_server_asset = AssetHostsAPI().create(name=asset_name,
                                                            address=inner_ip,
                                                            nodes=[node_id])
                 if jump_server_asset:
-                    logging.info(f"资产创建成功:{inner_ip} -- {name}")
+                    logging.info(f"资产创建成功:{inner_ip} -- {asset_name}")
 
         else:
             logging.debug(f'资产已存在: {inner_ip} -- {name}')
@@ -494,8 +515,7 @@ def service_tree_assets_sync(biz_id=None):
         if not biz_id:
             assets, count = get_tree_assets(params={"page_size": 9999})
         else:
-            assets, count = get_tree_assets(params={"page_size": 9999,
-                                                    "biz_id": biz_id})
+            assets, count = get_tree_assets(params={"page_size": 9999, "biz_id": biz_id})
         assets = _handle_data(assets)
         for asset in assets:
             _sync_main(asset)
@@ -584,6 +604,9 @@ def grant_perms_for_assets(perm_group_id=None):
             for perm_group in perm_groups:
                 biz_obj = session.query(BizModels).filter(
                     BizModels.biz_id == perm_group.biz_id).first()
+                if not biz_obj:
+                    logging.info(f'查询业务ID异常 {err}')
+                    continue
                 biz_cn_name = biz_obj.biz_cn_name
                 user_group = perm_group.user_group
                 env_name = perm_group.env_name

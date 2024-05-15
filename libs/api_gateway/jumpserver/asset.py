@@ -21,9 +21,11 @@ class AssetAPI(JumpServerBaseAPI):
         if name is not None:
             params = {"search": name}
 
-        return self.send_request(method='get',
-                                 url=f'{self.base_url}/api/v1/assets/nodes/',
-                                 params=params)
+        result = self.send_request(method='get', url=f'{self.base_url}/api/v1/assets/nodes/', params=params)
+        # 模糊查找，需要筛选结果集
+        if not result:
+            return []
+        return [item for item in result if item['full_value'] == name]
 
     def create(self, name: str = None, parent_id: str = None) -> List[dict]:
         """
@@ -47,6 +49,25 @@ class AssetAPI(JumpServerBaseAPI):
         assert node_id is not None, "节点id不能为空"
         return self.send_request(method='delete',
                                  url=f'{self.base_url}/api/v1/assets/nodes/{node_id}/')
+
+    def update(self, node_id: str = None, **kwargs) -> dict:
+        """
+        更新节点
+        :param node_id: 节点id
+        """
+        assert node_id is not None, "节点id不能为空"
+        data = {}
+        name = kwargs.get("name")
+        value = kwargs.get("value")
+        full_value = kwargs.get("full_value")
+        if name:
+            data["name"] = name
+        if value:
+            data['value'] = value
+        if full_value:
+            data['full_value'] = full_value
+
+        return self.send_request(method='put', url=f'{self.base_url}/api/v1/assets/nodes/{node_id}/', data=data)
 
 
 if __name__ == '__main__':
