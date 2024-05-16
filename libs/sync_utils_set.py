@@ -34,6 +34,7 @@ from libs.api_gateway.jumpserver.user_group import UserGroupAPI
 from libs.api_gateway.jumpserver.asset import AssetAPI
 from libs.api_gateway.jumpserver.asset_hosts import AssetHostsAPI
 from libs.api_gateway.jumpserver.asset_perms import AssetPermissionsAPI
+from libs.api_gateway.jumpserver.asset_accounts import AssetAccountsAPI
 
 from services.tree_service import get_tree_by_api
 from services.tree_asset_service import get_tree_assets
@@ -525,30 +526,40 @@ def service_tree_assets_sync(biz_id=None):
 
 def grant_perms_for_assets(perm_group_id=None):
 
-    def _sync_main(name, nodes, user_groups):
+    def _sync_main(name, nodes, user_groups, jmss_accounts):
         nodes_ids = []
         user_group_ids = []
+        accounts = []
+        # 资产节点
         for node in nodes:
             jump_server_node = AssetAPI().get(name=node)
             if jump_server_node:
                 nodes_ids.append(jump_server_node[0]['id'])
-
+        # 用户组
         for user_group in user_groups:
             jump_server_user_group = UserGroupAPI().get(name=user_group)
             if jump_server_user_group:
                 user_group_ids.append(jump_server_user_group[0]['id'])
+        # 账号
+        for jmss_account in jmss_accounts:
+            jump_server_assets_account = AssetAccountsAPI().get(username=jmss_account)
+            if jump_server_assets_account:
+                account_obj = jump_server_assets_account.get('results')
+                if account_obj:
+                    accounts.append(jmss_account)
         is_exists = AssetPermissionsAPI().get(name=name)
+        # 指定账号
+        if accounts:
+            accounts.append("@SPEC")
         if is_exists:
             logging.debug(f'资产授权已存在: {name}, 执行更新操作')
-            res = AssetPermissionsAPI().update(assets_permissions_id=is_exists[0]['id'],
-                                               name=name, nodes=nodes_ids,
-                                               user_groups=user_group_ids)
+            res = AssetPermissionsAPI().update(assets_permissions_id=is_exists[0]['id'], name=name, nodes=nodes_ids,
+                                               user_groups=user_group_ids, accounts=accounts)
             if res:
                 logging.info(f'资产授权更新成功: {name}')
 
             return
-        res = AssetPermissionsAPI().create(name=name, nodes=nodes_ids,
-                                           user_groups=user_group_ids)
+        res = AssetPermissionsAPI().create(name=name, nodes=nodes_ids, user_groups=user_group_ids, accounts=accounts)
         if res:
             logging.info(f"资产授权成功:{name} -- {user_groups}")
         else:
@@ -615,7 +626,8 @@ def grant_perms_for_assets(perm_group_id=None):
                 nodes = _get_asset_nodes(biz_cn_name, env_name, region_name,
                                          module_name)
                 user_groups = user_group.split(',')
-                _sync_main(perm_group.perm_group_name, nodes, user_groups)
+                jmss_accounts = perm_group.jmss_account.split(',')
+                _sync_main(perm_group.perm_group_name, nodes, user_groups, jmss_accounts)
 
     index()
 
