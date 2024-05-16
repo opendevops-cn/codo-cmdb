@@ -685,4 +685,4 @@ def async_service_trees():
 
 
 if __name__ == '__main__':
-    grant_perms_for_assets()
+    pass
