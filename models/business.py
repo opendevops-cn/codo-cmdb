@@ -109,7 +109,7 @@ class PermissionGroupModels(BizBaseModel):
     env_name = Column('env_name', String(128), comment='环境/大区')
     region_name = Column('region_name', String(500), comment='区服/集群/机房')
     module_name = Column('module_name', String(500), comment='模块/服务/机架/机柜')
-
+    jmss_account = Column('jmss_account', String(500), comment='授权用户')
     perm_group_detail = Column('perm_group_detail', String(255), comment='备注')
     modify_user = Column('modify_user', String(128), nullable=True, comment='修改人')
 
