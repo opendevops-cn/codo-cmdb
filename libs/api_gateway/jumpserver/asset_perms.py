@@ -29,6 +29,13 @@ class AssetPermissionsAPI(JumpServerBaseAPI):
         actions: 默认：all，可选值：[ all, connect, upload_file, download_file,
         updownload, clipboard_copy, clipboard_paste, clipboard_copy_paste ]
 
+        #执行账户模版
+        # "accounts": [
+        #     "@SPEC",
+        #     "administrator",
+        #     "%a765e187-a648-4b24-b354-0d7194ac519a"  % + 模版id
+        # ],
+
         :param kwargs:
         :return:
         """
@@ -36,9 +43,11 @@ class AssetPermissionsAPI(JumpServerBaseAPI):
         user_groups = kwargs.get("user_groups", [])  # 用户组id String[]
         users = kwargs.get("users", [])  # 用户id String[]
         nodes = kwargs.get("nodes", [])  # 节点id String[]
-        accounts = ['@ALL']
+        assets = kwargs.get("assets", [])  # 资产id String []
+        accounts = kwargs.get("accounts", [])
+        assert accounts is not None, "账号模版ID不能为空"  # 选择模板添加时，会自动创建资产下不存在的账号并推送
         actions = kwargs.get("actions", [])
-        data = dict(name=name, user_groups=user_groups, nodes=nodes,
+        data = dict(name=name, user_groups=user_groups, nodes=nodes, assets=assets,
                     accounts=accounts, actions=actions, users=users)
         return self.send_request(method='post', data=data,
                                  url=f"{self.base_url}/api/v1/perms/asset-permissions/")
@@ -65,6 +74,7 @@ class AssetPermissionsAPI(JumpServerBaseAPI):
         user_groups = kwargs.get("user_groups", [])  # 用户组id String[]
         users = kwargs.get("users", [])  # 用户id String[]
         nodes = kwargs.get("nodes", [])  # 节点id String[]
+        assets = kwargs.get("assets", [])  # 资产id String []
         accounts = kwargs.get("accounts", ['@ALL'])
         actions = kwargs.get("actions", [])
         data = {}
@@ -74,6 +84,8 @@ class AssetPermissionsAPI(JumpServerBaseAPI):
             data["users"] = users
         if nodes:
             data["nodes"] = nodes
+        if assets:
+            data["assets"] = assets
         if actions:
             data["actions"] = actions
         if accounts:

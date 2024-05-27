@@ -1,9 +1,12 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# @Time    : 2023/7/20 15:08
-# @Author  : harilou
-# @Describe:
-
+# @Author: Dongdong Liu
+# @Date: 2024/5/22
+# @Description: Description
+import json
+import os
+from typing import io
+import logging
+import hcl
 from sqlalchemy import or_
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.sqlalchemy_pagination import paginate
@@ -11,6 +14,7 @@ from models.order_model import TemplateModel, OrderInfoModel
 from websdk2.utils.pydantic_utils import sqlalchemy_to_pydantic
 from websdk2.model_utils import CommonOptView
 from datetime import datetime
+from jinja2 import Template
 
 
 PydanticDomainNameBase = sqlalchemy_to_pydantic(TemplateModel, exclude=['id'])
@@ -41,6 +45,96 @@ def _get_info_value(value: str = None):
         OrderInfoModel.flow_id.like(f'%{value}%'),
         OrderInfoModel.status.like(f'%{value}%'),
     )
+
+
+def render_new_content(content, params):
+    """渲染内容"""
+    template = Template(content)
+    return template.render(**params)
+
+
+def add_order_template_for_api(params):
+    content = params.get('content')
+    if not content:
+        return {"code": 1, "msg": "TF配置不能为空"}
+
+    name = params.get('name')
+    if not name:
+        return {"code": 1, "msg": "名称不能为空"}
+
+    if not params.get('res_type'):
+        return {"code": 1, "msg": "模板类型不能为空"}
+    if not params.get("subnet_id"):
+        return {"code": 1, "msg": "私有子网不能为空"}
+    if not params.get('vpc_id'):
+        return {"code": 1, "msg": "私有网络不能为空"}
+    if not params.get("vendor"):
+        return {"code": 1, "msg": "云厂商不能为空"}
+    if not params.get('region'):
+        return {"code": 1, "msg": "地域不能为空"}
+    if not params.get('zone'):
+        return {"code": 1, "msg": "可用区不能为空"}
+    try:
+        # 检查文件格式
+        hcl.loads(content)
+    except Exception as e:
+        return {"code": 1, "msg": "TF格式不正确"}
+    new_content = render_new_content(content, params)
+    params['content'] = new_content
+    try:
+        with DBContext('w', None, True) as session:
+            exist_obj = session.query(TemplateModel).filter(
+                TemplateModel.name == name).first()
+            if exist_obj:
+                return {"code": 1,
+                        "msg": f"{name} already exists."}
+
+            session.add(TemplateModel(**params))
+    except Exception as error:
+        logging.error(error)
+        return {"code": 1, "msg": str(error)}
+
+    return {"code": 0, "msg": "添加成功"}
+
+
+def update_order_template_for_api(data: dict) -> dict:
+    if not data.get("id"):
+        return {"code": 1, "msg": "模板ID不能为空"}
+    if not data.get("name"):
+        return {"code": 1, "msg": "模板名称不能为空"}
+    if not data.get('res_type'):
+        return {"code": 1, "msg": "模板类型不能为空"}
+    if not data.get("subnet_id"):
+        return {"code": 1, "msg": "私有子网不能为空"}
+    if not data.get('vpc_id'):
+        return {"code": 1, "msg": "私有网络不能为空"}
+    if not data.get("vendor"):
+        return {"code": 1, "msg": "云厂商不能为空"}
+    if not data.get('region'):
+        return {"code": 1, "msg": "地域不能为空"}
+    if not data.get('zone'):
+        return {"code": 1, "msg": "可用区不能为空"}
+    if not data.get('content'):
+        return {"code": 1, "msg": "TF不能为空"}
+    if not data.get('tags'):
+        return {"code": 1, "msg": "标签不能为空"}
+
+    content = data.get('content')
+    try:
+        hcl.loads(content)
+    except Exception as e:
+        return {"code": 1, "msg": "TF格式不正确"}
+
+    new_content = render_new_content(content, data)
+    data['content'] = new_content
+
+    try:
+        with DBContext('w', None, True) as session:
+            session.query(TemplateModel).filter(TemplateModel.id == data.get('id')).update(data)
+    except Exception as error:
+        logging.error(error)
+        return {"code": 1, "msg": str(error)}
+    return {"code": 0, "msg": "更新成功"}
 
 
 def get_order_template(**params) -> dict:
