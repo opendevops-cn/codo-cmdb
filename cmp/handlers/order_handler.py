@@ -12,7 +12,8 @@ import json
 from abc import ABC
 from libs.base_handler import BaseHandler
 from cmp.utils.cloud_price import CloudPrice
-from services.order_service import get_order_template, get_order_info, info_obj, tmp_obj, update_tmp_last_time
+from services.order_service import (get_order_template, get_order_info, info_obj, tmp_obj, update_tmp_last_time,
+                                    add_order_template_for_api, update_order_template_for_api)
 from cmp.utils.cloud_buy import CloudBuyUtils
 from cmp.utils.callback import CloudCallback
 from cmp.utils.cloud_ins_type import CloudInsType
@@ -39,14 +40,18 @@ class OrderTemplateHandler(BaseHandler, ABC):
     def post(self):
         """新增模板"""
         data = json.loads(self.request.body.decode("utf-8"))
-        res = tmp_obj.handle_add(data)
+        data['modify_user'] = self.request_fullname()
+        res = add_order_template_for_api(data)
+        # res = tmp_obj.handle_add(data)
         return self.write(res)
 
     def put(self):
         """修改模板"""
         data = json.loads(self.request.body.decode("utf-8"))
         data["update_time"] = datetime.now()
-        res = tmp_obj.handle_update(data)
+        data['modify_user'] = self.request_fullname()
+        res = update_order_template_for_api(data)
+        # res = tmp_obj.handle_update(data)
         return self.write(res)
 
     def delete(self):

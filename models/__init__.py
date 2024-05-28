@@ -75,6 +75,7 @@ RES_TYPE_MAP = (
     ("server", "服务器"),
     ("mysql", "MySql"),
     ("redis", "Redis"),
+    ("LB", "LB"),
 )
 
 TENCENT_LIST = ["qcloud", "tencent"]

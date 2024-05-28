@@ -11,6 +11,7 @@ Desc    : 同步数据专用
 import json
 import datetime
 import logging
+import os
 import time
 from shortuuid import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -34,7 +35,7 @@ from libs.api_gateway.jumpserver.user_group import UserGroupAPI
 from libs.api_gateway.jumpserver.asset import AssetAPI
 from libs.api_gateway.jumpserver.asset_hosts import AssetHostsAPI
 from libs.api_gateway.jumpserver.asset_perms import AssetPermissionsAPI
-from libs.api_gateway.jumpserver.asset_accounts import AssetAccountsAPI
+from libs.api_gateway.jumpserver.asset_accounts import AssetAccountsAPI, AssetAccountTemplatesAPI
 
 from services.tree_service import get_tree_by_api
 from services.tree_asset_service import get_tree_assets
@@ -462,6 +463,8 @@ def service_tree_sync(biz_id=None):
 
 def service_tree_assets_sync(biz_id=None):
     # 同步服务树主机资产
+    with open('../accounts_mapping.json') as f:
+        json_config = json.load(f)
 
     def _handle_data(assets, org_name='/Default/'):
         """
@@ -493,23 +496,30 @@ def service_tree_assets_sync(biz_id=None):
         name = asset['name']
         inner_ip = asset['inner_ip']
         full_name = asset.get('full_name')
+        biz_cn_name = asset.get('biz_cn_name')
+        # 获取网域
+        domain_id = json_config.get(biz_cn_name, {}).get('domain', {}).get('id')
+        if not domain_id:
+            logging.error(f"没有配置网域ID, 业务: {biz_cn_name}")
+            return
         if not full_name:
             return
         asset_name = full_name.split('/Default/')[1] + f'/{name}'
         jump_server_asset = AssetHostsAPI().get(name=asset_name, address=inner_ip)
-        if not jump_server_asset:
-            # 查找节点创建资产
-            jump_server_node = AssetAPI().get(name=full_name)
-            if jump_server_node:
-                node_id = jump_server_node[0]['id']
-                jump_server_asset = AssetHostsAPI().create(name=asset_name,
-                                                           address=inner_ip,
-                                                           nodes=[node_id])
-                if jump_server_asset:
-                    logging.info(f"资产创建成功:{inner_ip} -- {asset_name}")
-
-        else:
+        if jump_server_asset:
+            # 主机资产已存在
+            # todo 更新资产
             logging.debug(f'资产已存在: {inner_ip} -- {name}')
+            return
+
+        # 查找节点，创建主机资产
+        jump_server_node = AssetAPI().get(name=full_name)
+        if jump_server_node:
+            node_id = jump_server_node[0]['id']
+            jump_server_asset = AssetHostsAPI().create(name=asset_name, address=inner_ip, nodes=[node_id],
+                                                       domain=domain_id)
+            if jump_server_asset:
+                logging.info(f"资产创建成功:{inner_ip} -- {asset_name}")
 
     def index():
         logging.info("开始同步服务树主机资产到JumpServer")
@@ -526,10 +536,12 @@ def service_tree_assets_sync(biz_id=None):
 
 def grant_perms_for_assets(perm_group_id=None):
 
-    def _sync_main(name, nodes, user_groups, jmss_accounts):
+    with open('../accounts_mapping.json') as f:
+        json_config = json.load(f)
+
+    def _sync_main(name, nodes, user_groups, perm_type, biz_cn_name):
         nodes_ids = []
         user_group_ids = []
-        accounts = []
         # 资产节点
         for node in nodes:
             jump_server_node = AssetAPI().get(name=node)
@@ -541,16 +553,26 @@ def grant_perms_for_assets(perm_group_id=None):
             if jump_server_user_group:
                 user_group_ids.append(jump_server_user_group[0]['id'])
         # 账号
-        for jmss_account in jmss_accounts:
-            jump_server_assets_account = AssetAccountsAPI().get(username=jmss_account)
-            if jump_server_assets_account:
-                account_obj = jump_server_assets_account.get('results')
-                if account_obj:
-                    accounts.append(jmss_account)
-        is_exists = AssetPermissionsAPI().get(name=name)
+        # step1, 获取账号模版ID
+        account_template_id = json_config.get(biz_cn_name, {}).get(perm_type, {}).get('account_template_id')
+        account_template = json_config.get(biz_cn_name, {}).get(perm_type, {}).get('account_template')
+        if not account_template_id:
+            logging.error(f"没有配置账号模版ID： 业务: {biz_cn_name}")
+            return
+        if not account_template:
+            logging.error(f"没有配置账号模版名称： 业务: {biz_cn_name}")
+            return
+        # step2, 获取账号模版中的用户名
+        account_template_obj = AssetAccountTemplatesAPI().get(name=account_template)
+        if not account_template_obj:
+            logging.error(f"账号模版不存在： 业务: {biz_cn_name}, 模版: {account_template}")
+            return
+
+        account_template_username = account_template_obj[0]['username']
+
         # 指定账号
-        if accounts:
-            accounts.append("@SPEC")
+        accounts = ["@SPEC", account_template_username, f'%{account_template_id}']
+        is_exists = AssetPermissionsAPI().get(name=name)
         if is_exists:
             logging.debug(f'资产授权已存在: {name}, 执行更新操作')
             res = AssetPermissionsAPI().update(assets_permissions_id=is_exists[0]['id'], name=name, nodes=nodes_ids,
@@ -626,8 +648,7 @@ def grant_perms_for_assets(perm_group_id=None):
                 nodes = _get_asset_nodes(biz_cn_name, env_name, region_name,
                                          module_name)
                 user_groups = user_group.split(',')
-                jmss_accounts = perm_group.jmss_account.split(',')
-                _sync_main(perm_group.perm_group_name, nodes, user_groups, jmss_accounts)
+                _sync_main(perm_group.perm_group_name, nodes, user_groups, perm_group.perm_type, biz_cn_name)
 
     index()
 
@@ -685,4 +706,4 @@ def async_service_trees():
 
 
 if __name__ == '__main__':
-    pass
+    grant_perms_for_assets()

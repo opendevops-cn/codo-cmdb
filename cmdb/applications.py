@@ -41,15 +41,15 @@ class Application(myApplication, ABC):
         # 资源订单状态
         biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒
         biz_callback.start()
-        # 同步用户到jms
-        user_callback = PeriodicCallback(async_user_info, 3600000)  # 60分钟
-        user_callback.start()
-        # 同步服务树
-        service_tree_callback = PeriodicCallback(async_service_trees, 3600000)  # 60分钟
-        service_tree_callback.start()
-        # 同步权限组
-        perm_group_callback = PeriodicCallback(async_perm_groups, 3600000)  # 60分钟
-        perm_group_callback.start()
+        # # 同步用户到jms
+        # user_callback = PeriodicCallback(async_user_info, 3600000)  # 60分钟
+        # user_callback.start()
+        # # 同步服务树
+        # service_tree_callback = PeriodicCallback(async_service_trees, 3600000)  # 60分钟
+        # service_tree_callback.start()
+        # # 同步权限组
+        # perm_group_callback = PeriodicCallback(async_perm_groups, 3600000)  # 60分钟
+        # perm_group_callback.start()
         urls.extend(domain_urls)
         urls.extend(order_urls)
         # self.settings = settings
