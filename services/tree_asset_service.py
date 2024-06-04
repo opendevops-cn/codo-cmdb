@@ -16,7 +16,11 @@ from models import asset_mapping as mapping
 from websdk2.model_utils import model_to_dict, queryset_to_list
 from websdk2.db_context import DBContextV2 as DBContext
 
+from services.audit_service import audit_log
+from services.tree_service import generate_tree_message
 
+
+@audit_log()
 def add_tree_asset_by_api(data: dict) -> dict:
     biz_id = data.get('biz_id')
     env_name = data.get('env_name')
@@ -28,6 +32,7 @@ def add_tree_asset_by_api(data: dict) -> dict:
     asset_ids = data.get('asset_ids', None)
     is_enable = data.get('is_enable', 0)  # 默认0：不上线
     ext_info = data.get('ext_info', {})
+    create_user = data.get('create_user', None)
 
     if not biz_id and asset_type and not asset_ids:
         return {'code': 1, 'msg': '缺少biz_id/asset_type/asset_ids'}
@@ -63,13 +68,20 @@ def add_tree_asset_by_api(data: dict) -> dict:
                 )
                 for asset_id in asset_ids
             ])
-    return {"code": 0, "msg": "添加成功"}
+
+        biz_obj = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
+        asset_names = get_asset_name_by_id(session, asset_type, list(asset_ids))
+        _message = generate_tree_message(biz_obj.biz_cn_name, env_name, region_name, module_name, node_type)
+        audit_log_message = f"用户{create_user}新增服务树{_message}资源, 资源类型:{asset_type}, 资源名：{asset_names}"
+    return {"code": 0, "msg": "添加成功", "audit_log_message": audit_log_message}
 
 
+@audit_log()
 def update_tree_asset_by_api(data: dict) -> dict:
     asset_type = data.get('asset_type', None)
     select_ids = data.get('select_ids', None)
     is_enable = data.get('is_enable', 0)
+    modify_user = data.get('modify_user', None)
     if not asset_type:
         return {'code': 1, 'msg': '缺少asset_type'}
     if not select_ids:
@@ -79,7 +91,10 @@ def update_tree_asset_by_api(data: dict) -> dict:
         session.query(TreeAssetModels).filter(
             TreeAssetModels.asset_type == asset_type, TreeAssetModels.id.in_(select_ids)
         ).update({TreeAssetModels.is_enable: is_enable}, synchronize_session=False)
-    return {"code": 0, "msg": "修改成功"}
+        _action = "上线" if is_enable else "下线"
+        asset_names = get_asset_name_by_tree_asset_id(session, asset_type, select_ids)
+    return {"code": 0, "msg": "修改成功", "audit_log_message": f"用户{modify_user}操作服务树{asset_type}资源{_action}, "
+                                                               f"资源名称：{asset_names}"}
 
 
 def get_tree_asset_by_api(**params) -> dict:
@@ -109,7 +124,33 @@ def get_asset_id_by_name(session, asset_type: str, names: List[str]) -> List[int
     return host_ids
 
 
+def get_asset_name_by_id(session, asset_type: str, ids: List[int]) -> List[str]:
+    """
+    根据资产id获取资产名称
+    :param session:
+    :param asset_type: 资产类型
+    :param ids: 主机名列表 [id1, id2]
+    :return:
+    """
+    _the_models = mapping.get(asset_type)
+    return [i[0] for i in session.query(_the_models.name).filter(_the_models.id.in_(ids)).all()]
+
+
+def get_asset_name_by_tree_asset_id(session, asset_type: str, ids: List[int]) -> List[str]:
+    """
+    根据树&资产关联表id-->获取资产id-->获取资产名称
+    :param session:
+    :param asset_type: 资产类型
+    :param ids: 主机名列表 [id1, id2]
+    :return:
+    """
+    asset_ids = [i[0] for i in session.query(TreeAssetModels.asset_id).filter(TreeAssetModels.id.in_(ids)).all()]
+    _the_models = mapping.get(asset_type)
+    return [i[0] for i in session.query(_the_models.name).filter(_the_models.id.in_(asset_ids)).all()]
+
+
 # 删除拓扑
+@audit_log()
 def del_tree_asset(data: dict) -> dict:
     """
     删除主机
@@ -121,6 +162,7 @@ def del_tree_asset(data: dict) -> dict:
     region_name = data.get('region_name', None)
     module_name = data.get('module_name', None)
     names = data.get('names', None)
+    modify_user = data.get('modify_user', None)
     # 参数校验
     if not asset_type or not biz_id or not env_name or not region_name or not module_name:
         return {'code': 1, 'msg': '缺少必要参数'}
@@ -140,7 +182,10 @@ def del_tree_asset(data: dict) -> dict:
                                                  TreeAssetModels.module_name == module_name,
                                                  TreeAssetModels.asset_id.in_(_ids)
                                                  ).delete(synchronize_session=False)
-    return {"code": 0, "msg": "删除成功"}
+        biz_obj = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
+        _message = generate_tree_message(biz_obj.biz_cn_name, env_name, region_name, module_name, node_type=3)
+    return {"code": 0, "msg": "删除成功", "audit_log_message": f"用户{modify_user}删除服务树{_message}资源, "
+                                                               f"资源类型：{asset_type}, 资源名：{names}"}
 
 
 def update_tree_leaf(data: dict) -> dict:

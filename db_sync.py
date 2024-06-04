@@ -11,6 +11,7 @@ from models.tree import Base as TreeBase
 from models.cloud_region import Base as CloudRegionBase
 from models.domain import Base as DomainBase
 from models.order_model import Base as OrderBase
+from models.autdit import Base as AuditBase
 from websdk2.consts import const
 from settings import settings as app_settings
 
@@ -38,6 +39,7 @@ def create():
     CloudRegionBase.metadata.create_all(engine)
     DomainBase.metadata.create_all(engine)
     OrderBase.metadata.create_all(engine)
+    AuditBase.metadata.create_all(engine)
     print('[Success] 表结构创建成功!')
 
 

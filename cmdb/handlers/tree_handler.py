@@ -32,21 +32,25 @@ class TreeHandler(BaseHandler, ABC):
 
     def post(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        data['create_user'] = self.request_fullname()
         res = add_tree_by_api(data)
         return self.write(res)
 
     def put(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        data['modify_user'] = self.request_fullname()
         res = put_tree_by_api(data)
         return self.write(res)
 
     def patch(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        data['modify_user'] = self.request_fullname()
         res = patch_tree_by_api(data)
         return self.write(res)
 
     def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        data['modify_user'] = self.request_fullname()
         res = del_tree_by_api(data)
         return self.write(res)
 
@@ -65,6 +69,7 @@ class TreeAssetHandler(BaseHandler, ABC):
 
     def post(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        data['create_user'] = self.request_fullname()
         res = add_tree_asset_by_api(data)
         return self.write(res)
 
@@ -74,11 +79,13 @@ class TreeAssetHandler(BaseHandler, ABC):
         :return:
         """
         data = json.loads(self.request.body.decode("utf-8"))
+        data['modify_user'] = self.request_fullname()
         res = update_tree_asset_by_api(data)
         return self.write(res)
 
     def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        data['modify_user'] = self.request_fullname()
         res = del_tree_asset(data)
         return self.write(res)
 

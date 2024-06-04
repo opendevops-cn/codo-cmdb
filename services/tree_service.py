@@ -7,16 +7,67 @@ Date    : 2023年4月7日
 """
 import json
 import logging
-from sqlalchemy import func, or_
 from typing import *
-from models.tree import TreeModels, TreeAssetModels
-from libs.tree import Tree
-from models.business import BizModels, SetTempModels
+
+from sqlalchemy import func, or_
 # from models import asset_mapping as mapping
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import model_to_dict, queryset_to_list
 
+from libs.tree import Tree
+from models.tree import TreeModels, TreeAssetModels
+from models.business import BizModels, SetTempModels
+from services.audit_service import audit_log
+from libs.utils import compare_dicts
 
+
+def generate_tree_message(biz_cn_name, grant_node=None, parent_node=None, title=None, node_type=None):
+    """
+    服务树信息
+    """
+    node_type_mapping = {
+        0: "根节点",
+        1: "环境节点",
+        2: "集群节点",
+        3: "模块节点"
+    }
+    node_path_mapping = {
+        0: f"/{title}",
+        1: f"/{biz_cn_name}/{title}",
+        2: f"/{biz_cn_name}/{parent_node}/{title}",
+        3: f"/{biz_cn_name}/{grant_node}/{parent_node}/{title}"
+    }
+    if node_type in node_type_mapping:
+        message = f"{node_type_mapping[node_type]}: {node_path_mapping[node_type]}"
+    else:
+        message = ""
+    return message
+
+
+def get_biz_obj(biz_id) -> BizModels:
+    with DBContext('w', None, True) as session:
+        return session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
+
+
+def translate_diff(differences):
+    columns_mapping = {
+        "title": "节点名称",
+        "node_type": "节点类型",
+        "node_sort": "节点排序",
+        "grand_node": "上上级节点",
+        "parent_node": "上级节点",
+        "detail": "备注",
+        "expand": "展开",
+        "contextmenu": "右键弹出菜单",
+        "ext_info": "扩展信息",
+    }
+    if "changed" in differences:
+        differences["changed"] = {columns_mapping.get(key, key): value for key, value in differences["changed"].items()}
+        return differences['changed']
+    return differences
+
+
+@audit_log()
 def add_tree_by_api(data) -> dict:
     biz_id = data.get('biz_id', None)
     node_type = data.get('node_type', None)
@@ -29,6 +80,7 @@ def add_tree_by_api(data) -> dict:
     create_from = data.get('create_from', None)
     temp_id = data.get('temp_id', None)
     ext_info = data.get('ext_info', {})
+    create_user = data.get('create_user', None)
 
     if not all([biz_id, node_sort, title, parent_node]):
         return {"code": 1, "msg": "缺少必要参数"}
@@ -50,6 +102,8 @@ def add_tree_by_api(data) -> dict:
         exist_id = session.query(TreeModels.id).filter_by(**filter_map).first()
         if exist_id:
             return {"code": 1, "msg": f"{title} already exists."}
+        biz_obj = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
+        _message = generate_tree_message(biz_obj.biz_cn_name, grand_node, parent_node, title, node_type)
         # 判断是否是基于模板创建
         if create_from == "模板创建" and temp_id:
             set_temp_items = []
@@ -72,6 +126,7 @@ def add_tree_by_api(data) -> dict:
                     [TreeModels(biz_id=biz_id, title=module_info[0], grand_node=parent_node, ext_info=module_info[1],
                                 parent_node=title, node_type=3, node_sort=100, expand=False)
                      for module_info in module_list])
+                audit_log_message = f"用户{create_user}基于模板{_message}"
             else:
                 return {"code": 0, "msg": "不能从模板里面获取到模块信息"}
         else:
@@ -81,10 +136,12 @@ def add_tree_by_api(data) -> dict:
             session.add(TreeModels(**new_info))
             # session.add(TreeModels(biz_id=biz_id, title=title, node_type=node_type,grand_node=env_title,
             #                        node_sort=node_sort, parent_node=parent_node, expand=expand, detail=detail))
+            audit_log_message = f"用户{create_user}创建服务树{_message}"
         session.commit()
-    return {"code": 0, "msg": "success"}
+    return {"code": 0, "msg": "success", "audit_log_message": audit_log_message}
 
 
+@audit_log()
 def put_tree_by_api(data) -> dict:
     tree_id = data.get('id', None)
     biz_id = data.get("biz_id", None)
@@ -95,6 +152,7 @@ def put_tree_by_api(data) -> dict:
     expand = data.get('expand', False)
     ext_info = data.get('ext_info', {})
     detail = data.get('detail', None)
+    modify_user = data.get('modify_user', None)
 
     if not all([biz_id, tree_id, node_sort, title, parent_node]):
         return {"code": 1, "msg": "缺少必要参数"}
@@ -111,6 +169,30 @@ def put_tree_by_api(data) -> dict:
     with DBContext('w', None, True) as session:
         try:
             # title + node + type 必须是唯一的
+            tree_obj = session.query(TreeModels).filter_by(id=tree_id).first()
+            biz_obj = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
+            _message = generate_tree_message(biz_obj.biz_cn_name, tree_obj.grand_node, parent_node, title, node_type)
+            new_data = {
+                "biz_id": biz_id,
+                "node_type": node_type,
+                "node_sort": node_sort,
+                "title": title,
+                "parent_node": parent_node,
+                "expand": expand,
+                "ext_info": ext_info,
+                "detail": detail
+
+            }
+            old_data = {
+                "biz_id": tree_obj.biz_id,
+                "node_type": tree_obj.node_type,
+                "node_sort": tree_obj.node_sort,
+                "title": tree_obj.title,
+                "parent_node": tree_obj.parent_node,
+                "expand": tree_obj.expand,
+                "ext_info": tree_obj.ext_info,
+                "detail": tree_obj.detail
+            }
             session.query(TreeModels).filter(
                 TreeModels.biz_id == biz_id, TreeModels.id == tree_id
             ).update({
@@ -122,7 +204,9 @@ def put_tree_by_api(data) -> dict:
         except Exception as err:
             logging.error(f'Tree节点更新失败,{err}')
             return {"code": 1, "msg": f'Tree节点更新失败,{err},请确认名称是否重复'}
-    return {"code": 0, "msg": "更新完成"}
+    differences = compare_dicts(new_data, old_data)
+    differences = translate_diff(differences)
+    return {"code": 0, "msg": "更新完成", "audit_log_message": f"用户{modify_user}更新服务树{_message}:, 变化: {differences}"}
 
 
 def patch_tree_by_api(data) -> dict:
@@ -143,12 +227,14 @@ def patch_tree_by_api(data) -> dict:
     return {"code": 1, "msg": "缺少必要参数"}
 
 
+@audit_log()
 def del_tree_by_api(data) -> dict:
     tree_id = data.get('id', None)
     biz_id = data.get('biz_id', None)
     title = data.get('title', None)
     parent_node = data.get('parent_node', None)
     node_type = data.get('node_type', None)
+    modify_user = data.get('modify_user', None)
 
     if not all([tree_id, biz_id, title]):
         return {"code": 1, "msg": "关键参数不能为空"}
@@ -160,6 +246,9 @@ def del_tree_by_api(data) -> dict:
         return {"code": 1, "msg": "根节点不能删除"}
 
     with DBContext('w', None, True) as session:
+        tree_obj = session.query(TreeModels).filter_by(id=tree_id).first()
+        biz_obj = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
+        _message = generate_tree_message(biz_obj.biz_cn_name, tree_obj.grand_node, parent_node, title, node_type)
         if node_type == 1:
             exist_children = session.query(TreeModels.id).filter(
                 TreeModels.biz_id == biz_id, TreeModels.parent_node == title, TreeModels.node_type == 2).all()
@@ -185,10 +274,11 @@ def del_tree_by_api(data) -> dict:
                 TreeAssetModels.module_name == title).first()
             if exist_data:
                 return {"code": 1, "msg": f"/{env_name}/{parent_node}/{title}节点下存在业务数据,删除失败!"}
+            audit_log_message = f"用户{modify_user}删除服务树{_message}"
         # del TreeID
         session.query(TreeModels).filter(TreeModels.id == tree_id).delete(synchronize_session=False)
 
-    return {"code": 0, "msg": "节点删除成功"}
+    return {"code": 0, "msg": "节点删除成功", "audit_log_message": audit_log_message}
 
 
 def get_tree_by_api(**params) -> dict:
