@@ -33,3 +33,33 @@ class CommonDecorator(object):
             return self
         else:
             return types.MethodType(self, instance)
+
+
+def compare_dicts(dict1, dict2):
+    """
+    比较两个dict
+    """
+    changes = {
+        "added": {},
+        "removed": {},
+        "changed": {}
+    }
+
+    def _compare(d1, d2, path=""):
+        # 检查新增和变化的项
+        for key in d2:
+            new_path = f"{path}.{key}" if path else key
+            if key not in d1:
+                changes["added"][new_path] = d2[key]
+            elif isinstance(d2[key], dict) and isinstance(d1.get(key), dict):
+                _compare(d1[key], d2[key], new_path)
+            elif d1[key] != d2[key]:
+                changes["changed"][new_path] = {"old_value": d1[key], "new_value": d2[key]}
+        # 检查删除的项
+        for key in d1:
+            new_path = f"{path}.{key}" if path else key
+            if key not in d2:
+                changes["removed"][new_path] = d1[key]
+
+    _compare(dict1, dict2)
+    return changes

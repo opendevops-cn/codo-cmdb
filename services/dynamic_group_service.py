@@ -28,17 +28,20 @@ def pre_format(data: dict) -> dict:
     biz_id = data.get('biz_id', '501')
 
     # 处理 0表示前端标记删除
-    dynamic_group_rules = list(
-        filter(
-            lambda rule: rule["status"] == 1, data.get('dynamic_group_rules')
-        )
-    )
+    # dynamic_group_rules = list(
+    #     filter(
+    #         lambda rule: rule["status"] == 1, data.get('dynamic_group_rules')
+    #     )
+    # )
+    dynamic_group_rules = [[item for item in items if item['status'] == 1] for items in data.get('dynamic_group_rules')]
+
     _dynamic_group_dict = {
         "items": dynamic_group_rules
     }
 
     if data.get('dynamic_group_type') == 'normal':
-        biz_id = '501'
+        # 通用型默认为运维项目
+        biz_id = '504'
 
     res = dict(
         biz_id=biz_id, dynamic_group_name=data.get('dynamic_group_name'),
@@ -166,7 +169,7 @@ def preview_dynamic_group_for_api(exec_uuid_list: list) -> dict:
 
             if group_info.dynamic_group_type == 'normal':
                 # 获取主机信息
-                is_success, result = get_dynamic_hosts(model_to_dict(group_info))
+                is_success, result = get_dynamic_hosts_v2(model_to_dict(group_info))
                 if not is_success or not result:
                     logging.error(f"normal {exec_id} 没有发现主机信息")
 
@@ -310,6 +313,80 @@ def get_dynamic_hosts(group_info: Optional[dict]) -> Tuple[bool, Union[list]]:
         sql_conditions += f'or {query_name} {query_conditions} "{query_value}"\n'
     # 拼接SQL
     sql_string += sql_conditions
+    try:
+        with DBContext('r') as session:
+            results = session.execute(sql_string)
+            server_list = [res[0] for res in results]
+    except Exception as error:
+        logging.error(f"{error}")
+        return False, []
+
+    return True, server_list
+
+
+def get_dynamic_hosts_v2(group_info: Optional[dict]) -> Tuple[bool, Union[list]]:
+    """
+    :param group_info:
+    "data": {
+        "biz_id": "501",
+        "exec_uuid": "Nbz2Hp893rQoD56WkcNNvN",
+        "dynamic_group_name": "test",
+        "dynamic_group_type": "normal",
+        "dynamic_group_rules": {
+            "items": [
+                [
+                    {
+                        "index": 2,
+                        "status": 1,
+                        "query_name": "name",
+                        "query_value": "fadsfa",
+                        "query_conditions": "like"
+                    },
+                    {
+                        "index": 3,
+                        "status": 1,
+                        "query_name": "name",
+                        "query_value": "fdasfasdfas",
+                        "query_conditions": "like"
+                    }
+                ],
+                [
+                    {
+                        "index": 1,
+                        "status": 1,
+                        "query_name": "name",
+                        "query_value": "dfadsfa",
+                        "query_conditions": "like"
+                    }
+                ]
+            ]
+        },
+        "modify_user": "None(None)"
+    }
+    根据动态分组ID获取主机信息
+    """
+    if not isinstance(group_info, dict):
+        logging.error(f"group_info类型错误")
+        return False, []
+
+    # 根据规则查主机
+    try:
+        rules = group_info['dynamic_group_rules']['items']
+    except TypeError:
+        rules = []
+
+    if not rules:
+        logging.error(f"匹配规则出错")
+        return False, []
+
+    # 构建每个子条件的SQL语句
+    sub_queries = [
+        " AND ".join(f"{item['query_name']} {item['query_conditions']} '{item['query_value']}%'"
+                     if item['query_conditions'] == 'like' else f"{item['query_name']} {item['query_conditions']} '{item['query_value']}'"
+                     for item in rule) for rule in rules]
+    # 拼接多个条件的SQL语句
+    sql_string = f"SELECT id FROM t_asset_server WHERE 1=1 AND ({' OR '.join(f'({subquery})' for subquery in sub_queries)});"
+
     try:
         with DBContext('r') as session:
             results = session.execute(sql_string)
