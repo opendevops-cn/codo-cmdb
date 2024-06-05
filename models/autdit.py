@@ -18,7 +18,7 @@ class AuditModels(Base, TimeBaseModel):
     log_type = Column('log_type', String(64), nullable=False, default='用户日志', comment='日志类型')
     business_name = Column('business_name', String(180), nullable=True, default='', comment='业务')
     module_name = Column('module_name', String(180), nullable=True, default='', comment='模块')
-    message = Column('message', Text(), index=True)
+    message = Column('message', Text())
     operator = Column('operator', String(128), nullable=True, comment='操作人')
 
     __mapper_args__ = {

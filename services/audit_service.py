@@ -53,7 +53,7 @@ def add_audit_log(**data):
     message = data.get('message')
     if not message:
         return {"code": -1, "msg": "日志内容不能为空"}
-    data.update(uuid=uuid())
+    data.update(exec_uuid=uuid())
     try:
         with DBContext('w', None, True) as session:
             session.add(AuditModels(**data))
