@@ -274,7 +274,7 @@ def del_tree_by_api(data) -> dict:
                 TreeAssetModels.module_name == title).first()
             if exist_data:
                 return {"code": 1, "msg": f"/{env_name}/{parent_node}/{title}节点下存在业务数据,删除失败!"}
-            audit_log_message = f"用户{modify_user}删除服务树{_message}"
+        audit_log_message = f"用户{modify_user}删除服务树{_message}"
         # del TreeID
         session.query(TreeModels).filter(TreeModels.id == tree_id).delete(synchronize_session=False)
 
