@@ -1,0 +1,27 @@
+name: Build and Push Docker Image to Alibaba Cloud
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Login to Alibaba Cloud Container Registry
+      env:
+        DOCKER_REGISTRY: ${{ secrets.ALICLOUD_REGISTRY }}
+        DOCKER_USERNAME: ${{ secrets.ALICLOUD_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.ALICLOUD_PASSWORD }}
+      run: |
+        echo $DOCKER_PASSWORD | docker login --username=$DOCKER_USERNAME --password-stdin $DOCKER_REGISTRY
+    - name: Build Docker image
+      run: docker build -t ${{ secrets.ALICLOUD_REGISTRY }}/ss1917/codo-cmdb:latest .
+
+    - name: Push Docker image
+      run: docker push ${{ secrets.ALICLOUD_REGISTRY }}/ss1917/codo-cmdb:latest
