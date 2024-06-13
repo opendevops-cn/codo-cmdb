@@ -21,7 +21,7 @@ jobs:
       run: |
         echo $DOCKER_PASSWORD | docker login --username=$DOCKER_USERNAME --password-stdin $DOCKER_REGISTRY
     - name: Build Docker image
-      run: docker build -t ${{ secrets.ALICLOUD_REGISTRY }}/ss1917/codo-cmdb:latest .
+      run: docker build --build-arg SERVICE_NAME=cmdb -t ${{ secrets.ALICLOUD_REGISTRY }}/ss1917/codo-cmdb:latest .
 
     - name: Push Docker image
       run: docker push ${{ secrets.ALICLOUD_REGISTRY }}/ss1917/codo-cmdb:latest
