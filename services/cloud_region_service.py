@@ -7,8 +7,10 @@ Author  : shenshuo
 Date    : 2021/1/27 11:02
 Desc    : 解释一下吧
 """
+import logging
+from typing import *
 
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.sqlalchemy_pagination import paginate
 from websdk2.model_utils import CommonOptView, model_to_dict
@@ -16,6 +18,8 @@ from models.cloud_region import CloudRegionModels, CloudRegionAssetModels
 from models.tree import TreeAssetModels
 from models.business import BizModels
 from models.asset import AssetServerModels
+from services.asset_server_service import _models_to_list
+
 
 opt_obj = CommonOptView(CloudRegionModels)
 
@@ -26,7 +30,7 @@ def _get_value(value: str = None):
     return or_(
         CloudRegionModels.name.like(f'%{value}%'),
         CloudRegionModels.cloud_region_id.like(f'%{value}%'),
-        CloudRegionModels.proxy_ip.like(f'%{value}%'),
+        # CloudRegionModels.proxy_ip.like(f'%{value}%'),
         CloudRegionModels.ssh_ip.like(f'%{value}%'),
         CloudRegionModels.ssh_port.like(f'%{value}%'),
         CloudRegionModels.state.like(f'%{value}%'),
@@ -56,6 +60,181 @@ def _get_server_value(value: str = None):
     )
 
 
+def check_asset_group_rules(asset_group_rules: List[List[dict]], existing_asset_group_rules: []):
+    """
+    为了保证每一个实例只能归属于一个云区域，对资产组规则之间做交集校验
+    """
+
+    rules = [item.get("query_value") for item in asset_group_rules[0] if item['query_name'] == "vpc"]
+
+    # 已存在的规则
+    existing_asset_group_rules = [[item.get("query_value") for item in asset_group_rules[0]
+                                   if item['query_name'] == "vpc"] for asset_group_rules in existing_asset_group_rules]
+
+    # 通过集合求交集
+    has_intersection = any(not set(rules).isdisjoint(set(existing_asset_group_rule)) for existing_asset_group_rule
+                           in existing_asset_group_rules)
+    return False if has_intersection else True
+
+
+def update_server_agent_id_by_cloud_region_rules(asset_group_rules: List[List[Dict]], cloud_region_id: str):
+    if not (asset_group_rules and cloud_region_id):
+        return False
+
+    vpc_values = [query["query_value"] for sublist in asset_group_rules for query in sublist if query["query_name"] == "vpc"]
+
+    if not vpc_values:
+        logging.warning("没有找到有效的VPC规则")
+        return False
+
+    try:
+        with DBContext('w', None, True) as session:
+            # 使用 JSON 字段中的 vpc_id 进行过滤
+            servers = session.query(AssetServerModels).filter(
+                func.json_extract(AssetServerModels.ext_info, '$.vpc_id').in_(vpc_values)
+            ).all()
+
+            for server in servers:
+                server.agent_id = f"{server.inner_ip}:{cloud_region_id}"
+
+            session.commit()
+            logging.info(f"成功更新了{len(servers)}台服务器的AgentID")
+            return True
+    except Exception as e:
+        logging.error(f"更新服务器AgentID失败: {e}")
+        return False
+
+
+def add_cloud_region_for_api(data) -> dict:
+    """
+    添加云区域
+    """
+    asset_group_rules = data.get('asset_group_rules', None)
+
+    if 'cloud_region_id' not in data:
+        return {"code": 1, "msg": "云区域ID不能为空"}
+
+    if 'name' not in data:
+        return {"code": 1, "msg": "云区域名称不能为空"}
+
+    if 'proxy_ips' not in data:
+        return {"code": 1, "msg": "代理地址不能为空"}
+
+    if 'ssh_user' not in data:
+        return {"code": 1, "msg": "ssh用户不能为空"}
+
+    if 'auto_update_agent_id' not in data:
+        return {"code": 1, "msg": "自动更新AgentID不能为空"}
+
+    if not isinstance(asset_group_rules, list):
+        return {"code": 1, "msg": "资产规则类型错误"}
+
+    if not asset_group_rules:
+        return {"code": 1, "msg": "资产规则不能为空"}
+
+    # 防止参数中存在不必要的字段
+    create_data = dict(name=data.get("name"), cloud_region_id=data.get('cloud_region_id'),
+                       proxy_ips=data.get('proxy_ips'), ssh_user=data.get('ssh_user'), detail=data.get('detail'),
+                       ssh_ip=data.get('ssh_ip'), ssh_port=data.get('ssh_port'), ssh_key=data.get('ssh_key'),
+                       ssh_pub_key=data.get('ssh_pub_key'), asset_group_rules=data.get('asset_group_rules'),
+                       jms_org_id=data.get('jms_org_id'), jms_account_template=data.get('jms_account_template'),
+                       auto_update_agent_id=data.get('auto_update_agent_id'))
+
+    try:
+        with DBContext('r') as session:
+            res = session.query(CloudRegionModels.asset_group_rules).all()
+            rules = [item[0] for item in res]
+            is_valid = check_asset_group_rules(asset_group_rules, rules)
+            if not is_valid:
+                return {"code": 1, "msg": "资产规则已存在"}
+    except Exception as error:
+        return {"code": 1, "msg": str(error)}
+
+    try:
+        with DBContext('w', None, True) as session:
+            exist_id = session.query(CloudRegionModels).filter(or_(CloudRegionModels.name == data.get('name'),
+                                                                   CloudRegionModels.cloud_region_id == data.get('cloud_region_id'))).first()
+            if exist_id:
+                if exist_id.name == data.get('name'):
+                    return {"code": 1, "msg": f"云区域{exist_id.name}已存在."}
+                elif exist_id.cloud_region_id == data.get('cloud_region_id'):
+                    return {"code": 1, "msg": f"云区域{exist_id.cloud_region_id}已存在."}
+            session.add(CloudRegionModels(**create_data))
+    except Exception as error:
+        return {"code": 1, "msg": str(error)}
+
+    # 处理自动更新 AgentID
+    auto_update_agent_id = data.get('auto_update_agent_id')
+    if auto_update_agent_id:
+        result = update_server_agent_id_by_cloud_region_rules(asset_group_rules, data.get('cloud_region_id'))
+        logging.info(f"更新AgentID结果: {result}")
+
+    return {"code": 0, "msg": "添加成功"}
+
+
+def put_cloud_region_for_api(data) -> dict:
+    """
+    编辑云区域
+    """
+    asset_group_rules = data.get('asset_group_rules', None)
+    if "id" not in data:
+        return {"code": 1, "msg": "ID不能为空"}
+
+    if 'cloud_region_id' not in data:
+        return {"code": 1, "msg": "云区域ID不能为空"}
+
+    if 'name' not in data:
+        return {"code": 1, "msg": "云区域名称不能为空"}
+
+    if 'proxy_ips' not in data:
+        return {"code": 1, "msg": "代理地址不能为空"}
+
+    if 'ssh_user' not in data:
+        return {"code": 1, "msg": "ssh用户不能为空"}
+
+    if 'auto_update_agent_id' not in data:
+        return {"code": 1, "msg": "自动更新AgentID不能为空"}
+
+    if not isinstance(asset_group_rules, list):
+        return {"code": 1, "msg": "资产规则类型错误"}
+
+    if not asset_group_rules:
+        return {"code": 1, "msg": "资产规则不能为空"}
+
+    try:
+        with DBContext('r') as session:
+            res = session.query(CloudRegionModels.asset_group_rules).filter(CloudRegionAssetModels.id != data.get('id')).all()
+            rules = [item[0] for item in res]
+            is_valid = check_asset_group_rules(asset_group_rules, rules)
+            if not is_valid:
+                return {"code": 1, "msg": "资产规则已存在"}
+    except Exception as error:
+        return {"code": 1, "msg": str(error)}
+
+    update_data = dict(
+        name=data.get("name"), cloud_region_id=data.get('cloud_region_id'),
+        proxy_ips=data.get('proxy_ips'), ssh_user=data.get('ssh_user'), detail=data.get('detail'),
+        ssh_ip=data.get('ssh_ip'), ssh_port=data.get('ssh_port'), ssh_key=data.get('ssh_key'),
+        ssh_pub_key=data.get('ssh_pub_key'), asset_group_rules=data.get('asset_group_rules'),
+        jms_org_id=data.get('jms_org_id'), jms_account_template=data.get('jms_account_template'),
+        auto_update_agent_id=data.get('auto_update_agent_id')
+    )
+
+    try:
+        with DBContext('w', None, True) as session:
+            session.query(CloudRegionModels).filter(CloudRegionModels.id == data.get('id')).update(update_data)
+    except Exception as error:
+        return {"code": 1, "msg": str(error)}
+
+    # 处理自动更新AgentID
+    auto_update_agent_id = data.get('auto_update_agent_id')
+    if auto_update_agent_id:
+        result = update_server_agent_id_by_cloud_region_rules(asset_group_rules, data.get('cloud_region_id'))
+        logging.info(f"更新AgentID结果: {result}")
+
+    return {"code": 0, "msg": "更新成功"}
+
+
 def preview_cloud_region(**params) -> dict:
     value = params.get('searchValue') if "searchValue" in params else params.get('searchVal')
     filter_map = params.pop('filter_map') if "filter_map" in params else {}
@@ -75,6 +254,38 @@ def preview_cloud_region(**params) -> dict:
             AssetServerModels.id.in_(asset_id_set)).filter(_get_server_value(value)).filter_by(**filter_map),
                         **params)
     return dict(msg='获取成功', code=0, data=page.items, count=page.total)
+
+
+def preview_cloud_region_v2(**params) -> dict:
+    """预览主机"""
+    # 根据云区域vpc查找主机
+    value = params.get('searchValue') if "searchValue" in params else params.get('searchVal')
+    filter_map = params.pop('filter_map') if "filter_map" in params else {}
+    if 'biz_id' in filter_map: filter_map.pop('biz_id')  # 暂时不隔离
+    if 'page_size' not in params: params['page_size'] = 300  # 默认获取到全部数据
+    region_id = params.get('region_id')
+    if not region_id:
+        return dict(code=-1, msg='云区域ID不能为空')
+    result = []
+    with DBContext('r') as session:
+        cloud_region_obj = session.query(CloudRegionModels).filter(CloudRegionModels.id == region_id).first()
+        if not cloud_region_obj:
+            return dict(code=-1, msg='云区域不存在')
+        asset_group_rules = cloud_region_obj.asset_group_rules
+        if not asset_group_rules:
+            return dict(msg='获取成功', code=0, data=result, count=0)
+        vpc_values = [query["query_value"] for sublist in asset_group_rules for query in sublist
+                      if query["query_name"] == "vpc" and query['status'] == 1]
+        try:
+            # 使用JSON字段中的vpc_id进行过滤
+            query = session.query(AssetServerModels).filter(_get_server_value(value)).filter_by(**filter_map)
+            query = query.filter(func.json_extract(AssetServerModels.ext_info, '$.vpc_id').in_(vpc_values))
+            total = query.count()
+            page = paginate(query, order_by=None, **params)
+            result = _models_to_list(page.items)
+        except Exception as e:
+            logging.error(e)
+    return dict(msg='获取成功', code=0, data=result, count=total)
 
 
 def get_cloud_region_from_id(**params) -> dict:
