@@ -13,7 +13,7 @@ import json
 from abc import ABC
 from services.cloud_region_service import get_cloud_region, preview_cloud_region, opt_obj, relevance_asset, \
     del_relevance_asset, \
-    get_cloud_region_from_id
+    get_cloud_region_from_id, add_cloud_region_for_api, put_cloud_region_for_api, preview_cloud_region_v2
 from libs.base_handler import BaseHandler
 from libs.mycrypt import MyCrypt
 
@@ -36,7 +36,8 @@ class CloudRegionHandlers(BaseHandler, ABC):
         ssh_key = data.get('ssh_key')
         if ssh_key and ssh_key.startswith('-----'):
             data['ssh_key'] = mc.my_encrypt(ssh_key)
-        res = opt_obj.handle_add(data)
+        # res = opt_obj.handle_add(data)
+        res = add_cloud_region_for_api(data)
         return self.write(res)
 
     def put(self):
@@ -45,7 +46,8 @@ class CloudRegionHandlers(BaseHandler, ABC):
         ssh_key = data.get('ssh_key')
         if ssh_key and ssh_key.startswith('-----'):
             data['ssh_key'] = mc.my_encrypt(ssh_key)
-        res = opt_obj.handle_update(data)
+        # res = opt_obj.handle_update(data)
+        res = put_cloud_region_for_api(data)
         return self.write(res)
 
     def patch(self):
@@ -63,7 +65,7 @@ class CloudRegionHandlers(BaseHandler, ABC):
 class CloudRegionPreHandlers(BaseHandler, ABC):
 
     def get(self):
-        res = preview_cloud_region(**self.params)
+        res = preview_cloud_region_v2(**self.params)
         return self.write(res)
 
 

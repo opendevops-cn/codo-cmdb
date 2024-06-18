@@ -11,7 +11,7 @@ Desc    : 云区域
 
 from models.base import TimeBaseModel
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, Integer, Text, UniqueConstraint
+from sqlalchemy import Column, String, Integer, Text, UniqueConstraint, JSON
 
 Base = declarative_base()
 
@@ -22,16 +22,17 @@ class CloudRegionModels(TimeBaseModel):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column('name', String(100), unique=True, comment='规则名称')
     cloud_region_id = Column('cloud_region_id', String(30), unique=True, nullable=False, comment='代理ID、云区域ID')
-    proxy_ip = Column('proxy_ip', String(180), comment='代理地址 一般是内网地址')
+    proxy_ips = Column('proxy_ips', JSON(), comment='代理地址 一般是内网地址', default=[])
     ssh_user = Column('ssh_user', String(30), default="root", comment='ssh user')
     ssh_ip = Column('ssh_ip', String(180), default="", comment='ssh ip 通过SSH链接地址')
     ssh_port = Column('ssh_port', Integer, default=22220, comment='SSH端口')
     ssh_key = Column('ssh_key', Text(), default="", comment='SSH网域密钥')
     ssh_pub_key = Column('ssh_pub_key', Text(), default="", comment='SSH网域公钥')
+    asset_group_rules = Column('asset_group_rules', JSON(), nullable=False, default=[], comment='资产组规则')
+    auto_update_agent_id = Column('auto_update_agent_id', Integer, default=0, comment='自动更新server AgentID')
 
     jms_org_id = Column('jms_org_id', String(80), default="", comment='对应跳板机组织ID')
     jms_account_template = Column('jms_account_template', String(255), default="", comment='对应跳板机账号模版')
-
     state = Column('state', String(10), default="online", comment='代理状态')
     detail = Column('detail', String(500), comment='备注')
 

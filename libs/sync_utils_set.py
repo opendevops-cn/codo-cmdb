@@ -20,6 +20,7 @@ from loguru import logger
 from websdk2.tools import RedisLock
 from websdk2.configs import configs
 from websdk2.cache_context import cache_conn
+from sqlalchemy import func
 ##
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import insert_or_update
@@ -27,7 +28,8 @@ from websdk2.client import AcsClient
 from websdk2.api_set import api_set
 
 from models.business import BizModels, PermissionGroupModels
-from models.asset import AssetServerModels
+from models.asset import AssetServerModels, AssetVSwitchModels
+from models.cloud_region import CloudRegionModels
 from models.cloud import SyncLogModels
 
 from libs.api_gateway.jumpserver.user import UserAPI
@@ -705,5 +707,45 @@ def async_service_trees():
     executor.submit(sync_service_trees)
 
 
+def sync_vswitch_cloud_region_id():
+    """同步vswitch的cloud_region_id"""
+    @deco(RedisLock("sync_vswitch_cloud_region_id_redis_lock_key"))
+    def index():
+        logging.info(f'开始同步虚拟子云区域ID!!!')
+        with DBContext('w', None, True) as session:
+            # 查询云区域规则
+            cloud_regions = session.query(CloudRegionModels).all()
+            asset_group_rules = [dict(asset_group_rules=cloud_region.asset_group_rules[0],
+                                      cloud_region_id=cloud_region.cloud_region_id) for cloud_region in cloud_regions]
+
+            # 建立云区域规则vpc_id和cloud_region_id的映射
+            mapping = {}
+            for asset_group_rule in asset_group_rules:
+                for rule in asset_group_rule['asset_group_rules']:
+                    if rule['query_name'].lower() == 'vpc':
+                        mapping[rule['query_value']] = asset_group_rule["cloud_region_id"]
+
+            # 更新vswitch的cloud_region_id
+            vswitches = session.query(AssetVSwitchModels).all()
+            for vswitch in vswitches:
+                vpc_id = vswitch.vpc_id.strip()
+                cloud_region_id = mapping.get(vpc_id)
+                if not cloud_region_id:
+                    continue
+                vswitch.cloud_region_id = cloud_region_id
+            session.commit()
+        logging.info(f'同步虚拟子云区域ID结束!!!')
+
+    try:
+        index()
+    except Exception as err:
+        logging.error(f'同步虚拟子云区域ID出错 {str(err)}')
+
+
+def async_vswitch_cloud_region_id():
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(sync_vswitch_cloud_region_id)
+
+
 if __name__ == '__main__':
-    grant_perms_for_assets()
+    pass
