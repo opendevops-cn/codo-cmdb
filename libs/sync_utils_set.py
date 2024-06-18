@@ -21,19 +21,21 @@ from websdk2.tools import RedisLock
 from websdk2.configs import configs
 from websdk2.cache_context import cache_conn
 from sqlalchemy import func
+from collections import defaultdict
+from typing import *
 ##
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import insert_or_update
 from websdk2.client import AcsClient
 from websdk2.api_set import api_set
 
-from models.business import BizModels, PermissionGroupModels
+from models.business import BizModels, PermissionGroupModels, PermissionTypeMapping
 from models.asset import AssetServerModels, AssetVSwitchModels
 from models.cloud_region import CloudRegionModels
 from models.cloud import SyncLogModels
 
-from libs.api_gateway.jumpserver.user import UserAPI
-from libs.api_gateway.jumpserver.user_group import UserGroupAPI
+from libs.api_gateway.jumpserver.user import jms_user_api
+from libs.api_gateway.jumpserver.user_group import jms_user_group_api
 from libs.api_gateway.jumpserver.asset import AssetAPI
 from libs.api_gateway.jumpserver.asset_hosts import AssetHostsAPI
 from libs.api_gateway.jumpserver.asset_perms import AssetPermissionsAPI
@@ -183,38 +185,40 @@ def async_biz_info():
     executor.submit(clean_sync_logs)
 
 
-def users_sync():
+def sync_users():
     # 同步用户
-    def _sync_main(user):
+    def _sync_main(user: dict) -> None:
         """
         主逻辑
-        :return:
+        :param user: 用户信息字典，包含'username'和'nickname'
+        :return: None
         """
         username = user['username']
         user['name'] = user['nickname']
-        is_exists = UserAPI().get(username=username)
-        if is_exists:
-            logging.debug(f'JumpServer用户{username}已存在')
-            return
-        res = UserAPI().create(**user)
-        if res:
-            logging.debug(f'同步用户: {username} 到JumpServer成功')
-        else:
-            logging.error(f'同步用户: {username} 到JumpServer失败: {res}')
+        try:
+            jms_user = jms_user_api.get(username=username)
+            if jms_user:
+                logging.debug(f'JumpServer用户{username}已存在')
+                return
+            res = jms_user_api.create(**user)
+            msg = "成功" if res else "失败"
+            logging.debug(f"同步用户{username}到JumpServer结果：{msg}")
+        except Exception as err:
+            logging.error(f'同步用户{username}到JumpServer出错 {err}')
 
+    @deco(RedisLock("async_users_to_cmdb_redis_lock_key"))
     def index():
         logging.info(f'开始同步codo用户到JumpServer')
         client = AcsClient()
         resp = client.do_action_v2(**api_set.get_users)
         if resp.status_code != 200:
+            logging.debug(f"同步codo用户到JumpServer, 获取用户列表失败: {resp.status_code}")
             return
         resp = resp.json()
-        users = resp['data']
-        if not users:
-            return
-        users = [user for user in users if user['source'] == 'ucenter' and user['status'] == "0"]  # 过滤
+        users = [user for user in resp['data'] if user['source'] == 'ucenter' and user['status'] == "0"]  # 过滤
         for user in users:
             _sync_main(user)
+        logging.info(f'同步codo用户到JumpServer结束')
 
     try:
         index()
@@ -222,102 +226,63 @@ def users_sync():
         logging.error(f'同步codo用户到JumpServer出错 {e}')
 
 
-def user_groups_sync():
-    # 同步用户组
-    def _sync_main(user_role):
-        """
-        :param user_role:
-        :return:
-        """
-        name = user_role['role_name']
-        is_exists = UserGroupAPI().get(name=name)
-        if is_exists:
+def _sync_user_group_to_jms(name: str):
+    """
+    同步codo用户组到JumpServer
+    :param name: 用户组名
+    :return:
+    """
+    try:
+        jms_user_group = jms_user_group_api.get(name=name)
+        if jms_user_group:
             logging.debug(f'JumpServer用户组{name}已存在')
             return
-        res = UserGroupAPI().create(name=name)
-        if res:
-            logging.info(f'同步用户组: {name} 到JumpServer成功')
-        else:
-            logging.error(f'同步用户组: {name} 到JumpServer失败: {res}')
+        res = jms_user_group_api.create(name=name)
+        logging.debug(f"同步用户组{name}到JumpServer结果：{res}")
+    except Exception as err:
+        logging.error(f'同步用户组{name}到JumpServer出错 {err}')
 
-    def index():
-        logging.info("开始同步codo用户组到JumpServer")
-        client = AcsClient()
-        resp = client.do_action_v2(**api_set.get_normal_role_list)
-        if resp.status_code != 200:
+
+def _sync_user_group_members_to_jms(user_group_name: str, users: List[str]) -> None:
+    """
+    同步codo用户组成员到JumpServer
+    :param user_group_name: 用户组名
+    :param users: 用户列表
+    :return:
+    """
+    try:
+        jms_user_group = jms_user_group_api.get(name=user_group_name)
+        if not jms_user_group:
+            logging.debug(f'JumpServer没有该用户组: {user_group_name}')
             return
-        resp = resp.json()
-        res = resp['data']
-        for user_role in res:
-            _sync_main(user_role)
 
-    index()
+        # 获取用户组成员在JumpServer的ID
+        jms_user_ids = []
+        for username in users:
+            jms_user = jms_user_api.get(username=username)
+            if not jms_user:
+                continue
+            jms_user_ids.append(jms_user[0]['id'])
+
+        # 更新用户组成员
+        res = jms_user_group_api.update(name=user_group_name, users=jms_user_ids)
+        logging.debug(f'同步用户组{user_group_name}成员到JumpServer: {"成功" if res else "失败"}')
+
+    except Exception as err:
+        logging.error(f'同步用户组{user_group_name}成员到JumpServer出错 {err}')
 
 
-def user_group_members_sync():
-    # 同步用户组成员
-    def _sync_main(user_group_name: str, members_dict: dict):
-        """
-        :param user_group_name:
-        :param members_dict:
-        :return:
-        """
-        user_group = UserGroupAPI().get(name=user_group_name)
-        user_ids = []
-        if user_group:
-            members = members_dict.keys()
-            for user_member in members:
-                name = user_member.split('(')[0]
-                user = UserAPI().get(username=name)
-                if user:
-                    user_id = user[0]['id']
-                    user_ids.append(user_id)
-                else:
-                    logging.info(f'JumpServer没有该用户: {name}')
-        else:
-            logging.info(f'JumpServer没有该用户组: {user_group_name}')
-            return
-        res = UserGroupAPI().update(name=user_group_name, users=user_ids)
-        if res:
-            logging.info(f'同步用户组成员: {user_group_name} 到JumpServer成功')
-        else:
-            logging.error(
-                f'同步用户组成员: {user_group_name} 到JumpServer失败: {res}')
-
+def sync_perm_group_and_members(perm_group_id=None):
+    # 同步权限分组和权限分组成员
     def index():
-        logging.info("开始同步codo用户组到JumpServer")
+        logging.info("开始同步codo权限分组和权限组成员到JumpServer")
         client = AcsClient()
         resp = client.do_action_v2(**api_set.get_all_role_user_v4)
         if resp.status_code != 200:
             return
         resp = resp.json()
         res = resp['data']
-        for user_group_name, members_dict in res.items():
-            _sync_main(user_group_name, members_dict)
 
-    index()
-
-
-def perm_groups_sync(perm_group_id=None):
-    # 同步权限组
-    def _sync_main(name: str):
-        """
-
-        :param name:
-        :return:
-        """
-        is_exists = UserGroupAPI().get(name=name)
-        if is_exists:
-            logging.info(f'JumpServer权限组{name}已存在')
-            return
-        res = UserGroupAPI().create(name=name)
-        if res:
-            logging.info(f'同步权限组: {name} 到JumpServer成功')
-        else:
-            logging.error(f'同步权限组: {name} 到JumpServer失败: {res}')
-
-    def index():
-        logging.info("开始同步codo权限组到JumpServer")
         with DBContext('w', None, True) as session:
             try:
                 if not perm_group_id:
@@ -327,67 +292,29 @@ def perm_groups_sync(perm_group_id=None):
             except Exception as err:
                 logging.error(f'查询权限分组异常 {err}')
             for perm_group in perm_groups:
-                _sync_main(perm_group.perm_group_name)
+                perm_group_name = perm_group.perm_group_name
+                perm_group_users = list()
 
-    index()
+                # step1 先同步权限组
+                _sync_user_group_to_jms(perm_group_name)
 
-
-def perm_group_members_sync():
-    # 同步权限组成员
-    # 权限组对应jumpServer用户组
-
-    def _sync_main(user_group_name: str, members_dict: dict):
-        """
-        :param user_group_name:
-        :param members_dict:
-        :return:
-        """
-        user_group = UserGroupAPI().get(name=user_group_name)
-        user_ids = []
-        if user_group:
-            members = members_dict.keys()
-            for user_member in members:
-                name = user_member.split('(')[0]
-                user = UserAPI().get(username=name)
-                if user:
-                    user_id = user[0]['id']
-                    user_ids.append(user_id)
-                else:
-                    logging.info(f'JumpServer没有该用户: {name}')
-        else:
-            logging.debug(f'JumpServer没有该权限组: {user_group_name}')
-
-        res = UserGroupAPI().update(name=user_group_name, users=user_ids)
-        if res:
-            logging.info(f'同步权限组成员: {user_group_name} 到JumpServer成功')
-        else:
-            logging.error(
-                f'同步权限组成员: {user_group_name} 到JumpServer失败: {res}')
-
-    def index():
-        logging.info("开始同步codo权限组到JumpServer")
-        client = AcsClient()
-        resp = client.do_action_v2(**api_set.get_all_role_user_v4)
-        if resp.status_code != 200:
-            return
-        resp = resp.json()
-        res = resp['data']
-
-        with DBContext('w', None, True) as session:
-            try:
-                perm_groups = session.query(PermissionGroupModels).all()
-            except Exception as err:
-                logging.error(f'查询权限分组异常 {err}')
-            for perm_group in perm_groups:
-                user_group = perm_group.user_group
-                user_groups = user_group.split(',')
-                for user_group_name in user_groups:
+                # step2 再同步权限组成员
+                # 数据转换
+                user_group = perm_group.user_group  # 用户组列表
+                for user_group_name in user_group:
                     members_dict = res.get(user_group_name)
                     if not members_dict:
                         continue
-                    _sync_main(perm_group.perm_group_name, members_dict)
+                    perm_group_users.extend([user.split("(")[0].strip() for user in members_dict])
 
-    index()
+                _sync_user_group_members_to_jms(perm_group_name, list(set(perm_group_users)))
+
+        logging.info("同步codo权限分组和权限分组成员到JumpServer结束")
+
+    try:
+        index()
+    except Exception as err:
+        logging.error(f'同步codo权限分组和权限分组成员到JumpServer出错 {err}')
 
 
 def service_tree_sync(biz_id=None):
@@ -551,7 +478,7 @@ def grant_perms_for_assets(perm_group_id=None):
                 nodes_ids.append(jump_server_node[0]['id'])
         # 用户组
         for user_group in user_groups:
-            jump_server_user_group = UserGroupAPI().get(name=user_group)
+            jump_server_user_group = jms_user_group_api.get(name=user_group)
             if jump_server_user_group:
                 user_group_ids.append(jump_server_user_group[0]['id'])
         # 账号
@@ -655,18 +582,6 @@ def grant_perms_for_assets(perm_group_id=None):
     index()
 
 
-def sync_user_info():
-    @deco(RedisLock("async_users_to_cmdb_redis_lock_key"))
-    def index():
-        # 先同步用户
-        users_sync()
-        # 再同步用户组
-        user_groups_sync()
-        # 同步用户组成员
-        user_group_members_sync()
-
-    index()
-
 
 def sync_service_trees():
     @deco(RedisLock("async_service_trees_to_cmdb_redis_lock_key"))
@@ -682,19 +597,16 @@ def sync_service_trees():
 def sync_perm_groups():
     @deco(RedisLock("async_perm_groups_to_cmdb_redis_lock_key"))
     def index():
-        # 先同步权限组
-        perm_groups_sync()
-        # 同步权限组成员
-        perm_group_members_sync()
+        # 先同步权限组和权限组成员
+        sync_perm_group_and_members()
         # 权限组关联的资产对用户组授权
         grant_perms_for_assets()
-
     index()
 
 
-def async_user_info():
+def async_users():
     executor = ThreadPoolExecutor(max_workers=1)
-    executor.submit(sync_user_info)
+    executor.submit(sync_users)
 
 
 def async_perm_groups():
@@ -714,7 +626,7 @@ def sync_vswitch_cloud_region_id():
         logging.info(f'开始同步虚拟子云区域ID!!!')
         with DBContext('w', None, True) as session:
             # 查询云区域规则
-            cloud_regions = session.query(CloudRegionModels).all()
+            cloud_regions = session.query(CloudRegionModels).filter(CloudRegionModels.asset_group_rules.isnot(None)).all()
             asset_group_rules = [dict(asset_group_rules=cloud_region.asset_group_rules[0],
                                       cloud_region_id=cloud_region.cloud_region_id) for cloud_region in cloud_regions]
 

@@ -68,6 +68,18 @@ class UserGroupAPI(JumpServerBaseAPI):
         return self.send_request(method='delete',
                                  url=f'{self.base_url}/api/v1/user/groups/{user_group_id}/')
 
+    def get_user_group_members(self, group_id: str) -> List[dict]:
+        """
+        查询用户组成员
+        :param group_id: 用户组id
+        :return:
+        """
+        return self.send_request(method='get',
+                                 url=f'{self.base_url}/api/v1/users/groups/{group_id}/')
+
+
+jms_user_group_api = UserGroupAPI()
+
 
 if __name__ == '__main__':
     pass

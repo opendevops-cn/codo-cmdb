@@ -37,11 +37,6 @@ def add_perm_group_for_api(data: dict) -> dict:
     user_group = data.get("user_group")
     if not user_group:
         return {"code": 1, "msg": "用户组不能为空"}
-    jmss_account = data.get("jmss_account", [])
-    if not jmss_account:
-        return {"code": 1, "msg": "资产账号不能为空"}
-    data["jmss_account"] = ",".join(jmss_account)
-    data['user_group'] = ",".join(user_group)
     data['exec_uuid'] = uuid()
     try:
         with DBContext('w', None, True) as session:
@@ -99,10 +94,6 @@ def update_perm_group_for_api(data: dict) -> dict:
     user_group = data.get("user_group")
     if not user_group:
         return {"code": 1, "msg": "用户组不能为空"}
-    data['user_group'] = ",".join(user_group)
-    jmss_account = data.get("jmss_account", [])
-    if not jmss_account:
-        return {"code": 1, "msg": "资产账户不能为空"}
 
     new_data = dict(
         biz_id=data.get('biz_id'), perm_group_name=data.get('perm_group_name'),
@@ -112,7 +103,6 @@ def update_perm_group_for_api(data: dict) -> dict:
         user_group=data['user_group'],
         env_name=data.get('env_name'), region_name=data.get('region_name'),
         module_name=data.get('module_name'),
-        jmss_account=",".join(jmss_account)
 
     )
     try:
