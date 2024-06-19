@@ -105,13 +105,27 @@ class PermissionGroupModels(BizBaseModel):
     exec_uuid = Column('exec_uuid', String(100), index=True, comment='查询ID')
     perm_group_name = Column('perm_group_name', String(80), nullable=True, comment='名称')
     perm_type = Column('perm_type', String(20), default='dev', nullable=True, comment='权限类型')
-    user_group = Column('user_group', String(80), comment='用户组')
+    user_group = Column('user_group', JSON, comment='用户组', default=[])
     env_name = Column('env_name', String(128), comment='环境/大区')
     region_name = Column('region_name', String(500), comment='区服/集群/机房')
     module_name = Column('module_name', String(500), comment='模块/服务/机架/机柜')
-    jmss_account = Column('jmss_account', String(500), comment='授权用户')
     perm_group_detail = Column('perm_group_detail', String(255), comment='备注')
     modify_user = Column('modify_user', String(128), nullable=True, comment='修改人')
 
     # 联合键约束 (业务ID+名称必须是唯一的)
     __table_args__ = ()
+
+
+class PermissionTypeMapping(BizBaseModel):
+    __tablename__ = 't_permission_type_mapping'  # 权限类型和jms账号映射
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    perm_type = Column('perm_type', String(20), default='dev', nullable=True, comment='权限类型')
+    jms_org_id = Column('jms_org_id', String(80), default="", comment='堡垒机组织ID')
+    jms_account_template = Column('jms_account_template', String(255), default="", comment='堡垒机账号模版')
+    jms_domain_id = Column('jms_domain_id', String(80), default="", comment='堡垒机网域ID')
+    jms_domain_name = Column('jms_domain_name', String(80), default="", comment='堡垒机网域名')
+
+    # 联合键约束 (业务ID+权限类型+堡垒机组织ID+网域ID必须是唯一的)
+    __table_args__ = (
+        UniqueConstraint('biz_id', 'perm_type', 'jms_org_id', 'jms_domain_id', name='permission_type_unique'),
+    )

@@ -8,6 +8,9 @@ from typing import *
 from libs.api_gateway.jumpserver.base import JumpServerBaseAPI
 
 
+__all__ = ['jms_user_api']
+
+
 class UserAPI(JumpServerBaseAPI):
     """用户API"""
 
@@ -45,6 +48,8 @@ class UserAPI(JumpServerBaseAPI):
         return self.send_request(method='post', data=data,
                                  url=f'{self.base_url}/api/v1/users/users/')
 
+
+jms_user_api = UserAPI()
 
 if __name__ == '__main__':
     pass
