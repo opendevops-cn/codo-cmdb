@@ -635,7 +635,7 @@ def sync_vswitch_cloud_region_id():
             for asset_group_rule in asset_group_rules:
                 for rule in asset_group_rule['asset_group_rules']:
                     if rule['query_name'].lower() == 'vpc':
-                        mapping[rule['query_value']] = asset_group_rule["cloud_region_id"]
+                        mapping[rule['query_value'][-1]] = asset_group_rule["cloud_region_id"]
 
             # 更新vswitch的cloud_region_id
             vswitches = session.query(AssetVSwitchModels).all()

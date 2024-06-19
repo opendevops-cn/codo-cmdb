@@ -65,11 +65,12 @@ def check_asset_group_rules(asset_group_rules: List[List[dict]], existing_asset_
     为了保证每一个实例只能归属于一个云区域，对资产组规则之间做交集校验
     """
 
-    rules = [item.get("query_value") for item in asset_group_rules[0] if item['query_name'] == "vpc"]
+    rules = [item.get("query_value")[-1] for item in asset_group_rules[0] if item['query_name'] == "vpc"]
 
     # 已存在的规则
-    existing_asset_group_rules = [[item.get("query_value") for item in asset_group_rules[0]
+    existing_asset_group_rules = [[item.get("query_value")[-1] for item in asset_group_rules[0]
                                    if item['query_name'] == "vpc"] for asset_group_rules in existing_asset_group_rules]
+
 
     # 通过集合求交集
     has_intersection = any(not set(rules).isdisjoint(set(existing_asset_group_rule)) for existing_asset_group_rule
@@ -80,8 +81,7 @@ def check_asset_group_rules(asset_group_rules: List[List[dict]], existing_asset_
 def update_server_agent_id_by_cloud_region_rules(asset_group_rules: List[List[Dict]], cloud_region_id: str):
     if not (asset_group_rules and cloud_region_id):
         return False
-
-    vpc_values = [query["query_value"] for sublist in asset_group_rules for query in sublist if query["query_name"] == "vpc"]
+    vpc_values = [query["query_value"][-1] for sublist in asset_group_rules for query in sublist if query["query_name"] == "vpc"]
 
     if not vpc_values:
         logging.warning("没有找到有效的VPC规则")
@@ -131,6 +131,11 @@ def add_cloud_region_for_api(data) -> dict:
 
     if not asset_group_rules:
         return {"code": 1, "msg": "资产规则不能为空"}
+
+    for rules in asset_group_rules:
+        for rule in rules:
+            if rule.get('status') == 1 and rule.get('query_name') == 'vpc' and len(rule.get('query_value')) < 3:
+                return {"code": 1, "msg": "资产规则值不能为空"}
 
     # 防止参数中存在不必要的字段
     create_data = dict(name=data.get("name"), cloud_region_id=data.get('cloud_region_id'),
@@ -200,6 +205,11 @@ def put_cloud_region_for_api(data) -> dict:
 
     if not asset_group_rules:
         return {"code": 1, "msg": "资产规则不能为空"}
+
+    for rules in asset_group_rules:
+        for rule in rules:
+            if rule.get('status') == 1 and rule.get('query_name') == 'vpc' and len(rule.get('query_value')) < 3:
+                return {"code": 1, "msg": "资产规则值不能为空"}
 
     try:
         with DBContext('r') as session:
@@ -275,7 +285,7 @@ def preview_cloud_region_v2(**params) -> dict:
         asset_group_rules = cloud_region_obj.asset_group_rules
         if not asset_group_rules:
             return dict(msg='获取成功', code=0, data=result, count=0)
-        vpc_values = [query["query_value"] for sublist in asset_group_rules for query in sublist
+        vpc_values = [query["query_value"][-1] for sublist in asset_group_rules for query in sublist
                       if query["query_name"] == "vpc" and query['status'] == 1]
         try:
             # 使用JSON字段中的vpc_id进行过滤
