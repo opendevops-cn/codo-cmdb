@@ -121,11 +121,13 @@ class PermissionTypeMapping(BizBaseModel):
     id = Column(Integer, primary_key=True, autoincrement=True)
     perm_type = Column('perm_type', String(20), default='dev', nullable=True, comment='权限类型')
     jms_org_id = Column('jms_org_id', String(80), default="", comment='堡垒机组织ID')
+    jms_account_template_id = Column('jms_account_template_id', String(255), default="", comment='堡垒机账号模版ID')
     jms_account_template = Column('jms_account_template', String(255), default="", comment='堡垒机账号模版')
     jms_domain_id = Column('jms_domain_id', String(80), default="", comment='堡垒机网域ID')
     jms_domain_name = Column('jms_domain_name', String(80), default="", comment='堡垒机网域名')
 
     # 联合键约束 (业务ID+权限类型+堡垒机组织ID+网域ID必须是唯一的)
     __table_args__ = (
-        UniqueConstraint('biz_id', 'perm_type', 'jms_org_id', 'jms_domain_id', name='permission_type_unique'),
+        UniqueConstraint('biz_id', 'perm_type', 'jms_org_id', 'jms_account_template_id',
+                         'jms_domain_id', name='permission_type_unique'),
     )

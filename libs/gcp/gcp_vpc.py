@@ -59,7 +59,7 @@ class GCPVPC:
         处理数据
         """
         res: Dict[str, Any] = dict()
-        res['instance_id'] = data.id
+        res['instance_id'] = str(data.id)
         res['vpc_name'] = data.name
         res['region'] = ''
         res['create_time'] = datetime.strptime(data.creation_timestamp,

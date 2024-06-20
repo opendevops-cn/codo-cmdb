@@ -97,5 +97,7 @@ class AssetAccountPush(AssetAccountsAPI):
                                  data={'automation': automation})
 
 
+jms_asset_account_template_api = AssetAccountTemplatesAPI()
+
 if __name__ == '__main__':
     pass

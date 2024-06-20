@@ -11,10 +11,11 @@ from libs.api_gateway.jumpserver.base import JumpServerBaseAPI
 class AssetAPI(JumpServerBaseAPI):
     """资产节点API"""
 
-    def get(self, name: str = None) -> List[dict]:
+    def get(self, name: str = None, is_fuzzy: bool = True) -> List[dict]:
         """
         查询节点
         :param name:
+        :param is_fuzzy: 是否模糊查询
         :return:
         """
         params = {}
@@ -22,10 +23,11 @@ class AssetAPI(JumpServerBaseAPI):
             params = {"search": name}
 
         result = self.send_request(method='get', url=f'{self.base_url}/api/v1/assets/nodes/', params=params)
-        # 模糊查找，需要筛选结果集
         if not result:
             return []
-        return [item for item in result if item['full_value'] == name]
+        if is_fuzzy:
+            return [item for item in result if item['full_value'] == name]
+        return result
 
     def create(self, name: str = None, parent_id: str = None) -> List[dict]:
         """
@@ -69,6 +71,8 @@ class AssetAPI(JumpServerBaseAPI):
 
         return self.send_request(method='put', url=f'{self.base_url}/api/v1/assets/nodes/{node_id}/', data=data)
 
+
+jms_asset_api = AssetAPI()
 
 if __name__ == '__main__':
     pass

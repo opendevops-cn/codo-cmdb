@@ -6,14 +6,13 @@ Author  : shenshuo
 Date   :  2023/12/15 11:02
 Desc   :  谷歌云ECS主机自动发现
 """
-import json
 import logging
 from typing import *
-from models.models_utils import server_task, mark_expired
-from collections import defaultdict
-from collections.abc import Iterable
+
 from google.oauth2 import service_account
 from google.cloud import compute_v1
+
+from models.models_utils import server_task, mark_expired
 
 
 def get_run_type(val):
@@ -74,6 +73,16 @@ class GCPECS:
 
         return ecs_list
 
+    def get_vpc_by_network(self, network: str):
+        """
+        获取vpc
+        """
+        client = compute_v1.NetworksClient(
+            credentials=self.__credentials)
+        request = compute_v1.GetNetworkRequest(network=network, project=self.project_id)
+        response = client.get(request=request)
+        return response
+
     def format_data(self, data) -> Dict[str, str]:
         """
         处理数据
@@ -84,8 +93,16 @@ class GCPECS:
         res: Dict[str, str] = dict()
         try:
             network_interface = data.network_interfaces[0]
+            network = network_interface.network.split('/')[-1]
 
-            vpc_id = network_interface.network.split('/')[-1]
+            try:
+                vpc_instance = self.get_vpc_by_network(network=network)
+                vpc_id = str(vpc_instance.id)
+            except Exception as e:
+                logging.error(f'调用谷歌云ECS获取vpc异常. get_vpc_by_network: {self._account_id} -- {e}')
+                vpc_id = ''
+
+            # vpc_id = network_interface.network.split('/')[-1]
             network_type = 'vpc'
 
             # 从机器类型中获取CPU和内存

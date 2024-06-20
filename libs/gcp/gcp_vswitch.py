@@ -82,7 +82,7 @@ class GCPSubnet:
         res['description'] = data.description
         try:
             vpc_instance = self.get_vpc_by_network(network=network)
-            res['vpc_id'] = vpc_instance.id
+            res['vpc_id'] = str(vpc_instance.id)
             res['vpc_name'] = vpc_instance.name
         except Exception as e:
             logging.error(
