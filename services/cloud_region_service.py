@@ -90,15 +90,19 @@ def update_server_agent_id_by_cloud_region_rules(asset_group_rules: List[List[Di
     try:
         with DBContext('w', None, True) as session:
             # 使用 JSON 字段中的 vpc_id 进行过滤
-            servers = session.query(AssetServerModels).filter(
-                func.json_extract(AssetServerModels.ext_info, '$.vpc_id').in_(vpc_values)
-            ).all()
+            # 兼容5.7版本mysql, 不适用IN查询
+            query = session.query(AssetServerModels).filter()
+            filters = []
+            for vpc_value in vpc_values:
+                filters.append(func.json_extract(AssetServerModels.ext_info, '$.vpc_id') == vpc_value)
+
+            servers = query.filter(or_(*filters)) if filters else query
 
             for server in servers:
                 server.agent_id = f"{server.inner_ip}:{cloud_region_id}"
 
             session.commit()
-            logging.info(f"成功更新了{len(servers)}台服务器的AgentID")
+            logging.info(f"成功更新了{servers.count()}台服务器的AgentID")
             return True
     except Exception as e:
         logging.error(f"更新服务器AgentID失败: {e}")
@@ -290,7 +294,12 @@ def preview_cloud_region_v2(**params) -> dict:
         try:
             # 使用JSON字段中的vpc_id进行过滤
             query = session.query(AssetServerModels).filter(_get_server_value(value)).filter_by(**filter_map)
-            query = query.filter(func.json_extract(AssetServerModels.ext_info, '$.vpc_id').in_(vpc_values))
+            # 兼容5.7版本mysql, 不适用IN查询
+            filters = []
+            for vpc_value in vpc_values:
+                filters.append(func.json_extract(AssetServerModels.ext_info, '$.vpc_id') == vpc_value)
+
+            query = query.filter(or_(*filters)) if filters else query
             total = query.count()
             page = paginate(query, order_by=None, **params)
             result = _models_to_list(page.items)
