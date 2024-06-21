@@ -97,5 +97,7 @@ class AssetPermissionsAPI(JumpServerBaseAPI):
                                  url=f"{self.base_url}/api/v1/perms/asset-permissions/{assets_permissions_id}/")
 
 
+jms_asset_permission_api = AssetPermissionsAPI()
+
 if __name__ == '__main__':
     pass
