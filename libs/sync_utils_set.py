@@ -139,16 +139,6 @@ def sync_agent_status():
                 logging.info(
                     f"{info['id']} 改为{'在线' if info['agent_status'] == '1' else '离线'} ")
 
-            # all_info = []
-            # for asset_id, agent_id, agent_status, in __info:
-            #     if agent_status == '1' and agent_id not in agent_list:  # 如果状态在线  但是agent找不到
-            #         ins_log.read_log('info', f'{agent_id}改为离线  {asset_id}')
-            #         all_info.append(dict(id=asset_id, agent_status='2'))
-            #         # session.query(model).filter(model.id == asset_id).update(**dict(agent_status='2'))
-            #     elif (agent_status == '2' or not agent_status) and agent_id in agent_list:  # 如果状态离线  但是agent存在
-            #         all_info.append(dict(id=asset_id, agent_status='1'))
-            #         ins_log.read_log('info', f'{agent_id}改为在线  { {asset_id} }')
-            #         # session.query(model).filter(model.id == asset_id).update(**dict(agent_status='1'))
             session.bulk_update_mappings(the_model, all_info)
         logging.info(f'同步agent状态到配置平台 结束 {datetime.datetime.now()}')
 
