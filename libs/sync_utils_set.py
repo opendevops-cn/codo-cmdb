@@ -13,6 +13,8 @@ import datetime
 import logging
 import os
 import time
+from typing import List, Union, Any
+
 from shortuuid import uuid
 from concurrent.futures import ThreadPoolExecutor
 from settings import settings
@@ -20,7 +22,7 @@ from loguru import logger
 from websdk2.tools import RedisLock
 from websdk2.configs import configs
 from websdk2.cache_context import cache_conn
-from sqlalchemy import func
+from sqlalchemy import func, and_
 from collections import defaultdict
 from typing import *
 ##
@@ -29,7 +31,7 @@ from websdk2.model_utils import insert_or_update
 from websdk2.client import AcsClient
 from websdk2.api_set import api_set
 
-from models.business import BizModels, PermissionGroupModels, PermissionTypeMapping
+from models.business import BizModels, PermissionGroupModels, PermissionToJMS
 from models.asset import AssetServerModels, AssetVSwitchModels
 from models.cloud_region import CloudRegionModels
 from models.cloud import SyncLogModels
@@ -37,9 +39,9 @@ from models.cloud import SyncLogModels
 from libs.api_gateway.jumpserver.user import jms_user_api
 from libs.api_gateway.jumpserver.user_group import jms_user_group_api
 from libs.api_gateway.jumpserver.asset import jms_asset_api
-from libs.api_gateway.jumpserver.asset_hosts import AssetHostsAPI
+from libs.api_gateway.jumpserver.asset_hosts import jms_asset_host_api
 from libs.api_gateway.jumpserver.asset_perms import jms_asset_permission_api
-from libs.api_gateway.jumpserver.asset_accounts import AssetAccountsAPI, AssetAccountTemplatesAPI
+from libs.api_gateway.jumpserver.asset_accounts import jms_asset_account_template_api
 
 from services.tree_service import get_tree_by_api
 from services.tree_asset_service import get_tree_assets
@@ -321,43 +323,54 @@ def sync_service_tree(biz_id=None):
     同步服务树
     :return:
     """
-    def _sync_main(nodes):
+
+    def create_or_update_node(name: str, parent_id: str, full_name: str):
+        """创建或者更新节点
+        @name: 节点名
+        @parent_id: 父节点id
+        @full_name: 节点全名
+        """
+        jms_asset_node = jms_asset_api.create(name=name, parent_id=parent_id)
+        if not jms_asset_node:
+            temp_name = f'新建节点-{str(uuid())}'
+            jms_asset_node = jms_asset_api.create(name=temp_name, parent_id=parent_id)
+            if jms_asset_node:
+                result = jms_asset_api.update(node_id=jms_asset_node['id'], name=name, value=name, full_value=full_name)
+                logging.info(f"节点{full_name}更新结果: {bool(result)}")
+                if not result:
+                    return None
+        return jms_asset_node
+
+    def sync_node(nodes):
         for node in nodes:
-            time.sleep(0.1)
-            title = node.get('title')
-            children = node.get('children', [])
-            full_name = node.get('full_name')
-            jump_server_node = jms_asset_api.get(name=full_name)
-            if not jump_server_node:
-                # 当前节点不存在，查询父节点ID创建当前节点
-                parent_name = full_name.rsplit('/', 1)[0]
-                jump_server_parent_node = jms_asset_api.get(name=parent_name)
-                if not jump_server_parent_node:
-                    logging.info(f'父节点不存在：{parent_name}')
-                    continue
-                parent_id = jump_server_parent_node[0]['id']
-                jump_server_node = jms_asset_api.create(name=title, parent_id=parent_id)
-                if jump_server_node:
-                    logging.info(f'节点创建成功：{full_name}')
+            try:
+                title = node.get('title')
+                children = node.get('children', [])
+                full_name = node.get('full_name')
+                jms_node = jms_asset_api.get(name=full_name)
+                if jms_node:
+                    logging.info(f'节点已存在: {full_name}')
                 else:
-                    # jms 存在同名节点创建异常的bug，这里用创建临时节点然后修改节点名称的方式兼容
-                    name = f'新建节点-{str(uuid())}'
-                    jump_server_node = jms_asset_api.create(name=name, parent_id=parent_id)
-                    if jump_server_node:
-                        result = jms_asset_api.update(node_id=jump_server_node['id'], name=title,
-                                                      value=title, full_value=full_name)
+                    # 当前节点不存在，查询父节点ID创建当前节点
+                    parent_name = full_name.rsplit('/', 1)[0]
+                    jms_parent_node = jms_asset_api.get(name=parent_name)
+                    if not jms_parent_node:
+                        logging.info(f'父节点不存在：{parent_name}')
+                        return
 
-                        logging.info(f"节点{full_name}更新结果: {bool(result)}")
+                    parent_id = jms_parent_node[0]['id']
+                    jms_node = create_or_update_node(name=title, parent_id=parent_id, full_name=full_name)
+                    if not jms_node:
+                        logging.error(f"节点创建失败：{title}, parent_id: {parent_id}, full_name: {full_name}")
 
-                    else:
-                        logging.error(f"节点创建失败：{name}, parent_id: {parent_id}, full_name: {full_name}")
-            else:
-                logging.info(f'节点已存在: {full_name}')
+                if children:
+                    # 递归创建子节点
+                    sync_node(children)
 
-            # 递归创建子节点
-            _sync_main(children)
+            except Exception as err:
+                logging.error(f"节点创建失败: {err}")
 
-    def _handle_data(nodes, parent_name='/Default/'):
+    def add_full_name_to_nodes(nodes, parent_name='/Default/'):
         """
         资产节点增加full_name字段
         full_name: e.g. '/Default/运维项目/台北运维/logbackup'
@@ -365,17 +378,20 @@ def sync_service_tree(biz_id=None):
         :param parent_name:
         :return:
         """
+        # 确保 parent_name 以斜杠结尾
+        if not parent_name.endswith('/'):
+            parent_name += '/'
+
         for node in nodes:
             title = node.get('title')
             children = node.get('children', [])
 
-            if not parent_name.endswith('/'):
-                parent_name += '/'
             full_name = f'{parent_name}{title}'
-            node.update(full_name=full_name)
+            node['full_name'] = full_name
 
             if children:
-                _handle_data(children, full_name)
+                add_full_name_to_nodes(children, full_name)
+
         return nodes
 
     def index():
@@ -385,8 +401,9 @@ def sync_service_tree(biz_id=None):
         else:
             data = get_tree_by_api(biz_id=biz_id)
         nodes = data['data']
-        nodes = _handle_data(nodes)
-        _sync_main(nodes)
+        nodes = add_full_name_to_nodes(nodes)
+        sync_node(nodes)
+        logging.info("同步服务树到JumpServer结束")
 
     index()
 
@@ -394,26 +411,39 @@ def sync_service_tree(biz_id=None):
 def sync_service_tree_assets(biz_id=None):
     # 同步服务树主机资产
 
-    def _handle_data(assets, org_name='/Default/'):
+    def add_full_name_to_assets(assets, org_name='/Default/'):
         """
-
         :param assets:
         :param org_name:
         :return:
         """
-        for asset in assets:
-            with DBContext('w', None, True) as session:
-                biz_obj = session.query(BizModels).filter(
-                    BizModels.biz_id == asset['biz_id']).first()
-                if not biz_obj:
+        # 确保 org_name 以斜杠结尾
+        if not org_name.endswith('/'):
+            org_name += '/'
+
+        # 获取所有需要的 biz_id 列表
+        biz_ids = {asset['biz_id'] for asset in assets}
+
+        # 批量查询所有业务对象
+        with DBContext('w', None, True) as session:
+            biz_objs = session.query(BizModels).filter(BizModels.biz_id.in_(biz_ids)).all()
+
+            # 创建一个 biz_id 到 biz_cn_name 的映射
+            biz_id_to_name = {biz.biz_id: biz.biz_cn_name for biz in biz_objs}
+
+        def _add_full_name():
+            for asset in assets:
+                biz_cn_name = biz_id_to_name.get(asset['biz_id'])
+                if not biz_cn_name:
                     continue
-                biz_cn_name = biz_obj.biz_cn_name
                 env_name = asset['env_name']
                 region_name = asset['region_name']
                 module_name = asset['module_name']
                 full_name = f'{org_name}{biz_cn_name}/{env_name}/{region_name}/{module_name}'
                 asset.update(biz_cn_name=biz_cn_name, full_name=full_name)
-        return assets
+                yield asset
+
+        return list(_add_full_name())
 
     def _sync_main(asset: dict):
         """
@@ -426,37 +456,46 @@ def sync_service_tree_assets(biz_id=None):
         full_name = asset.get('full_name')
         biz_cn_name = asset.get('biz_cn_name')
         biz_id = asset.get("biz_id")
-
-        # 获取网域
-        with (DBContext('w', None, True) as session):
-            perm_mapping_obj = session.query(PermissionTypeMapping) \
-                .filter(PermissionTypeMapping.biz_id == biz_id).first()
-            if not perm_mapping_obj:
-                logging.info(f"权限组账号映射不存在, 业务名: {biz_cn_name}")
-                return
-            jms_domain_id = perm_mapping_obj.jms_domain_id
-
-            if not jms_domain_id:
-                logging.error(f"没有配置网域ID, 业务: {biz_cn_name}")
-                return
-
         if not full_name:
             return
-        asset_name = full_name.split('/Default/')[1] + f'/{name}'
-        jump_server_asset_obj = AssetHostsAPI().get(name=asset_name, address=inner_ip)
-        if jump_server_asset_obj:
+
+        accounts = []
+        # 获取网域和特权账号模板ID
+        with (DBContext('w', None, True) as session):
+            perm_mapping_obj = session.query(PermissionToJMS) \
+                .filter(PermissionToJMS.biz_id == biz_id).first()
+            if not perm_mapping_obj:
+                logging.info(f"没有配置权限分组和堡垒机账号映射, 业务: {biz_cn_name}")
+                return
+
+            # todo 一些特殊的网段创建资产时不需要关联网域
+            jms_domain_id = perm_mapping_obj.jms_domain_id
+            if not jms_domain_id:
+                logging.info(f"没有配置网域ID, 业务: {biz_cn_name}")
+                return
+
+            jms_account_template_id = perm_mapping_obj.jms_account_template_id
+            if not jms_account_template_id:
+                logging.info(f"没有配置特权账号模板ID, 业务: {biz_cn_name}")
+                return
+
+            accounts = [{"template": jms_account_template_id}]
+
+        asset_name = full_name.split('/Default/')[1] + f'/{name}-{inner_ip}'
+        jms_asset_host_obj = jms_asset_host_api.get(name=asset_name, address=inner_ip)
+        if jms_asset_host_obj:
             # 主机资产已存在
             # todo 更新资产
-            logging.debug(f'资产已存在: {inner_ip} -- {name}')
+            logging.debug(f'资产已存在: {asset_name}')
             return
 
         # 查找节点，创建主机资产
         jump_server_node_obj = jms_asset_api.get(name=full_name)
         if jump_server_node_obj:
             node_id = jump_server_node_obj[0]['id']
-            jump_server_asset_obj = AssetHostsAPI().create(name=asset_name, address=inner_ip, nodes=[node_id],
-                                                           domain=jms_domain_id)
-            logging.info(f"资产创建结果:{jump_server_asset_obj}")
+            jms_asset_host_obj = jms_asset_host_api.create(name=asset_name, address=inner_ip, nodes=[node_id],
+                                                           domain=jms_domain_id, accounts=accounts)
+            logging.info(f"资产创建结果:{bool(jms_asset_host_obj)}")
 
     def index():
         logging.info("开始同步服务树主机资产到JumpServer")
@@ -464,61 +503,127 @@ def sync_service_tree_assets(biz_id=None):
             assets, count = get_tree_assets(params={"page_size": 9999})
         else:
             assets, count = get_tree_assets(params={"page_size": 9999, "biz_id": biz_id})
-        assets = _handle_data(assets)
+        assets = add_full_name_to_assets(assets)
         for asset in assets:
             _sync_main(asset)
         logging.info("同步服务树主机资产到JumpServer结束")
 
-    index()
+    try:
+        index()
+    except Exception as err:
+        logging.error(f'同步服务树主机资产到JumpServer出错 {err}')
 
 
 def grant_perms_for_assets(perm_group_id=None):
 
-    def _sync_main(name, nodes, user_group, perm_type, biz_cn_name, jms_account_template):
-        """主逻辑"""
-        nodes_ids = []
-        user_group_ids = []
-        # 资产节点
-        for node in nodes:
-            jump_server_node = jms_asset_api.get(name=node)
-            if jump_server_node:
-                nodes_ids.append(jump_server_node[0]['id'])
+    def _grant_perms(name: str, nodes: List[str], user_group: List[str], biz_cn_name: str, perm_account_template_id: str):
+        """
+             同步主逻辑，处理资产权限配置。
 
-        # 用户组
-        for u_group in user_group:
-            jump_server_user_group = jms_user_group_api.get(name=u_group)
-            if jump_server_user_group:
-                user_group_ids.append(jump_server_user_group[0]['id'])
+             Args:
+                 name (str): 资产授权的名称。
+                 nodes (list[str]): 资产节点名称列表。
+                 user_group (list[str]): 用户组名称列表。
+                 biz_cn_name (str): 业务中文名称。
+                 perm_account_template_id (str): JumpServer待推送到服务器的账号模版ID。
+             Returns:
+                 None
+         """
 
-        # 账号
-        # step1, 获取账号模版ID
-        if not jms_account_template:
-            logging.error(f"没有配置账号模版名称： 业务: {biz_cn_name}")
-            return
+        def get_node_ids(node_names):
+            """获取节点ID列表"""
+            node_ids = set()
+            for name in node_names:
+                jms_node_objs = jms_asset_api.get(name=name)
+                if not jms_node_objs:
+                    logging.error(f"资产节点不存在：{name}")
+                    continue
+                node_ids.add(jms_node_objs[0]['id'])
+            return list(node_ids)
 
-        # step2, 获取账号模版中的用户名
-        jms_account_template_obj = AssetAccountTemplatesAPI().get(name=jms_account_template)
-        if not jms_account_template_obj:
-            logging.error(f"账号模版不存在： 业务: {biz_cn_name}, 模版: {jms_account_template}")
-            return
+        def get_account_template_info(template_id):
+            """获取账号模板信息"""
+            template_obj = jms_asset_account_template_api.get_account_template_detail(template_id)
+            if not template_obj:
+                logging.error(f"账号模板不存在：业务: {biz_cn_name}, 模板ID: {template_id}")
+                return None
+            return template_obj['username']
 
-        jms_account_template_username = jms_account_template_obj[0]['username']
-        jms_account_template_id = jms_account_template_obj[0]['id']
+        try:
+            if not nodes:
+                logging.error("资产节点不能为空")
+                return
 
-        # 指定账号
-        # 选择模板添加时，会自动创建资产下不存在的账号并推送
-        accounts = ["@SPEC", jms_account_template_username, f'%{jms_account_template_id}']
-        jms_asset_permission_obj = jms_asset_permission_api().get(name=name)
-        if not jms_asset_permission_obj:
-            # 创建资产授权
-            result = jms_asset_permission_api().create(name=name, nodes=nodes_ids, user_groups=user_group_ids,
-                                                       accounts=accounts)
-            logging.info(f"创建资产授权: {name} {bool(result)}")
-        else:
-            result = jms_asset_permission_api().update(assets_permissions_id=jms_asset_permission_obj[0]['id'],
-                                                       name=name, nodes=nodes_ids, user_groups=user_group_ids,
-                                                       accounts=accounts)
-            logging.debug(f'资产授权已存在: {name}, 更新 {bool(result)}')
+            nodes_ids = get_node_ids(nodes) if nodes else []
+            if not nodes_ids:
+                logging.error("资产节点ID列表不能为空")
+                return
+
+            if not user_group:
+                logging.error("用户组不能为空")
+                return
+
+            jms_user_group_objs = jms_user_group_api.get(name=name)
+            if not jms_user_group_objs:
+                logging.error(f"用户组不存在：{name}")
+                return
+
+            user_group_ids = [jms_user_group_objs[0]['id']]
+
+            # 获取jsm账号模版中待推送账号的用户名
+            perm_account_template_username = get_account_template_info(perm_account_template_id)
+            if not perm_account_template_username:
+                return
+
+            # 指定账号，选择模板添加时，会自动创建资产下不存在的账号并推送
+            accounts = ["@SPEC", perm_account_template_username, f'%{perm_account_template_id}']
+
+            jms_asset_permission_obj = jms_asset_permission_api.get(name=name)
+
+            if not jms_asset_permission_obj:
+                # 创建资产授权
+                result = jms_asset_permission_api.create(name=name, nodes=nodes_ids, user_groups=user_group_ids,
+                                                         accounts=accounts)
+                logging.info(f"创建资产授权: {name} {bool(result)}")
+            else:
+                # 更新资产授权
+                result = jms_asset_permission_api.update(assets_permissions_id=jms_asset_permission_obj[0]['id'],
+                                                         name=name, nodes=nodes_ids, user_groups=user_group_ids,
+                                                         accounts=accounts)
+                logging.debug(f'资产授权已存在: {name}, 更新 {bool(result)}')
+
+            # # 创建账号推送
+            # push_name = f'{perm_account_template_username}_{str(uuid())}'
+            # jms_account_push_obj = jms_account_push_api.create(name=push_name, accounts=[perm_account_template_username], nodes=nodes_ids)
+            # if not jms_account_push_obj:
+            #     logging.info("创建账号推送失败")
+            #     return
+            #
+            # # 手动执行账号推送
+            # jms_push_task = jms_account_push_execution_api.post(automation=jms_account_push_obj['id'])
+            # if not jms_push_task:
+            #     logging.error("手动执行账号推送任务失败")
+            #     return
+
+            # # 查看推送任务状态 #TODO 待优化
+            # time.sleep(30)
+            # jms_push_task_history = jms_account_push_execution_api.get(push_id=jms_push_task['task'])
+            # if not jms_push_task_history or jms_push_task_history['status'] != 'success':
+            #     logging.error("手动执行账号推送任务状态失败")
+            #     return
+            #
+            # jms_account_push_api.delete(automation_id=jms_account_push_obj['id'])
+            #
+            # # 手动推送的账号更新到账号列表
+            # accounts = ["@SPEC", "@SPEC", jms_account_template_username, jms_account_name,
+            #             f'%{jms_account_template_id}']
+            # result = jms_asset_permission_api.update(assets_permissions_id=jms_asset_permission_obj[0]['id'],
+            #                                          name=name, nodes=nodes_ids, user_groups=user_group_ids,
+            #                                          accounts=accounts)
+            # print(result)
+
+        except Exception as e:
+            logging.error(f"同步主机资产权限配置失败: {e}")
 
     def _get_asset_nodes(biz_cn_name: str, env_name: str, region_name: str,
                          module_name: str, org_name='/Default/'):
@@ -559,36 +664,54 @@ def grant_perms_for_assets(perm_group_id=None):
         # 根据权限分组对资产节点-用户组授权
         logging.info("开始对JumpServer资产-用户组授权")
 
-        with (DBContext('w', None, True) as session):
+        with DBContext('w', None, True) as session:
             try:
                 if not perm_group_id:
                     perm_groups = session.query(PermissionGroupModels).all()
                 else:
-                    perm_groups = session.query(PermissionGroupModels).filter(PermissionGroupModels.id == perm_group_id)
+                    perm_groups = session.query(PermissionGroupModels).filter(PermissionGroupModels.id == perm_group_id).all()
             except Exception as err:
                 logging.error(f'查询权限分组异常 {err}')
-            for perm_group in perm_groups:
+                raise
+
+            for perm_group in perm_groups[0:1]:
                 biz_obj = session.query(BizModels).filter(
                     BizModels.biz_id == perm_group.biz_id).first()
                 if not biz_obj:
-                    logging.info(f'查询业务ID异常 {err}')
+                    logging.info(f'没有查到业务, ID: {perm_group.biz_id}')
                     continue
-                perm_mapping_obj = session.query(PermissionTypeMapping) \
-                    .filter(PermissionTypeMapping.perm_type == perm_group.perm_type).first()
-                if not perm_mapping_obj:
-                    logging.info(f"查询权限组账号信息异常, 业务名: {perm_group.perm_group_name}")
-                    continue
-                biz_cn_name = biz_obj.biz_cn_name
-                user_group = perm_group.user_group  # 用户组列表
-                env_name = perm_group.env_name  # 环境
-                region_name = perm_group.region_name  # 集群
-                module_name = perm_group.module_name  # 模块
-                nodes = _get_asset_nodes(biz_cn_name, env_name, region_name,
-                                         module_name)
-                _sync_main(perm_group.perm_group_name, nodes, user_group, perm_group.perm_type, biz_cn_name,
-                           perm_mapping_obj.jms_account_template)
 
-    index()
+                perm_mapping_obj = session.query(PermissionToJMS) \
+                    .filter(and_(PermissionToJMS.perm_type == perm_group.perm_type),
+                            PermissionToJMS.biz_id == biz_obj.biz_id).first()
+                if not perm_mapping_obj:
+                    logging.info(f"没有配置权限分组和堡垒机账号映射, 业务: {biz_obj.biz_cn_name}, "
+                                 f"权限类型: {perm_group.perm_type}")
+                    continue
+
+                jms_account_template_id = perm_mapping_obj.jms_account_template_id
+                if not jms_account_template_id:
+                    logging.info(f"没有配置jms特权账号模板ID：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
+                    continue
+
+                perm_account_template_id = perm_mapping_obj.perm_account_template_id
+                if not perm_account_template_id:
+                    logging.info(f"没有配置jms待推送账号模板ID：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
+                    continue
+
+                biz_cn_name = biz_obj.biz_cn_name  # 业务中文名
+                nodes = _get_asset_nodes(biz_cn_name=biz_cn_name, env_name=perm_group.env_name,
+                                         region_name=perm_group.region_name, module_name=perm_group.module_name)
+
+                _grant_perms(name=perm_group.perm_group_name, nodes=nodes, user_group=perm_group.user_group,
+                             biz_cn_name=biz_cn_name, perm_account_template_id=perm_account_template_id)
+
+        logging.info("对JumpServer资产-用户组授权结束")
+
+    try:
+        index()
+    except Exception as err:
+        logging.error(f'对JumpServer资产-用户组授权出错 {err}')
 
 
 def sync_service_trees():
@@ -596,7 +719,7 @@ def sync_service_trees():
     def index():
         # 先同步服务树
         sync_service_tree()
-        # 同步主机资产
+        # 同步服务树主机资产
         sync_service_tree_assets()
 
     index()
