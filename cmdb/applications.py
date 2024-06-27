@@ -44,15 +44,15 @@ class Application(myApplication, ABC):
         # 同步虚拟子网云区域ID
         vswitch_callback = PeriodicCallback(async_vswitch_cloud_region_id, 360000) # 6分钟
         vswitch_callback.start()
-        # # 同步用户到jms
-        # user_callback = PeriodicCallback(async_user_info, 3600000)  # 60分钟
-        # user_callback.start()
-        # # 同步服务树
-        # service_tree_callback = PeriodicCallback(async_service_trees, 3600000)  # 60分钟
-        # service_tree_callback.start()
-        # # 同步权限组
-        # perm_group_callback = PeriodicCallback(async_perm_groups, 3600000)  # 60分钟
-        # perm_group_callback.start()
+        # 同步用户到jms
+        user_callback = PeriodicCallback(async_users, 3600000)  # 60分钟
+        user_callback.start()
+        # 同步服务树
+        service_tree_callback = PeriodicCallback(async_service_trees, 3600000)  # 60分钟
+        service_tree_callback.start()
+        # 同步权限组
+        perm_group_callback = PeriodicCallback(async_perm_groups, 3600000)  # 60分钟
+        perm_group_callback.start()
         urls.extend(domain_urls)
         urls.extend(order_urls)
         # self.settings = settings

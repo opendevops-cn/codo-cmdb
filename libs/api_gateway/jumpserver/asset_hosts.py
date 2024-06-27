@@ -28,7 +28,7 @@ class AssetHostsAPI(JumpServerBaseAPI):
         if name is not None:
             params['name'] = name
         return self.send_request(method='get',
-                                 url=f'{self.base_url}/api/v1/assets/assets/',
+                                 url=f'{self.base_url}/api/v1/assets/hosts/',
                                  params=params)
 
     def create(self, **kwargs):
@@ -40,12 +40,12 @@ class AssetHostsAPI(JumpServerBaseAPI):
         name = kwargs.get('name')
         address = kwargs.get('address')
         platform = kwargs.get('platform', 1)  # '1'：Linux '5'：Windows
-
+        accounts = kwargs.get('accounts', [])
         nodes = kwargs.get('nodes')
         protocols = kwargs.get('protocols')
         domain = kwargs.get('domain')  # 网域ID
-        if not all([name, address, platform, nodes, domain]):
-            raise ValueError(f'参数异常：{name}, {address}, {platform}, {nodes}, {domain}')
+        if not all([name, address, platform, nodes, domain, accounts]):
+            raise ValueError(f'参数异常：{name}, {address}, {platform}, {nodes}, {domain}, {accounts}')
 
         if not protocols:
             protocols = [
@@ -58,7 +58,8 @@ class AssetHostsAPI(JumpServerBaseAPI):
                     "port": 36001
                 }
             ]
-        data = dict(name=name, address=address, nodes=nodes, protocols=protocols, platform=platform, domain=domain)
+        data = dict(name=name, address=address, nodes=nodes, protocols=protocols, platform=platform,
+                    domain=domain, accounts=accounts)
         return self.send_request(method='post',
                                  url=f'{self.base_url}/api/v1/assets/hosts/',
                                  data=data)
@@ -73,6 +74,8 @@ class AssetHostsAPI(JumpServerBaseAPI):
         return self.send_request(method='delete',
                                  url=f'{self.base_url}/api/v1/assets/hosts/{asset_id}/')
 
+
+jms_asset_host_api = AssetHostsAPI()
 
 if __name__ == '__main__':
     pass
