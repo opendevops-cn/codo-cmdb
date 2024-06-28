@@ -486,6 +486,7 @@ def sync_service_tree_assets(biz_id=None):
                 logging.info(f"云区域不存在, 云区域ID: {cloud_region_id}")
                 return
 
+            jms_domain_id = None
             # 10.0.0.0/8 在这个内网网段的主机，需要指定网域
             if is_ip_in_subnet(inner_ip):
                 jms_domain_id = cloud_region_obj.jms_domain_id
