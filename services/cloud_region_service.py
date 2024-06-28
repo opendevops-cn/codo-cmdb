@@ -109,27 +109,23 @@ def update_server_agent_id_by_cloud_region_rules(asset_group_rules: List[List[Di
         return False
 
 
-def add_cloud_region_for_api(data) -> dict:
-    """
-    添加云区域
-    """
-    asset_group_rules = data.get('asset_group_rules', None)
+def validate_cloud_region_data(data):
+    field_mapping = {
+        'cloud_region_id': '云区域ID',
+        'name': '云区域名称',
+        'proxy_ip': '代理地址',
+        'ssh_user': 'ssh用户',
+        'auto_update_agent_id': '自动更新AgentID',
+        'jms_domain_id': '堡垒机网域ID',
+        'jms_org_id': '堡垒机组织ID',
+        'jms_account_template': '堡垒机账号模版'
+    }
 
-    if 'cloud_region_id' not in data:
-        return {"code": 1, "msg": "云区域ID不能为空"}
+    for field, display_name in field_mapping.items():
+        if field not in data:
+            return {"code": 1, "msg": f"{display_name}不能为空"}
 
-    if 'name' not in data:
-        return {"code": 1, "msg": "云区域名称不能为空"}
-
-    if 'proxy_ip' not in data:
-        return {"code": 1, "msg": "代理地址不能为空"}
-
-    if 'ssh_user' not in data:
-        return {"code": 1, "msg": "ssh用户不能为空"}
-
-    if 'auto_update_agent_id' not in data:
-        return {"code": 1, "msg": "自动更新AgentID不能为空"}
-
+    asset_group_rules = data.get('asset_group_rules')
     if not isinstance(asset_group_rules, list):
         return {"code": 1, "msg": "资产规则类型错误"}
 
@@ -138,31 +134,61 @@ def add_cloud_region_for_api(data) -> dict:
 
     for rules in asset_group_rules:
         for rule in rules:
-            if rule.get('status') == 1 and rule.get('query_name') == 'vpc' and len(rule.get('query_value')) < 3:
+            if rule.get('status') == 1 and rule.get('query_name') == 'vpc' and len(rule.get('query_value', [])) < 3:
                 return {"code": 1, "msg": "资产规则值不能为空"}
 
-    # 防止参数中存在不必要的字段
-    create_data = dict(name=data.get("name"), cloud_region_id=data.get('cloud_region_id'),
-                       proxy_ip=data.get('proxy_ip'), ssh_user=data.get('ssh_user'), detail=data.get('detail'),
-                       ssh_ip=data.get('ssh_ip'), ssh_port=data.get('ssh_port'), ssh_key=data.get('ssh_key'),
-                       ssh_pub_key=data.get('ssh_pub_key'), asset_group_rules=data.get('asset_group_rules'),
-                       jms_org_id=data.get('jms_org_id'), jms_account_template=data.get('jms_account_template'),
-                       auto_update_agent_id=data.get('auto_update_agent_id'))
+    accounts = data.get('accounts')
+    if not accounts:
+        return {"code": 1, "msg": "账号不能为空"}
+
+    account_types = [account.get('account_type') for account in accounts if account.get('status') == 1]
+    if len(account_types) != len(set(account_types)):
+        return {"code": 1, "msg": "账号类型重复"}
+
+    return {"code": 0, "msg": "验证通过"}
+
+
+def add_cloud_region_for_api(data) -> dict:
+    """
+    添加云区域
+    """
+    validation_result = validate_cloud_region_data(data)
+    if validation_result["code"] != 0:
+        return validation_result
 
     try:
         with DBContext('r') as session:
             res = session.query(CloudRegionModels.asset_group_rules).filter(CloudRegionModels.asset_group_rules.isnot(None)).all()
             rules = [item[0] for item in res]
-            is_valid = check_asset_group_rules(asset_group_rules, rules)
+            is_valid = check_asset_group_rules(data.get('asset_group_rules'), rules)
             if not is_valid:
                 return {"code": 1, "msg": "资产规则已存在"}
     except Exception as error:
         return {"code": 1, "msg": str(error)}
 
+    create_data = {
+        "name": data.get("name"),
+        "cloud_region_id": data.get('cloud_region_id'),
+        "proxy_ip": data.get('proxy_ip'),
+        "ssh_user": data.get('ssh_user'),
+        "detail": data.get('detail'),
+        "ssh_ip": data.get('ssh_ip'),
+        "ssh_port": data.get('ssh_port'),
+        "ssh_key": data.get('ssh_key'),
+        "ssh_pub_key": data.get('ssh_pub_key'),
+        "asset_group_rules": data.get('asset_group_rules'),
+        "jms_org_id": data.get('jms_org_id'),
+        "jms_account_template": data.get('jms_account_template'),
+        "auto_update_agent_id": data.get('auto_update_agent_id'),
+        "accounts": data.get('accounts'),
+        "jms_domain_id": data.get('jms_domain_id')
+    }
+
     try:
         with DBContext('w', None, True) as session:
             exist_id = session.query(CloudRegionModels).filter(or_(CloudRegionModels.name == data.get('name'),
-                                                                   CloudRegionModels.cloud_region_id == data.get('cloud_region_id'))).first()
+                                                                   CloudRegionModels.cloud_region_id == data.get(
+                                                                       'cloud_region_id'))).first()
             if exist_id:
                 if exist_id.name == data.get('name'):
                     return {"code": 1, "msg": f"云区域{exist_id.name}已存在."}
@@ -175,7 +201,7 @@ def add_cloud_region_for_api(data) -> dict:
     # 处理自动更新 AgentID
     auto_update_agent_id = data.get('auto_update_agent_id')
     if auto_update_agent_id == "yes":
-        result = update_server_agent_id_by_cloud_region_rules(asset_group_rules, data.get('cloud_region_id'))
+        result = update_server_agent_id_by_cloud_region_rules(data.get('asset_group_rules'), data.get('cloud_region_id'))
         logging.info(f"更新AgentID结果: {result}")
 
     return {"code": 0, "msg": "添加成功"}
@@ -185,35 +211,12 @@ def put_cloud_region_for_api(data) -> dict:
     """
     编辑云区域
     """
-    asset_group_rules = data.get('asset_group_rules', None)
-    if "id" not in data:
-        return {"code": 1, "msg": "ID不能为空"}
-
-    if 'cloud_region_id' not in data:
+    if 'id' not in data:
         return {"code": 1, "msg": "云区域ID不能为空"}
 
-    if 'name' not in data:
-        return {"code": 1, "msg": "云区域名称不能为空"}
-
-    if 'proxy_ip' not in data:
-        return {"code": 1, "msg": "代理地址不能为空"}
-
-    if 'ssh_user' not in data:
-        return {"code": 1, "msg": "ssh用户不能为空"}
-
-    if 'auto_update_agent_id' not in data:
-        return {"code": 1, "msg": "自动更新AgentID不能为空"}
-
-    if not isinstance(asset_group_rules, list):
-        return {"code": 1, "msg": "资产规则类型错误"}
-
-    if not asset_group_rules:
-        return {"code": 1, "msg": "资产规则不能为空"}
-
-    for rules in asset_group_rules:
-        for rule in rules:
-            if rule.get('status') == 1 and rule.get('query_name') == 'vpc' and len(rule.get('query_value')) < 3:
-                return {"code": 1, "msg": "资产规则值不能为空"}
+    validation_result = validate_cloud_region_data(data)
+    if validation_result["code"] != 0:
+        return validation_result
 
     try:
         with DBContext('r') as session:
@@ -221,30 +224,40 @@ def put_cloud_region_for_api(data) -> dict:
                 filter(CloudRegionModels.id != data.get('id')). \
                 filter(CloudRegionModels.asset_group_rules.isnot(None)).all()
             rules = [item[0] for item in res]
-            is_valid = check_asset_group_rules(asset_group_rules, rules)
+            is_valid = check_asset_group_rules(data.get('asset_group_rules'), rules)
             if not is_valid:
                 return {"code": 1, "msg": "资产规则已存在"}
     except Exception as error:
         return {"code": 1, "msg": str(error)}
 
-    new_data = dict(name=data.get("name"), cloud_region_id=data.get('cloud_region_id'), proxy_ip=data.get('proxy_ip'),
-                    ssh_user=data.get('ssh_user'), detail=data.get('detail'),
-                    ssh_ip=data.get('ssh_ip'), ssh_port=data.get('ssh_port'), ssh_key=data.get('ssh_key'),
-                    ssh_pub_key=data.get('ssh_pub_key'), asset_group_rules=data.get('asset_group_rules'),
-                    jms_org_id=data.get('jms_org_id'), jms_account_template=data.get('jms_account_template'),
-                    auto_update_agent_id=data.get('auto_update_agent_id')
-    )
+    update_data = {
+        "name": data.get("name"),
+        "cloud_region_id": data.get('cloud_region_id'),
+        "proxy_ip": data.get('proxy_ip'),
+        "ssh_user": data.get('ssh_user'),
+        "detail": data.get('detail'),
+        "ssh_ip": data.get('ssh_ip'),
+        "ssh_port": data.get('ssh_port'),
+        "ssh_key": data.get('ssh_key'),
+        "ssh_pub_key": data.get('ssh_pub_key'),
+        "asset_group_rules": data.get('asset_group_rules'),
+        "jms_org_id": data.get('jms_org_id'),
+        "jms_account_template": data.get('jms_account_template'),
+        "auto_update_agent_id": data.get('auto_update_agent_id'),
+        "accounts": data.get('accounts'),
+        "jms_domain_id": data.get('jms_domain_id')
+    }
 
     try:
         with DBContext('w', None, True) as session:
-            session.query(CloudRegionModels).filter(CloudRegionModels.id == data.get('id')).update(new_data)
+            session.query(CloudRegionModels).filter(CloudRegionModels.id == data.get('id')).update(update_data)
     except Exception as error:
         return {"code": 1, "msg": str(error)}
 
     # 处理自动更新AgentID
     auto_update_agent_id = data.get('auto_update_agent_id')
     if auto_update_agent_id == "yes":
-        result = update_server_agent_id_by_cloud_region_rules(asset_group_rules, data.get('cloud_region_id'))
+        result = update_server_agent_id_by_cloud_region_rules(data.get('asset_group_rules'), data.get('cloud_region_id'))
         logging.info(f"更新AgentID结果: {result}")
 
     return {"code": 0, "msg": "更新成功"}
