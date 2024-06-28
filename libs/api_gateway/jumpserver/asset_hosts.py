@@ -43,9 +43,9 @@ class AssetHostsAPI(JumpServerBaseAPI):
         accounts = kwargs.get('accounts', [])
         nodes = kwargs.get('nodes')
         protocols = kwargs.get('protocols')
-        domain = kwargs.get('domain')  # 网域ID
-        if not all([name, address, platform, nodes, domain, accounts]):
-            raise ValueError(f'参数异常：{name}, {address}, {platform}, {nodes}, {domain}, {accounts}')
+        domain = kwargs.get('domain', None)  # 网域ID
+        if not all([name, address, platform, nodes, accounts]):
+            raise ValueError(f'参数异常：{name}, {address}, {platform}, {nodes}, {accounts}')
 
         if not protocols:
             protocols = [
@@ -58,8 +58,9 @@ class AssetHostsAPI(JumpServerBaseAPI):
                     "port": 36001
                 }
             ]
-        data = dict(name=name, address=address, nodes=nodes, protocols=protocols, platform=platform,
-                    domain=domain, accounts=accounts)
+        data = dict(name=name, address=address, nodes=nodes, protocols=protocols, platform=platform, accounts=accounts)
+        if domain:
+            data['domain'] = domain
         return self.send_request(method='post',
                                  url=f'{self.base_url}/api/v1/assets/hosts/',
                                  data=data)

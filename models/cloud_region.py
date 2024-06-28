@@ -33,6 +33,8 @@ class CloudRegionModels(TimeBaseModel):
 
     jms_org_id = Column('jms_org_id', String(80), default="", comment='对应跳板机组织ID')
     jms_account_template = Column('jms_account_template', String(255), default="", comment='对应跳板机账号模版')
+    jms_domain_id = Column('jms_domain_id', String(255), default="", comment='对应跳板机网域ID')
+    accounts = Column('accounts', JSON(), default=[], comment='对应跳板机账号模板组')
     state = Column('state', String(10), default="online", comment='代理状态')
     detail = Column('detail', String(500), comment='备注')
 

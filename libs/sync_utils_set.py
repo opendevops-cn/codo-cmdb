@@ -31,7 +31,7 @@ from websdk2.model_utils import insert_or_update
 from websdk2.client import AcsClient
 from websdk2.api_set import api_set
 
-from models.business import BizModels, PermissionGroupModels, PermissionToJMS
+from models.business import BizModels, PermissionGroupModels
 from models.asset import AssetServerModels, AssetVSwitchModels
 from models.cloud_region import CloudRegionModels
 from models.cloud import SyncLogModels
@@ -45,6 +45,7 @@ from libs.api_gateway.jumpserver.asset_accounts import jms_asset_account_templat
 
 from services.tree_service import get_tree_by_api
 from services.tree_asset_service import get_tree_assets
+from services.perm_group_service import preview_perm_group_for_api
 
 if configs.can_import: configs.import_dict(**settings)
 
@@ -435,6 +436,21 @@ def sync_service_tree_assets(biz_id=None):
 
         return list(_add_full_name())
 
+    def is_ip_in_subnet(ip: str, subnet: str = "10.0.0.0/8") -> bool:
+        """
+        判断ip是否在网段内
+        :param ip: ip地址
+        :param subnet: 网段
+        :return: bool
+        """
+        import ipaddress
+        try:
+            ip_obj = ipaddress.ip_address(ip)
+            subnet_obj = ipaddress.IPv4Network(subnet)
+            return ip_obj in subnet_obj
+        except ValueError:
+            return False
+
     def _sync_main(asset: dict):
         """
         创建资产
@@ -446,25 +462,39 @@ def sync_service_tree_assets(biz_id=None):
         full_name = asset.get('full_name')
         biz_cn_name = asset.get('biz_cn_name')
         biz_id = asset.get("biz_id")
+        agent_id = asset.get("agent_id")
+        if not agent_id or (":" in agent_id and agent_id.split(":")[1] == '0'):
+            logging.debug(f"资产没有划分到云区域, 业务: {biz_cn_name}, INNER_IP: {inner_ip}")
+            return
         if not full_name:
             return
 
-        accounts = []
+        # accounts = []
         # 获取网域和特权账号模板ID
+        # with (DBContext('w', None, True) as session):
+        #     perm_mapping_obj = session.query(PermissionToJMS) \
+        #         .filter(PermissionToJMS.biz_id == biz_id).first()
+        #     if not perm_mapping_obj:
+        #         logging.info(f"没有配置权限分组和堡垒机账号映射, 业务: {biz_cn_name}")
+        #         return
+
+        cloud_region_id = agent_id.split(":")[1]
         with (DBContext('w', None, True) as session):
-            perm_mapping_obj = session.query(PermissionToJMS) \
-                .filter(PermissionToJMS.biz_id == biz_id).first()
-            if not perm_mapping_obj:
-                logging.info(f"没有配置权限分组和堡垒机账号映射, 业务: {biz_cn_name}")
+            cloud_region_obj = session.query(CloudRegionModels) \
+                .filter(CloudRegionModels.cloud_region_id == cloud_region_id).first()
+            if not cloud_region_obj:
+                logging.info(f"云区域不存在, 云区域ID: {cloud_region_id}")
                 return
 
-            # todo 一些特殊的网段创建资产时不需要关联网域
-            jms_domain_id = perm_mapping_obj.jms_domain_id
-            if not jms_domain_id:
-                logging.info(f"没有配置网域ID, 业务: {biz_cn_name}")
-                return
+            jms_domain_id = None
+            # 10.0.0.0/8 在这个内网网段的主机，需要指定网域
+            if is_ip_in_subnet(inner_ip):
+                jms_domain_id = cloud_region_obj.jms_domain_id
+                if not jms_domain_id:
+                    logging.info(f"没有配置网域ID, 业务: {biz_cn_name}")
+                    return
 
-            jms_account_template_id = perm_mapping_obj.jms_account_template_id
+            jms_account_template_id = cloud_region_obj.jms_account_template
             if not jms_account_template_id:
                 logging.info(f"没有配置特权账号模板ID, 业务: {biz_cn_name}")
                 return
@@ -664,32 +694,59 @@ def grant_perms_for_assets(perm_group_id=None):
                 logging.error(f'查询权限分组异常 {err}')
                 raise
 
-            for perm_group in perm_groups[0:1]:
+            for perm_group in perm_groups:
                 biz_obj = session.query(BizModels).filter(
                     BizModels.biz_id == perm_group.biz_id).first()
                 if not biz_obj:
                     logging.info(f'没有查到业务, ID: {perm_group.biz_id}')
                     continue
 
-                perm_mapping_obj = session.query(PermissionToJMS) \
-                    .filter(and_(PermissionToJMS.perm_type == perm_group.perm_type),
-                            PermissionToJMS.biz_id == biz_obj.biz_id).first()
-                if not perm_mapping_obj:
-                    logging.info(f"没有配置权限分组和堡垒机账号映射, 业务: {biz_obj.biz_cn_name}, "
-                                 f"权限类型: {perm_group.perm_type}")
+                # perm_mapping_obj = session.query(PermissionToJMS) \
+                #     .filter(and_(PermissionToJMS.perm_type == perm_group.perm_type),
+                #             PermissionToJMS.biz_id == biz_obj.biz_id).first()
+                # if not perm_mapping_obj:
+                #     logging.info(f"没有配置权限分组和堡垒机账号映射, 业务: {biz_obj.biz_cn_name}, "
+                #                  f"权限类型: {perm_group.perm_type}")
+                #     continue
+                exec_uuid = perm_group.exec_uuid
+                # 获取全部主机
+                servers = preview_perm_group_for_api(exec_uuid_list=[exec_uuid])['data']
+
+                if not servers:
+                    logging.info(f"没有查到主机, 分组: {perm_group.perm_group_name}")
                     continue
 
-                jms_account_template_id = perm_mapping_obj.jms_account_template_id
+                # 设定属于同一个业务的主机在一个云区域
+                servers = [server for server in servers if server.get('agent_id') and server.get('agent_id').split(":")[1] != '0']
+                agent_id = max(servers, key=servers.count)['agent_id']
+                cloud_region_id = agent_id.split(":")[1]
+
+                # 获取云区域
+                cloud_region_obj = session.query(CloudRegionModels).filter(CloudRegionModels.cloud_region_id == cloud_region_id).first()
+                if not cloud_region_obj:
+                    logging.info(f"没有查到云区域, 云区域ID: {cloud_region_id}")
+                    continue
+
+                jms_account_template_id = cloud_region_obj.jms_account_template
                 if not jms_account_template_id:
                     logging.info(f"没有配置jms特权账号模板ID：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
                     continue
 
-                perm_account_template_id = perm_mapping_obj.perm_account_template_id
-                if not perm_account_template_id:
-                    logging.info(f"没有配置jms待推送账号模板ID：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
+                perm_type = perm_group.perm_type
+                accounts = cloud_region_obj.accounts
+                if not accounts:
+                    logging.info(f"没有配置jms账号：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
                     continue
 
-                biz_cn_name = biz_obj.biz_cn_name  # 业务中文名
+                for account in accounts:
+                    if account.get('account_type') == perm_type:
+                        perm_account_template_id = account.get('jms_account_template_id')
+                        break
+                else:
+                    logging.info(f"没有配置jms账号：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
+                    continue
+
+                biz_cn_name = biz_obj.biz_cn_name
                 nodes = _get_asset_nodes(biz_cn_name=biz_cn_name, env_name=perm_group.env_name,
                                          region_name=perm_group.region_name, module_name=perm_group.module_name)
 
