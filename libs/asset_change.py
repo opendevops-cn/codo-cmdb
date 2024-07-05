@@ -45,12 +45,30 @@ class AssetChangeNotify:
                                               schema=default_configs.get(const.DBNAME_KEY))  # 表名，库名
         return {field["name"]: field["comment"] for field in model_mate}
 
+    def __delete_data(self, days=None) -> None:
+        """
+        删除过期的数据 60天前的数据
+        @param days: 需要删除的日期
+        @return:
+        """
+        if days is None:
+            dest_date = (datetime.datetime.now() - datetime.timedelta(days=60)).strftime("%Y-%m-%d")
+        else:
+            dest_date = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime("%Y-%m-%d")
+
+        with DBContext('w', None, True) as session:
+            session.query(AssetBackupModels).filter(AssetBackupModels.asset_type == self.asset_type,
+                                                    AssetBackupModels.created_day < dest_date).delete(synchronize_session=False)
+        return
+
     def get_cmdb_change_day(self, dest_date=None) -> dict:
         """
         根据时间和资源类型，比对差异内容并发送通知
         :param dest_date: 需要对比目标日期， 默认是昨天; 格式：2023-11-01
         :return: dict()
         """
+        # 删除过期的数据
+        self.__delete_data()
 
         if dest_date is None:
             dest_date = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")

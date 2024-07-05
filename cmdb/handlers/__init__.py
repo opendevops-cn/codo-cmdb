@@ -21,7 +21,7 @@ from cmdb.handlers.cloud_region_handler import cloud_region_urls
 from cmdb.handlers.consul_handler import consul_urls
 from cmdb.handlers.role_handler import role_urls
 from cmdb.handlers.perm_group_handler import perm_group_urls
-from cmdb.handlers.jmss_handler import jmss_urls
+from cmdb.handlers.jms_handler import jms_urls
 from cmdb.handlers.audit_handler import audit_urls
 
 urls = []
@@ -45,6 +45,6 @@ urls.extend(cloud_region_urls)
 urls.extend(consul_urls)
 urls.extend(role_urls)
 urls.extend(perm_group_urls)
-urls.extend(jmss_urls)
+urls.extend(jms_urls)
 urls.extend(audit_urls)
 

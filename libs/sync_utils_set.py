@@ -13,6 +13,7 @@ import datetime
 import logging
 import os
 import time
+import traceback
 from typing import List, Union, Any
 
 from shortuuid import uuid
@@ -42,6 +43,7 @@ from libs.api_gateway.jumpserver.asset import jms_asset_api
 from libs.api_gateway.jumpserver.asset_hosts import jms_asset_host_api
 from libs.api_gateway.jumpserver.asset_perms import jms_asset_permission_api
 from libs.api_gateway.jumpserver.asset_accounts import jms_asset_account_template_api
+from libs.api_gateway.jumpserver.org import jms_org_api
 
 from services.tree_service import get_tree_by_api
 from services.tree_asset_service import get_tree_assets
@@ -178,7 +180,7 @@ def async_biz_info():
     executor.submit(clean_sync_logs)
 
 
-def sync_users():
+def sync_users(org_id=None):
     # 同步用户
     def _sync_main(user: dict) -> None:
         """
@@ -189,10 +191,11 @@ def sync_users():
         username = user['username']
         user['name'] = user['nickname']
         try:
-            jms_user = jms_user_api.get(username=username)
+            jms_user = jms_user_api.get(username=username, org_id=org_id)
             if jms_user:
                 logging.debug(f'JumpServer用户{username}已存在')
                 return
+            user.update(org_id=org_id)
             res = jms_user_api.create(**user)
             logging.debug(f"同步用户{username}到JumpServer结果：{bool(res)}")
         except Exception as err:
@@ -218,32 +221,34 @@ def sync_users():
         logging.error(f'同步codo用户到JumpServer出错 {e}')
 
 
-def _sync_user_group_to_jms(name: str):
+def _sync_user_group_to_jms(name: str, org_id: str = None) -> None:
     """
     同步codo用户组到JumpServer
     :param name: 用户组名
+    :param org_id: 组织ID
     :return:
     """
     try:
-        jms_user_group = jms_user_group_api.get(name=name)
+        jms_user_group = jms_user_group_api.get(name=name, org_id=org_id)
         if jms_user_group:
             logging.debug(f'JumpServer用户组{name}已存在')
             return
-        res = jms_user_group_api.create(name=name)
+        res = jms_user_group_api.create(name=name,  org_id=org_id)
         logging.debug(f"同步用户组{name}到JumpServer结果：{res}")
     except Exception as err:
         logging.error(f'同步用户组{name}到JumpServer出错 {err}')
 
 
-def _sync_user_group_members_to_jms(user_group_name: str, users: List[str]) -> None:
+def _sync_user_group_members_to_jms(user_group_name: str, users: List[str], org_id: str = None) -> None:
     """
     同步codo用户组成员到JumpServer
     :param user_group_name: 用户组名
     :param users: 用户列表
+    :param org_id:  组织ID
     :return:
     """
     try:
-        jms_user_group = jms_user_group_api.get(name=user_group_name)
+        jms_user_group = jms_user_group_api.get(name=user_group_name, org_id=org_id)
         if not jms_user_group:
             logging.debug(f'JumpServer没有该用户组: {user_group_name}')
             return
@@ -251,20 +256,32 @@ def _sync_user_group_members_to_jms(user_group_name: str, users: List[str]) -> N
         # 获取用户组成员在JumpServer的ID
         jms_user_ids = []
         for username in users:
-            jms_user = jms_user_api.get(username=username)
+            jms_user = jms_user_api.get(username=username, org_id=org_id)
             if not jms_user:
                 continue
             jms_user_ids.append(jms_user[0]['id'])
 
         # 更新用户组成员
-        res = jms_user_group_api.update(name=user_group_name, users=jms_user_ids)
+        res = jms_user_group_api.update(name=user_group_name, users=jms_user_ids, org_id=org_id)
         logging.debug(f'同步用户组{user_group_name}成员到JumpServer: {bool(res)}')
 
     except Exception as err:
         logging.error(f'同步用户组{user_group_name}成员到JumpServer出错 {err}')
 
 
-def sync_perm_group_and_members(perm_group_id=None):
+def get_jms_parent_name_by_org_id(org_id: str) -> Optional[str]:
+    if org_id:
+        jms_org_obj = jms_org_api.get_by_id(org_id=org_id)
+        if not jms_org_obj:
+            logging.error(f"组织不存在: {org_id}")
+            return
+        parent_name = f"/{jms_org_obj['name']}/"
+    else:
+        parent_name = '/Default/'
+    return parent_name
+
+
+def sync_perm_group_and_members(perm_group_id=None, org_id=None):
     # 同步权限分组和权限分组成员
     def index():
         logging.info("开始同步codo权限分组和权限组成员到JumpServer")
@@ -288,7 +305,7 @@ def sync_perm_group_and_members(perm_group_id=None):
                 perm_group_users = list()
 
                 # step1 先同步权限组
-                _sync_user_group_to_jms(perm_group_name)
+                _sync_user_group_to_jms(perm_group_name, org_id=org_id)
 
                 # step2 再同步权限组成员
                 # 数据转换
@@ -299,7 +316,8 @@ def sync_perm_group_and_members(perm_group_id=None):
                         continue
                     perm_group_users.extend([user.split("(")[0].strip() for user in members_dict])
 
-                _sync_user_group_members_to_jms(perm_group_name, list(set(perm_group_users)))
+                _sync_user_group_members_to_jms(user_group_name=perm_group_name, users=list(set(perm_group_users)),
+                                                org_id=org_id)
 
         logging.info("同步codo权限分组和权限分组成员到JumpServer结束")
 
@@ -309,7 +327,7 @@ def sync_perm_group_and_members(perm_group_id=None):
         logging.error(f'同步codo权限分组和权限分组成员到JumpServer出错 {err}')
 
 
-def sync_service_tree(biz_id=None):
+def sync_service_tree(biz_id=None, org_id=None):
     """
     同步服务树
     :return:
@@ -321,12 +339,13 @@ def sync_service_tree(biz_id=None):
         @parent_id: 父节点id
         @full_name: 节点全名
         """
-        jms_asset_node = jms_asset_api.create(name=name, parent_id=parent_id)
+        jms_asset_node = jms_asset_api.create(name=name, parent_id=parent_id, org_id=org_id)
         if not jms_asset_node:
             temp_name = f'新建节点-{str(uuid())}'
-            jms_asset_node = jms_asset_api.create(name=temp_name, parent_id=parent_id)
+            jms_asset_node = jms_asset_api.create(name=temp_name, parent_id=parent_id, org_id=org_id)
             if jms_asset_node:
-                result = jms_asset_api.update(node_id=jms_asset_node['id'], name=name, value=name, full_value=full_name)
+                result = jms_asset_api.update(node_id=jms_asset_node['id'], org_id=org_id, name=name, value=name,
+                                              full_value=full_name)
                 logging.info(f"节点{full_name}更新结果: {bool(result)}")
                 if not result:
                     return None
@@ -338,13 +357,13 @@ def sync_service_tree(biz_id=None):
                 title = node.get('title')
                 children = node.get('children', [])
                 full_name = node.get('full_name')
-                jms_node = jms_asset_api.get(name=full_name)
+                jms_node = jms_asset_api.get(name=full_name, org_id=org_id)
                 if jms_node:
                     logging.info(f'节点已存在: {full_name}')
                 else:
                     # 当前节点不存在，查询父节点ID创建当前节点
                     parent_name = full_name.rsplit('/', 1)[0]
-                    jms_parent_node = jms_asset_api.get(name=parent_name)
+                    jms_parent_node = jms_asset_api.get(name=parent_name, org_id=org_id)
                     if not jms_parent_node:
                         logging.info(f'父节点不存在：{parent_name}')
                         return
@@ -387,19 +406,24 @@ def sync_service_tree(biz_id=None):
 
     def index():
         logging.info("开始同步服务树到JumpServer")
+
+        parent_name = get_jms_parent_name_by_org_id(org_id)
+        if not parent_name:
+            return
+
         if not biz_id:
             data = get_tree_by_api(**{})
         else:
             data = get_tree_by_api(biz_id=biz_id)
         nodes = data['data']
-        nodes = add_full_name_to_nodes(nodes)
+        nodes = add_full_name_to_nodes(nodes, parent_name=parent_name)
         sync_node(nodes)
         logging.info("同步服务树到JumpServer结束")
 
     index()
 
 
-def sync_service_tree_assets(biz_id=None):
+def sync_service_tree_assets(biz_id=None, org_id=None):
     # 同步服务树主机资产
 
     def add_full_name_to_assets(assets, org_name='/Default/'):
@@ -451,7 +475,7 @@ def sync_service_tree_assets(biz_id=None):
         except ValueError:
             return False
 
-    def _sync_main(asset: dict):
+    def _sync_main(asset: dict, org_name: str = '/Default/') -> None:
         """
         创建资产
         :param asset:
@@ -501,8 +525,8 @@ def sync_service_tree_assets(biz_id=None):
 
             accounts = [{"template": jms_account_template_id}]
 
-        asset_name = full_name.split('/Default/')[1] + f'/{name}-{inner_ip}'
-        jms_asset_host_obj = jms_asset_host_api.get(name=asset_name, address=inner_ip)
+        asset_name = full_name.split(org_name)[1] + f'/{name}-{inner_ip}'
+        jms_asset_host_obj = jms_asset_host_api.get(name=asset_name, address=inner_ip, org_id=org_id)
         if jms_asset_host_obj:
             # 主机资产已存在
             # todo 更新资产
@@ -510,33 +534,40 @@ def sync_service_tree_assets(biz_id=None):
             return
 
         # 查找节点，创建主机资产
-        jump_server_node_obj = jms_asset_api.get(name=full_name)
+        jump_server_node_obj = jms_asset_api.get(name=full_name, org_id=org_id)
         if jump_server_node_obj:
             node_id = jump_server_node_obj[0]['id']
             jms_asset_host_obj = jms_asset_host_api.create(name=asset_name, address=inner_ip, nodes=[node_id],
-                                                           domain=jms_domain_id, accounts=accounts)
+                                                           domain=jms_domain_id, accounts=accounts, org_id=org_id)
             logging.info(f"资产创建结果:{bool(jms_asset_host_obj)}")
 
     def index():
         logging.info("开始同步服务树主机资产到JumpServer")
+
+        parent_name = get_jms_parent_name_by_org_id(org_id)
+        if not parent_name:
+            return
+
         if not biz_id:
             assets, count = get_tree_assets(params={"page_size": 9999})
         else:
             assets, count = get_tree_assets(params={"page_size": 9999, "biz_id": biz_id})
-        assets = add_full_name_to_assets(assets)
+        assets = add_full_name_to_assets(assets=assets, org_name=parent_name)
         for asset in assets:
-            _sync_main(asset)
+            _sync_main(asset, org_name=parent_name)
         logging.info("同步服务树主机资产到JumpServer结束")
 
     try:
         index()
     except Exception as err:
+        print(traceback.format_exc())
         logging.error(f'同步服务树主机资产到JumpServer出错 {err}')
 
 
-def grant_perms_for_assets(perm_group_id=None):
+def grant_perms_for_assets(perm_group_id=None, org_id=None):
 
-    def _grant_perms(name: str, nodes: List[str], user_group: List[str], biz_cn_name: str, perm_account_template_id: str):
+    def _grant_perms(name: str, nodes: List[str], user_group: List[str], biz_cn_name: str,
+                     perm_account_template_id: str, date_start: str = None, date_expired: str = None):
         """
              同步主逻辑，处理资产权限配置。
 
@@ -546,6 +577,8 @@ def grant_perms_for_assets(perm_group_id=None):
                  user_group (list[str]): 用户组名称列表。
                  biz_cn_name (str): 业务中文名称。
                  perm_account_template_id (str): JumpServer待推送到服务器的账号模版ID。
+                 date_start (str): 权限开始时间。
+                 date_expired (str): 权限结束时间。
              Returns:
                  None
          """
@@ -554,7 +587,7 @@ def grant_perms_for_assets(perm_group_id=None):
             """获取节点ID列表"""
             node_ids = set()
             for name in node_names:
-                jms_node_objs = jms_asset_api.get(name=name)
+                jms_node_objs = jms_asset_api.get(name=name, org_id=org_id)
                 if not jms_node_objs:
                     logging.error(f"资产节点不存在：{name}")
                     continue
@@ -563,7 +596,7 @@ def grant_perms_for_assets(perm_group_id=None):
 
         def get_account_template_info(template_id):
             """获取账号模板信息"""
-            template_obj = jms_asset_account_template_api.get_account_template_detail(template_id)
+            template_obj = jms_asset_account_template_api.get_account_template_detail(template_id, org_id=org_id)
             if not template_obj:
                 logging.error(f"账号模板不存在：业务: {biz_cn_name}, 模板ID: {template_id}")
                 return None
@@ -583,7 +616,7 @@ def grant_perms_for_assets(perm_group_id=None):
                 logging.error("用户组不能为空")
                 return
 
-            jms_user_group_objs = jms_user_group_api.get(name=name)
+            jms_user_group_objs = jms_user_group_api.get(name=name, org_id=org_id)
             if not jms_user_group_objs:
                 logging.error(f"用户组不存在：{name}")
                 return
@@ -598,18 +631,19 @@ def grant_perms_for_assets(perm_group_id=None):
             # 指定账号，选择模板添加时，会自动创建资产下不存在的账号并推送
             accounts = ["@SPEC", perm_account_template_username, f'%{perm_account_template_id}']
 
-            jms_asset_permission_obj = jms_asset_permission_api.get(name=name)
+            jms_asset_permission_obj = jms_asset_permission_api.get(name=name, org_id=org_id)
 
             if not jms_asset_permission_obj:
                 # 创建资产授权
                 result = jms_asset_permission_api.create(name=name, nodes=nodes_ids, user_groups=user_group_ids,
-                                                         accounts=accounts)
+                                                         accounts=accounts, org_id=org_id, date_start=date_start,
+                                                         date_expired=date_expired)
                 logging.info(f"创建资产授权: {name} {bool(result)}")
             else:
                 # 更新资产授权
                 result = jms_asset_permission_api.update(assets_permissions_id=jms_asset_permission_obj[0]['id'],
                                                          name=name, nodes=nodes_ids, user_groups=user_group_ids,
-                                                         accounts=accounts)
+                                                         accounts=accounts, org_id=org_id)
                 logging.debug(f'资产授权已存在: {name}, 更新 {bool(result)}')
 
             # # 创建账号推送
@@ -747,11 +781,23 @@ def grant_perms_for_assets(perm_group_id=None):
                     continue
 
                 biz_cn_name = biz_obj.biz_cn_name
+                jms_org_id = perm_group.jms_org_id
+                if not jms_org_id:
+                    logging.error(f"堡垒机企业版没有配置组织ID, 业务: {biz_cn_name}")
+                    continue
+
+                parent_name = get_jms_parent_name_by_org_id(jms_org_id)
+                if not parent_name:
+                    continue
+
                 nodes = _get_asset_nodes(biz_cn_name=biz_cn_name, env_name=perm_group.env_name,
-                                         region_name=perm_group.region_name, module_name=perm_group.module_name)
+                                         region_name=perm_group.region_name, module_name=perm_group.module_name,
+                                         org_name=parent_name)
 
                 _grant_perms(name=perm_group.perm_group_name, nodes=nodes, user_group=perm_group.user_group,
-                             biz_cn_name=biz_cn_name, perm_account_template_id=perm_account_template_id)
+                             biz_cn_name=biz_cn_name, perm_account_template_id=perm_account_template_id,
+                             date_start=perm_group.perm_start_time,
+                             date_expired=perm_group.perm_end_time)
 
         logging.info("对JumpServer资产-用户组授权结束")
 
@@ -835,6 +881,51 @@ def sync_vswitch_cloud_region_id():
 def async_vswitch_cloud_region_id():
     executor = ThreadPoolExecutor(max_workers=1)
     executor.submit(sync_vswitch_cloud_region_id)
+
+
+def sync_cmdb_to_jms_with_enterprise(perm_group_id=None):
+    """同步配置平台数据到JumpServer企业版"""
+    logging.info("开始对同步配置平台数据到JumpServer企业版")
+
+    @deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))
+    def index(group_id=None):
+        with DBContext('w', None, True) as session:
+            try:
+                if not group_id:
+                    perm_groups = session.query(PermissionGroupModels).all()
+                else:
+                    perm_groups = session.query(PermissionGroupModels).filter(
+                        PermissionGroupModels.id == group_id).all()
+            except Exception as err:
+                logging.error(f'查询权限分组异常 {err}')
+                raise
+            for perm_group in perm_groups:
+                try:
+                    group_id = perm_group.id
+                    biz_id = perm_group.biz_id
+                    jms_org_id = perm_group.jms_org_id
+                    if not jms_org_id:
+                        logging.error(f"堡垒机企业版同步没有配置组织ID, 业务: {biz_id}")
+                        continue
+                    # 同步用户组和成员
+                    sync_perm_group_and_members(perm_group_id=group_id, org_id=jms_org_id)
+                    # 同步服务树
+                    sync_service_tree(biz_id=biz_id, org_id=jms_org_id)
+                    # 同步服务树主机资产
+                    sync_service_tree_assets(biz_id=biz_id, org_id=jms_org_id)
+                    # 授权
+                    grant_perms_for_assets(perm_group_id=group_id, org_id=jms_org_id)
+                except Exception as e:
+                    logging.error(f"同步配置平台数据到JumpServer企业版出错 {e}")
+
+        logging.info("同步配置平台数据到JumpServer企业版结束")
+
+    index(group_id=perm_group_id)
+
+
+def async_cmdb_to_jms_with_enterprise(perm_group_id=None):
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(sync_cmdb_to_jms_with_enterprise, perm_group_id)
 
 
 if __name__ == '__main__':

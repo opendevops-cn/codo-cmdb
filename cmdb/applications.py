@@ -15,7 +15,7 @@ from libs.scheduler import scheduler, init_scheduler
 from cmdb.handlers import urls
 from domain.handlers import urls as domain_urls
 from libs.sync_utils_set import async_biz_info, async_agent, async_service_trees,\
-    async_users, async_perm_groups, async_vswitch_cloud_region_id
+    async_users, async_perm_groups, async_vswitch_cloud_region_id, async_cmdb_to_jms_with_enterprise
 from domain.cloud_domain import async_domain_info
 from libs.consul_registry import async_consul_info
 from cmp.tasks import async_order_status
@@ -44,15 +44,18 @@ class Application(myApplication, ABC):
         # 同步虚拟子网云区域ID
         vswitch_callback = PeriodicCallback(async_vswitch_cloud_region_id, 360000) # 6分钟
         vswitch_callback.start()
-        # 同步用户到jms
-        user_callback = PeriodicCallback(async_users, 3600000)  # 60分钟
-        user_callback.start()
-        # 同步服务树
-        service_tree_callback = PeriodicCallback(async_service_trees, 3600000)  # 60分钟
-        service_tree_callback.start()
-        # 同步权限组
-        perm_group_callback = PeriodicCallback(async_perm_groups, 3600000)  # 60分钟
-        perm_group_callback.start()
+        # # 同步用户到jms
+        # user_callback = PeriodicCallback(async_users, 3600000)  # 60分钟
+        # user_callback.start()
+        # # 同步服务树
+        # service_tree_callback = PeriodicCallback(async_service_trees, 3600000)  # 60分钟
+        # service_tree_callback.start()
+        # # 同步权限组
+        # perm_group_callback = PeriodicCallback(async_perm_groups, 3600000)  # 60分钟
+        # perm_group_callback.start()
+        # # 同步cmdb到jms企业版
+        jms_callback = PeriodicCallback(async_cmdb_to_jms_with_enterprise, 600000) # 10分钟
+        jms_callback.start()
         urls.extend(domain_urls)
         urls.extend(order_urls)
         # self.settings = settings

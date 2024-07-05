@@ -37,6 +37,12 @@ def add_perm_group_for_api(data: dict) -> dict:
     user_group = data.get("user_group")
     if not user_group:
         return {"code": 1, "msg": "用户组不能为空"}
+    if "jms_org_id" not in data:
+        return {"code": 1, "msg": "组织ID不能为空"}
+    if "perm_start_time" not in data:
+        return {"code": 1, "msg": "权限开始时间不能为空"}
+    if "perm_end_time" not in data:
+        return {"code": 1, "msg": "权限结束时间不能为空"}
     data['exec_uuid'] = uuid()
     try:
         with DBContext('w', None, True) as session:
@@ -91,6 +97,12 @@ def update_perm_group_for_api(data: dict) -> dict:
         return {"code": 1, "msg": "权限分组类型不能为空"}
     if 'biz_id' not in data:
         return {"code": 1, "msg": "业务ID不能为空"}
+    if "jms_org_id" not in data:
+        return {"code": 1, "msg": "组织ID不能为空"}
+    if "perm_start_time" not in data:
+        return {"code": 1, "msg": "权限开始时间不能为空"}
+    if "perm_end_time" not in data:
+        return {"code": 1, "msg": "权限结束时间不能为空"}
     user_group = data.get("user_group")
     if not user_group:
         return {"code": 1, "msg": "用户组不能为空"}
@@ -103,6 +115,8 @@ def update_perm_group_for_api(data: dict) -> dict:
         user_group=data['user_group'],
         env_name=data.get('env_name'), region_name=data.get('region_name'),
         module_name=data.get('module_name'),
+        jms_org_id=data.get('jms_org_id'), perm_start_time=data.get('perm_start_time'),
+        perm_end_time=data.get('perm_end_time')
 
     )
     try:

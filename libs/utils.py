@@ -3,10 +3,12 @@
 # @Time    : 2023/10/30 20:58
 # @Author  : harilou
 # @Describe: 通用方法
+import time
 from datetime import datetime
 import types
 from functools import wraps
 import traceback
+from contextlib import contextmanager
 
 
 def human_date(date=None):
@@ -26,13 +28,23 @@ class CommonDecorator(object):
         try:
             return self.__wrapped__(*args, **kwargs)
         except Exception as e:
-            print(f'call function {self.__name__} error. args: {args}, kwargs: {kwargs}, msg: {traceback.format_exc()}')
+            raise
 
     def __get__(self, instance, cls):
         if instance is None:
             return self
         else:
             return types.MethodType(self, instance)
+
+
+@contextmanager
+def ctx_timer():
+    """计算一段代码的执行时间"""
+    start_time = time.perf_counter()
+    yield
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    print(f"Time elapsed: {elapsed_time:.2f}s")
 
 
 def compare_dicts(dict1, dict2):

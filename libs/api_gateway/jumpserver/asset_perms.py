@@ -11,13 +11,13 @@ from libs.api_gateway.jumpserver.base import JumpServerBaseAPI
 class AssetPermissionsAPI(JumpServerBaseAPI):
     """资产授权API"""
 
-    def get(self, name: str = None) -> List[dict]:
+    def get(self, name: str = None,  org_id: str = None) -> List[dict]:
         params = {}
         if name is not None:
             params['name'] = name
 
         return self.send_request(url=f"{self.base_url}/api/v1/perms/asset-permissions/",
-                                 method="GET", params=params)
+                                 method="GET", params=params, org_id=org_id)
 
     def create(self, **kwargs) -> List[dict]:
         """
@@ -45,21 +45,29 @@ class AssetPermissionsAPI(JumpServerBaseAPI):
         nodes = kwargs.get("nodes", [])  # 节点id String[]
         assets = kwargs.get("assets", [])  # 资产id String []
         accounts = kwargs.get("accounts", [])
+        org_id = kwargs.get("org_id",  None)
+        date_start = kwargs.get("date_start", None)
+        date_expired = kwargs.get("date_expired", None)
         assert accounts is not None, "账号模版ID不能为空"  # 选择模板添加时，会自动创建资产下不存在的账号并推送
         actions = kwargs.get("actions", ["connect", "copy", "paste"])
         data = dict(name=name, user_groups=user_groups, nodes=nodes, assets=assets,
                     accounts=accounts, actions=actions, users=users)
-        return self.send_request(method='post', data=data,
+        if date_start:
+            data.update(date_start=date_start)
+        if date_expired:
+            data.update(date_expired=date_expired)
+        return self.send_request(method='post', data=data, org_id=org_id,
                                  url=f"{self.base_url}/api/v1/perms/asset-permissions/")
 
-    def delete(self, assets_permissions_id: str = None) -> List[dict]:
+    def delete(self, assets_permissions_id: str = None, org_id: str = None) -> List[dict]:
         """
         删除资产授权
         :param assets_permissions_id: 资产授权id'
+        :param org_id: 组织id
         :return:
         """
         assert assets_permissions_id is not None, "资产授权id不能为空"
-        return self.send_request(method='delete',
+        return self.send_request(method='delete', org_id=org_id,
                                  url=f"{self.base_url}/api/v1/perms/asset-permissions/{assets_permissions_id}/")
 
     def update(self, **kwargs) -> List[dict]:
@@ -77,6 +85,7 @@ class AssetPermissionsAPI(JumpServerBaseAPI):
         assets = kwargs.get("assets", [])  # 资产id String []
         accounts = kwargs.get("accounts", ['@ALL'])
         actions = kwargs.get("actions", [])
+        org_id = kwargs.get("org_id", None)
         data = {}
         if user_groups:
             data["user_groups"] = user_groups
@@ -93,7 +102,7 @@ class AssetPermissionsAPI(JumpServerBaseAPI):
         if name:
             data["name"] = name
 
-        return self.send_request('put', data=data,
+        return self.send_request('put', data=data, org_id=org_id,
                                  url=f"{self.base_url}/api/v1/perms/asset-permissions/{assets_permissions_id}/")
 
 
