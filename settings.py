@@ -52,9 +52,9 @@ settings_auth_key = os.getenv('CODO_AUTH_KEY', "")  # 服务之间认证token
 asset_change_notify = {}
 
 # JumpServer配置
-JMS_API_BASE_URL = os.getenv('JMS_API_BASE_URL', 'http://140.207.17.182:8000')
-JMS_API_KEY_ID = os.getenv('JMS_API_KEY_ID', '2599b9eb-dbcd-4a39-9408-3dfc2d22efbb')
-JMS_API_KEY_SECRET = os.getenv('JMS_API_KEY_SECRET', 'nGDSAczYOtssRnNDDPmqXYQWm8sn5RNL6jXK')
+JMS_API_BASE_URL = os.getenv('JMS_API_BASE_URL', '')
+JMS_API_KEY_ID = os.getenv('JMS_API_KEY_ID', '')
+JMS_API_KEY_SECRET = os.getenv('JMS_API_KEY_SECRET', '')
 
 try:
     from local_settings import *

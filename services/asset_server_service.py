@@ -144,6 +144,9 @@ def add_server(server: dict):
     if cloud_name: ext_info['cloud_name'] = cloud_name
     if name: ext_info['name'] = name
     if inner_ip: ext_info['inner_ip'] = inner_ip
+    ownership = server.get('ownership', None)
+    if not ownership:
+        return {"code": 1, "msg": "归属不能为空"}
 
     try:
         with DBContext('w', None, True) as session:
@@ -155,7 +158,7 @@ def add_server(server: dict):
                                                      state=server.get('state', '运行中'), name=name,
                                                      region=server.get('region'), zone=server.get('zone'),
                                                      inner_ip=inner_ip, outer_ip=server.get('outer_ip'),
-                                                     ext_info=ext_info, is_expired=False)))
+                                                     ext_info=ext_info, is_expired=False, ownership=ownership)))
             except Exception as err:
                 print(err)
                 return dict(code=-1, msg=f'批量添加失败 {err}')
