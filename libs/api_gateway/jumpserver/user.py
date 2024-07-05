@@ -14,8 +14,7 @@ __all__ = ['jms_user_api']
 class UserAPI(JumpServerBaseAPI):
     """用户API"""
 
-    def get(self, name: str = None, username: str = None,
-            email: str = None) -> List[dict]:
+    def get(self, name: str = None, username: str = None, email: str = None, org_id: str = None) -> List[dict]:
         """
         查询堡垒机用户
         :return:
@@ -27,8 +26,7 @@ class UserAPI(JumpServerBaseAPI):
             params['username'] = username
         if email is not None:
             params['email'] = email
-        return self.send_request(method='get', params=params,
-                                 url=f'{self.base_url}/api/v1/users/users/')
+        return self.send_request(method='get', params=params, url=f'{self.base_url}/api/v1/users/users/', org_id=org_id)
 
     def create(self, **kwargs) -> List[dict]:
         """
@@ -45,7 +43,7 @@ class UserAPI(JumpServerBaseAPI):
 
         data = {'name': name, 'username': username, 'email': email,
                 'source': 'ldap'}
-        return self.send_request(method='post', data=data,
+        return self.send_request(method='post', data=data, org_id=kwargs.pop('org_id', None),
                                  url=f'{self.base_url}/api/v1/users/users/')
 
 

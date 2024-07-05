@@ -11,13 +11,14 @@ from libs.api_gateway.jumpserver.base import JumpServerBaseAPI
 class AssetHostsAPI(JumpServerBaseAPI):
     """主机资产API"""
 
-    def get(self, address: str = None, id: str = None, name: str = None) -> \
+    def get(self, address: str = None, id: str = None, name: str = None, org_id: str = None) -> \
             List[dict]:
         """
         查询主机资产
         :param address: IP地址
         :param id:
         :param name:
+        :param org_id:  组织id
         :return:
         """
         params = {}
@@ -29,7 +30,7 @@ class AssetHostsAPI(JumpServerBaseAPI):
             params['name'] = name
         return self.send_request(method='get',
                                  url=f'{self.base_url}/api/v1/assets/hosts/',
-                                 params=params)
+                                 params=params, org_id=org_id)
 
     def create(self, **kwargs):
         """
@@ -63,16 +64,17 @@ class AssetHostsAPI(JumpServerBaseAPI):
             data['domain'] = domain
         return self.send_request(method='post',
                                  url=f'{self.base_url}/api/v1/assets/hosts/',
-                                 data=data)
+                                 data=data, org_id=kwargs.get('org_id', None))
 
-    def delete(self, asset_id: str = None) -> List[dict]:
+    def delete(self, asset_id: str = None,  org_id: str = None) -> List[dict]:
         """
         删除主机资产
         :param asset_id: 资产id
+        :param org_id: 组织id
         :return:
         """
         assert asset_id is not None, '资产id不能为空'
-        return self.send_request(method='delete',
+        return self.send_request(method='delete', org_id=org_id,
                                  url=f'{self.base_url}/api/v1/assets/hosts/{asset_id}/')
 
 

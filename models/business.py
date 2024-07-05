@@ -111,6 +111,9 @@ class PermissionGroupModels(BizBaseModel):
     module_name = Column('module_name', String(500), comment='模块/服务/机架/机柜')
     perm_group_detail = Column('perm_group_detail', String(255), comment='备注')
     modify_user = Column('modify_user', String(128), nullable=True, comment='修改人')
+    jms_org_id = Column('jms_org_id', String(255), default="", comment='堡垒机组织ID')
+    perm_start_time = Column('perm_start_time', String(255), default="", comment='权限开始时间')
+    perm_end_time = Column('perm_end_time', String(255), default="", comment='权限结束时间')
 
     # 联合键约束 (业务ID+名称必须是唯一的)
     __table_args__ = ()

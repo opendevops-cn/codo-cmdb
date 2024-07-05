@@ -94,9 +94,10 @@ class AssetAccountTemplatesAPI(JumpServerBaseAPI):
 
         return response['results']
 
-    def get_account_template_detail(self, template_id: str = None) -> dict:
+    def get_account_template_detail(self, template_id: str = None, org_id: str = None) -> dict:
         assert template_id is not None, "账号模版ID不能为空"
-        return self.send_request(method='get', url=f'{self.base_url}/api/v1/accounts/account-templates/{template_id}/')
+        return self.send_request(method='get', url=f'{self.base_url}/api/v1/accounts/account-templates/{template_id}/',
+                                 org_id=org_id)
 
 
 class AssetAccountPushExecution(JumpServerBaseAPI):
