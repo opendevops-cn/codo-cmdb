@@ -507,7 +507,7 @@ def sync_service_tree_assets(biz_id=None, org_id=None):
             cloud_region_obj = session.query(CloudRegionModels) \
                 .filter(CloudRegionModels.cloud_region_id == cloud_region_id).first()
             if not cloud_region_obj:
-                logging.info(f"云区域不存在, 云区域ID: {cloud_region_id}")
+                logging.debug(f"云区域不存在, 云区域ID: {cloud_region_id}")
                 return
 
             jms_domain_id = None
@@ -515,12 +515,12 @@ def sync_service_tree_assets(biz_id=None, org_id=None):
             if is_ip_in_subnet(inner_ip):
                 jms_domain_id = cloud_region_obj.jms_domain_id
                 if not jms_domain_id:
-                    logging.info(f"没有配置网域ID, 业务: {biz_cn_name}")
+                    logging.debug(f"没有配置网域ID, 业务: {biz_cn_name}")
                     return
 
             jms_account_template_id = cloud_region_obj.jms_account_template
             if not jms_account_template_id:
-                logging.info(f"没有配置特权账号模板ID, 业务: {biz_cn_name}")
+                logging.debug(f"没有配置特权账号模板ID, 业务: {biz_cn_name}")
                 return
 
             accounts = [{"template": jms_account_template_id}]
@@ -604,21 +604,21 @@ def grant_perms_for_assets(perm_group_id=None, org_id=None):
 
         try:
             if not nodes:
-                logging.error("资产节点不能为空")
+                logging.debug("资产节点不能为空")
                 return
 
             nodes_ids = get_node_ids(nodes) if nodes else []
             if not nodes_ids:
-                logging.error("资产节点ID列表不能为空")
+                logging.debug("资产节点ID列表不能为空")
                 return
 
             if not user_group:
-                logging.error("用户组不能为空")
+                logging.debug("用户组不能为空")
                 return
 
             jms_user_group_objs = jms_user_group_api.get(name=name, org_id=org_id)
             if not jms_user_group_objs:
-                logging.error(f"用户组不存在：{name}")
+                logging.debug(f"用户组不存在：{name}")
                 return
 
             user_group_ids = [jms_user_group_objs[0]['id']]
@@ -638,7 +638,7 @@ def grant_perms_for_assets(perm_group_id=None, org_id=None):
                 result = jms_asset_permission_api.create(name=name, nodes=nodes_ids, user_groups=user_group_ids,
                                                          accounts=accounts, org_id=org_id, date_start=date_start,
                                                          date_expired=date_expired)
-                logging.info(f"创建资产授权: {name} {bool(result)}")
+                logging.debug(f"创建资产授权: {name} {bool(result)}")
             else:
                 # 更新资产授权
                 result = jms_asset_permission_api.update(assets_permissions_id=jms_asset_permission_obj[0]['id'],
@@ -732,7 +732,7 @@ def grant_perms_for_assets(perm_group_id=None, org_id=None):
                 biz_obj = session.query(BizModels).filter(
                     BizModels.biz_id == perm_group.biz_id).first()
                 if not biz_obj:
-                    logging.info(f'没有查到业务, ID: {perm_group.biz_id}')
+                    logging.debug(f'没有查到业务, ID: {perm_group.biz_id}')
                     continue
 
                 # perm_mapping_obj = session.query(PermissionToJMS) \
@@ -747,7 +747,7 @@ def grant_perms_for_assets(perm_group_id=None, org_id=None):
                 servers = preview_perm_group_for_api(exec_uuid_list=[exec_uuid])['data']
 
                 if not servers:
-                    logging.info(f"没有查到主机, 分组: {perm_group.perm_group_name}")
+                    logging.debug(f"没有查到主机, 分组: {perm_group.perm_group_name}")
                     continue
 
                 # 设定属于同一个业务的主机在一个云区域
@@ -758,18 +758,18 @@ def grant_perms_for_assets(perm_group_id=None, org_id=None):
                 # 获取云区域
                 cloud_region_obj = session.query(CloudRegionModels).filter(CloudRegionModels.cloud_region_id == cloud_region_id).first()
                 if not cloud_region_obj:
-                    logging.info(f"没有查到云区域, 云区域ID: {cloud_region_id}")
+                    logging.debug(f"没有查到云区域, 云区域ID: {cloud_region_id}")
                     continue
 
                 jms_account_template_id = cloud_region_obj.jms_account_template
                 if not jms_account_template_id:
-                    logging.info(f"没有配置jms特权账号模板ID：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
+                    logging.debug(f"没有配置jms特权账号模板ID：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
                     continue
 
                 perm_type = perm_group.perm_type
                 accounts = cloud_region_obj.accounts
                 if not accounts:
-                    logging.info(f"没有配置jms账号：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
+                    logging.debug(f"没有配置jms账号：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
                     continue
 
                 for account in accounts:
@@ -777,13 +777,13 @@ def grant_perms_for_assets(perm_group_id=None, org_id=None):
                         perm_account_template_id = account.get('jms_account_template_id')
                         break
                 else:
-                    logging.info(f"没有配置jms账号：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
+                    logging.debug(f"没有配置jms账号：业务: {biz_obj.biz_cn_name}, 权限类型: {perm_group.perm_type}")
                     continue
 
                 biz_cn_name = biz_obj.biz_cn_name
                 jms_org_id = perm_group.jms_org_id
                 if not jms_org_id:
-                    logging.error(f"堡垒机企业版没有配置组织ID, 业务: {biz_cn_name}")
+                    logging.debug(f"堡垒机企业版没有配置组织ID, 业务: {biz_cn_name}")
                     continue
 
                 parent_name = get_jms_parent_name_by_org_id(jms_org_id)
@@ -885,7 +885,6 @@ def async_vswitch_cloud_region_id():
 
 def sync_cmdb_to_jms_with_enterprise(perm_group_id=None):
     """同步配置平台数据到JumpServer企业版"""
-    logging.info("开始对同步配置平台数据到JumpServer企业版")
 
     @deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))
     def index(group_id=None):
@@ -905,7 +904,7 @@ def sync_cmdb_to_jms_with_enterprise(perm_group_id=None):
                     biz_id = perm_group.biz_id
                     jms_org_id = perm_group.jms_org_id
                     if not jms_org_id:
-                        logging.error(f"堡垒机企业版同步没有配置组织ID, 业务: {biz_id}")
+                        logging.debug(f"堡垒机企业版同步没有配置组织ID, 业务: {biz_id}")
                         continue
                     # 同步用户组和成员
                     sync_perm_group_and_members(perm_group_id=group_id, org_id=jms_org_id)
@@ -918,9 +917,12 @@ def sync_cmdb_to_jms_with_enterprise(perm_group_id=None):
                 except Exception as e:
                     logging.error(f"同步配置平台数据到JumpServer企业版出错 {e}")
 
-        logging.info("同步配置平台数据到JumpServer企业版结束")
-
-    index(group_id=perm_group_id)
+    try:
+        logging.info("开始对同步配置平台数据到JumpServer企业版")
+        index(group_id=perm_group_id)
+    except Exception as e:
+        logging.error(f"同步配置平台数据到JumpServer企业版出错 {e}")
+    logging.info("同步配置平台数据到JumpServer企业版结束")
 
 
 def async_cmdb_to_jms_with_enterprise(perm_group_id=None):
