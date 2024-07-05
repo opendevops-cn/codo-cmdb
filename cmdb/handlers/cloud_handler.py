@@ -29,7 +29,7 @@ from libs.volc.synchronize import main as vol_synchronize
 from libs.gcp.synchronize import mapping as gcp_mapping
 from libs.gcp.synchronize import main as gcp_synchronize
 from models.models_utils import get_all_cloud_interval
-from services.cloud_service import opt_obj, get_cloud_settings, get_cloud_sync_log
+from services.cloud_service import opt_obj, get_cloud_settings, get_cloud_sync_log, update_cloud_settings
 from apscheduler.schedulers.tornado import TornadoScheduler
 from libs.mycrypt import mc
 
@@ -79,10 +79,7 @@ class CloudSettingHandler(BaseHandler, ABC):
     def put(self):
         data = json.loads(self.request.body.decode("utf-8"))
         access_key = data.get('access_key', None).strip()
-        if len(access_key) < 110:
-            data['access_key'] = mc.my_encrypt(access_key)  # 密钥如果太短，则认为当前密钥为原始密钥
-
-        res = opt_obj.handle_update(data)
+        res = update_cloud_settings(data)
 
         add_cloud_jobs()
         if len(access_key) < 110:
