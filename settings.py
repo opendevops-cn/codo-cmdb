@@ -8,6 +8,7 @@ Desc    : 配置文件
 """
 
 import os
+
 from websdk2.consts import const
 
 ROOT_DIR = os.path.dirname(__file__)

@@ -29,5 +29,3 @@ CMD /data/run-py.sh ${SERVICE_NAME}
 
 ## docker build --no-cache --build-arg SERVICE_NAME=cmdb  . -t ops_cmdb_image
 ## docker build  --build-arg SERVICE_NAME=cmdb  . -t ops_cmdb_image
-## docker build  --build-arg SERVICE_NAME=cmdb  . -t ops-huanle.tencentcloudcr.com/codo/codo_cmdb_image
-## docker push  ops-huanle.tencentcloudcr.com/codo/codo_cmdb_image
