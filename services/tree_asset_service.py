@@ -7,17 +7,22 @@ Date    : 2023年4月7日
 """
 
 import logging
-from sqlalchemy import func, or_
 from typing import *
-from models.tree import TreeModels, TreeAssetModels
-# from libs.tree import Tree
-from models.business import BizModels
-from models import asset_mapping as mapping
+from collections import namedtuple
+
+from sqlalchemy import func, or_
+from sqlalchemy.orm import aliased
 from websdk2.model_utils import model_to_dict, queryset_to_list
 from websdk2.db_context import DBContextV2 as DBContext
 
+from models.tree import TreeModels, TreeAssetModels
+from models.asset import AssetServerModels
+# from libs.tree import Tree
+from models.business import BizModels, PermissionGroupModels
+from models import asset_mapping as mapping
 from services.audit_service import audit_log
 from services.tree_service import generate_tree_message
+from libs.api_gateway.jumpserver.asset_hosts import jms_asset_host_api
 
 
 @audit_log()
@@ -186,6 +191,57 @@ def del_tree_asset(data: dict) -> dict:
         _message = generate_tree_message(biz_obj.biz_cn_name, env_name, region_name, module_name, node_type=3)
     return {"code": 0, "msg": "删除成功", "audit_log_message": f"用户{modify_user}删除服务树{_message}资源, "
                                                                f"资源类型：{asset_type}, 资源名：{names}"}
+
+
+def delete_jms_asset(data: dict):
+    """
+    删除JMS资产
+    """
+    asset_type = data.get('asset_type', None)
+    biz_id = data.get("biz_id", None)
+    env_name = data.get('env_name', None)
+    region_name = data.get('region_name', None)
+    module_name = data.get('module_name', None)
+    names = data.get('names', None)
+    # 参数校验
+    if not all([asset_type, biz_id, env_name, region_name]):
+        return {'code': 1, 'msg': '缺少必要参数'}
+
+    if not isinstance(names, list):
+        return {'code': 1, 'msg': 'names必须为list'}
+
+    if asset_type not in ["server"]:
+        return {'code': 1, 'msg': '暂不支持该类型资产'}
+
+    # 根据names查询inner_ip
+    with DBContext('w', None, True) as session:
+        # 获取业务名称
+        biz_obj = session.query(BizModels.biz_cn_name).filter(BizModels.biz_id == biz_id).first()
+        if not biz_obj:
+            return
+        biz_cn_name = biz_obj.biz_cn_name
+
+        # 获取权限分组obj
+        permission_group_obj = session.query(PermissionGroupModels).filter(
+            PermissionGroupModels.biz_id == biz_id).all()
+        if not permission_group_obj:
+            return
+
+        # 获取主机信息
+        servers = session.query(AssetServerModels.name, AssetServerModels.inner_ip).filter(AssetServerModels.name.in_(names))
+
+        for server in servers:
+            # 构建资产名称
+            asset_name = f'{biz_cn_name}/{env_name}/{region_name}/{module_name}/{server.name}-{server.inner_ip}'
+            for bg in permission_group_obj:
+                # 可能同步到多个JMS组织，需要遍历
+                if not bg.jms_org_id:
+                    continue
+                # 查询JMS主机资产信息
+                jms_asset_host_obj = jms_asset_host_api.get(name=asset_name, org_id=bg.jms_org_id)
+                if jms_asset_host_obj:
+                    # 删除JMS主机资产
+                    jms_asset_host_api.delete(asset_id=jms_asset_host_obj[0]['id'], org_id=bg.jms_org_id)
 
 
 def update_tree_leaf(data: dict) -> dict:

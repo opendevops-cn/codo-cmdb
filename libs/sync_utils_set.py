@@ -883,10 +883,10 @@ def async_vswitch_cloud_region_id():
     executor.submit(sync_vswitch_cloud_region_id)
 
 
-def sync_cmdb_to_jms_with_enterprise(perm_group_id=None):
-    """同步配置平台数据到JumpServer企业版"""
+def sync_cmdb_to_jms_with_enterprise(perm_group_id=None, with_lock=True):
+    """同步配置平台数据到JumpServer企业版和社区版"""
 
-    @deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))
+    # @deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))
     def index(group_id=None):
         with DBContext('w', None, True) as session:
             try:
@@ -919,7 +919,10 @@ def sync_cmdb_to_jms_with_enterprise(perm_group_id=None):
 
     try:
         logging.info("开始对同步配置平台数据到JumpServer企业版")
-        index(group_id=perm_group_id)
+        if with_lock:
+            deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))(index)(perm_group_id)
+        else:
+            index(group_id=perm_group_id)
     except Exception as e:
         logging.error(f"同步配置平台数据到JumpServer企业版出错 {e}")
     logging.info("同步配置平台数据到JumpServer企业版结束")
