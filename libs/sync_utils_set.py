@@ -48,6 +48,7 @@ from libs.api_gateway.jumpserver.org import jms_org_api
 from services.tree_service import get_tree_by_api
 from services.tree_asset_service import get_tree_assets
 from services.perm_group_service import preview_perm_group_for_api
+from services.cloud_region_service import update_server_agent_id_by_cloud_region_rules
 
 if configs.can_import: configs.import_dict(**settings)
 
@@ -847,10 +848,11 @@ def sync_vswitch_cloud_region_id():
     """同步vswitch的cloud_region_id"""
     @deco(RedisLock("sync_vswitch_cloud_region_id_redis_lock_key"))
     def index():
-        logging.info(f'开始同步虚拟子云区域ID!!!')
+        logging.info(f'开始同步虚拟子网云区域ID!!!')
         with DBContext('w', None, True) as session:
             # 查询云区域规则
-            cloud_regions = session.query(CloudRegionModels).filter(CloudRegionModels.asset_group_rules.isnot(None)).all()
+            cloud_regions = session.query(CloudRegionModels).filter(CloudRegionModels.asset_group_rules.isnot(None),
+                                                                    CloudRegionModels.auto_update_agent_id == "yes").all()
             asset_group_rules = [dict(asset_group_rules=cloud_region.asset_group_rules[0],
                                       cloud_region_id=cloud_region.cloud_region_id) for cloud_region in cloud_regions]
 
@@ -870,12 +872,35 @@ def sync_vswitch_cloud_region_id():
                     continue
                 vswitch.cloud_region_id = cloud_region_id
             session.commit()
-        logging.info(f'同步虚拟子云区域ID结束!!!')
+        logging.info(f'同步虚拟子网云区域ID结束!!!')
 
     try:
         index()
     except Exception as err:
-        logging.error(f'同步虚拟子云区域ID出错 {str(err)}')
+        logging.error(f'同步虚拟子网云区域ID出错 {str(err)}')
+
+
+def sync_server_cloud_region_id():
+    """同步server的cloud_region_id"""
+    @deco(RedisLock("sync_server_cloud_region_id_redis_lock_key"))
+    def index():
+        logging.info(f'开始同步server云区域ID!!!')
+        with DBContext('w', None, True) as session:
+            # 查询自动更新的云区域
+            cloud_regions = session.query(CloudRegionModels).filter(CloudRegionModels.asset_group_rules.isnot(None),
+                                                                    CloudRegionModels.auto_update_agent_id == "yes").all()
+
+            # 更新server的agent_id
+            for cloud_region in cloud_regions:
+                update_server_agent_id_by_cloud_region_rules(cloud_region.asset_group_rules,
+                                                             cloud_region.cloud_region_id)
+            session.commit()
+        logging.info(f'同步server云区域ID结束!!!')
+
+    try:
+        index()
+    except Exception as err:
+        logging.error(f'同步server云区域ID出错 {str(err)}')
 
 
 def async_vswitch_cloud_region_id():
@@ -883,10 +908,15 @@ def async_vswitch_cloud_region_id():
     executor.submit(sync_vswitch_cloud_region_id)
 
 
-def sync_cmdb_to_jms_with_enterprise(perm_group_id=None):
-    """同步配置平台数据到JumpServer企业版"""
+def async_server_cloud_region_id():
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(sync_server_cloud_region_id)
 
-    @deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))
+
+def sync_cmdb_to_jms_with_enterprise(perm_group_id=None, with_lock=True):
+    """同步配置平台数据到JumpServer企业版和社区版"""
+
+    # @deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))
     def index(group_id=None):
         with DBContext('w', None, True) as session:
             try:
@@ -919,7 +949,10 @@ def sync_cmdb_to_jms_with_enterprise(perm_group_id=None):
 
     try:
         logging.info("开始对同步配置平台数据到JumpServer企业版")
-        index(group_id=perm_group_id)
+        if with_lock:
+            deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))(index)(perm_group_id)
+        else:
+            index(group_id=perm_group_id)
     except Exception as e:
         logging.error(f"同步配置平台数据到JumpServer企业版出错 {e}")
     logging.info("同步配置平台数据到JumpServer企业版结束")
@@ -927,7 +960,7 @@ def sync_cmdb_to_jms_with_enterprise(perm_group_id=None):
 
 def async_cmdb_to_jms_with_enterprise(perm_group_id=None):
     executor = ThreadPoolExecutor(max_workers=1)
-    executor.submit(sync_cmdb_to_jms_with_enterprise, perm_group_id)
+    executor.submit(sync_cmdb_to_jms_with_enterprise, perm_group_id, True)
 
 
 if __name__ == '__main__':

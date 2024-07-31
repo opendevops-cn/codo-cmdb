@@ -10,6 +10,9 @@ Desc    : 服务树
 import json
 import logging
 from abc import ABC
+import tornado.ioloop
+import asyncio
+
 from sqlalchemy import func, or_
 from typing import *
 from libs.base_handler import BaseHandler
@@ -20,7 +23,8 @@ from services.tree_service import get_biz_name, get_tree_by_api, add_tree_by_api
     del_tree_by_api, get_tree_info_by_api
 from services.tree_asset_service import get_tree_env_list, get_tree_form_env_list, get_tree_form_module_list, \
     get_tree_form_set_list, register_asset, del_tree_asset, get_tree_asset_by_api, add_tree_asset_by_api, \
-    update_tree_asset_by_api, get_server_tree_for_api, get_tree_module_list, update_tree_leaf, del_tree_leaf
+    update_tree_asset_by_api, get_server_tree_for_api, get_tree_module_list, update_tree_leaf, del_tree_leaf,\
+    delete_jms_asset
 
 from models import asset_mapping as mapping
 
@@ -83,11 +87,16 @@ class TreeAssetHandler(BaseHandler, ABC):
         res = update_tree_asset_by_api(data)
         return self.write(res)
 
-    def delete(self):
+    async def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))
         data['modify_user'] = self.request_fullname()
         res = del_tree_asset(data)
+        asyncio.create_task(self.run_sync_task(data.copy()))
         return self.write(res)
+
+    @staticmethod
+    async def run_sync_task(data):
+        await tornado.ioloop.IOLoop.current().run_in_executor(None, delete_jms_asset, data)
 
 
 class TreeLeafHandler(BaseHandler, ABC):
