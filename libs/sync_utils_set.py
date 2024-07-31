@@ -963,5 +963,32 @@ def async_cmdb_to_jms_with_enterprise(perm_group_id=None):
     executor.submit(sync_cmdb_to_jms_with_enterprise, perm_group_id, True)
 
 
+def sync_jms_orgs():
+    """
+    同步堡垒机组织信息到配置平台
+    """
+    @deco(RedisLock("async_jms_orgs_to_cmdb_redis_lock_key"))
+    def index():
+        logging.info(f'开始从堡垒机同步组织信息到配置平台')
+        try:
+            orgs = jms_org_api.get()
+            if orgs is None:
+                logging.error(f'从堡垒机同步组织信息到配置平台失败, 接口返回空')
+            redis_conn = cache_conn()
+            redis_conn.set("JMS_ORG_ITEMS", json.dumps(orgs), ex=3600)
+
+        except Exception as err:
+            logging.error(f'从堡垒机同步组织信息到配置平台 {err}')
+        logging.info(
+            f'从堡垒机同步组织信息到配置平台结束 {datetime.datetime.now()}')
+
+    index()
+
+
+def async_jms_orgs_to_cmdb():
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(sync_jms_orgs)
+
+
 if __name__ == '__main__':
     pass
