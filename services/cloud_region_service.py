@@ -99,6 +99,11 @@ def update_server_agent_id_by_cloud_region_rules(asset_group_rules: List[List[Di
             servers = query.filter(or_(*filters)) if filters else query
 
             for server in servers:
+                # 跳过已同步的AgentID
+                if server.agent_id and ":" in server.agent_id:
+                    _cloud_region_id = server.agent_id.split(":")[-1]
+                    if str(_cloud_region_id) == str(cloud_region_id):
+                        continue
                 server.agent_id = f"{server.inner_ip}:{cloud_region_id}"
 
             session.commit()

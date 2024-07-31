@@ -2,30 +2,25 @@
 # @Author: Dongdong Liu
 # @Date: 2024/5/16
 # @Description: jmss
-
 from abc import ABC
-from concurrent.futures import ThreadPoolExecutor
+import json
 
-from tornado.concurrent import run_on_executor
+from websdk2.cache_context import cache_conn
 
 from libs.base_handler import BaseHandler
-from libs.api_gateway.jumpserver.org import jms_org_api
 
 
 class JmsHandler(BaseHandler, ABC):
 
-    _thread_pool = ThreadPoolExecutor(3)
-
-    @run_on_executor(executor='_thread_pool')
-    def async_get_services(self):
-        res = jms_org_api.get()
-        return res
-
-    async def get(self):
-        res = await self.async_get_services()
-        data = res.get("results", [])
-        count = res.get("count", 0)
-        res = dict(msg='获取成功', code=0, data=data, count=count)
+    def get(self):
+        cache = cache_conn()
+        orgs = cache.get("JMS_ORG_ITEMS")
+        if orgs:
+            data = json.loads(orgs)
+            res = dict(msg='获取成功', code=0, data=data.get("results", []), count=data.get("count"))
+        else:
+            # 没有缓存, 等待缓存刷新， 直接返回空数据
+            res = dict(msg='获取成功', code=0, data=[], count=0)
         return self.write(res)
 
 
