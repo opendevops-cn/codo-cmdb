@@ -1,8 +1,11 @@
+from typing import List, Dict, Any
+from collections import namedtuple
+
 from sqlalchemy import or_
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.sqlalchemy_pagination import paginate
 from models.business import BizModels
-from models import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels
+from models import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels, TreeAssetModels
 from models.domain import DomainRecords
 from websdk2.model_utils import CommonOptView
 
@@ -74,5 +77,23 @@ def get_asset_list(**params) -> dict:
         redis_data = paginate(session.query(AssetRedisModels).filter(_get_redis_value(value)), **params)
         lb_data = paginate(session.query(AssetLBModels).filter(_get_lb_value(value)), **params)
         dns_data = paginate(session.query(DomainRecords).filter(_get_dns_value(value)), **params)
+        tree_asset_data = get_tree_asset_data(session, value, params)
     return dict(msg='获取成功', code=0, server_data=server_data.items, mysql_data=mysql_data.items,
-                redis_data=redis_data.items, lb_data=lb_data.items, dns_data=dns_data.items)
+                redis_data=redis_data.items, lb_data=lb_data.items, dns_data=dns_data.items,
+                tree_asset_data=tree_asset_data)
+
+
+def get_tree_asset_data(session, value: str = None, params: dict = None) -> List[Dict[str, Any]]:
+    TreeAsset = namedtuple('TreeAsset', ['biz_id', 'biz_en_name', 'biz_cn_name', 'env_name', 'region_name',
+                                         'module_name', 'inner_ip', 'is_enable'])
+    params.update(items_not_to_list=True)
+    page = paginate(session.query(TreeAssetModels.biz_id, BizModels.biz_en_name, BizModels.biz_cn_name,
+                                  TreeAssetModels.env_name, TreeAssetModels.region_name, TreeAssetModels.module_name,
+                                  AssetServerModels.inner_ip, TreeAssetModels.is_enable).
+                    outerjoin(BizModels, BizModels.biz_id == TreeAssetModels.biz_id).
+                    outerjoin(AssetServerModels, AssetServerModels.id == TreeAssetModels.asset_id).
+                    filter(TreeAssetModels.asset_type == "server", _get_server_value(value)), **params)
+
+    tree_asset_data = [TreeAsset(*item)._asdict() for item in page.items]
+    return tree_asset_data
+
