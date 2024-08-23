@@ -23,6 +23,7 @@ from cmdb.handlers.role_handler import role_urls
 from cmdb.handlers.perm_group_handler import perm_group_urls
 from cmdb.handlers.jms_handler import jms_urls
 from cmdb.handlers.audit_handler import audit_urls
+from cmdb.handlers.interface_handler import interface_urls
 
 urls = []
 urls.extend(biz_urls)
@@ -47,4 +48,5 @@ urls.extend(role_urls)
 urls.extend(perm_group_urls)
 urls.extend(jms_urls)
 urls.extend(audit_urls)
+urls.extend(interface_urls)
 
