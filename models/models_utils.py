@@ -155,13 +155,12 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                 region = __info.get('region')
                 inner_ip = __info.get('inner_ip')
                 filter_map = dict(instance_id=instance_id)
-                exist_id = db_session.query(AssetServerModels.id).filter_by(**filter_map).first()
+                exist_id = db_session.query(AssetServerModels.id, AssetServerModels.agent_id).filter_by(**filter_map).first()
                 agent_id = f"{inner_ip}:0"
 
                 if exist_id:
-                    # 更新时更新agent_id和agent_info
-                    agent_id = db_session.query(AssetServerModels.agent_id).filter_by(**filter_map).first()[0]
-                    agent_info = all_agent_info.get(agent_id, {})
+                    # 更新时更新agent_info
+                    agent_info = all_agent_info.get(exist_id[1], {})
                     try:
                         db_session.query(AssetServerModels).filter_by(**filter_map).update({
                             AssetServerModels.cloud_name: cloud_name,
@@ -170,7 +169,7 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                             AssetServerModels.region: region,
                             AssetServerModels.zone: __info.get('zone'),
                             AssetServerModels.state: __info.get('state'),
-                            AssetServerModels.agent_id: agent_id,
+                            # AssetServerModels.agent_id: agent_id,
                             AssetServerModels.agent_info: agent_info,
                             AssetServerModels.outer_ip: __info.get('outer_ip'),
                             AssetServerModels.inner_ip: inner_ip,
