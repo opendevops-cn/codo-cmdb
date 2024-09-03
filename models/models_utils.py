@@ -135,23 +135,6 @@ def get_all_agent_info() -> dict:
 
     return agent_info
 
-def get_agent_info(agent_id: str) -> dict:
-    the_agent = {}
-    if not agent_id:
-        logging.error(f"agent_id不能为空")
-        return the_agent
-
-    # 获取所有代理信息
-    agent_dict = get_all_agent_info()
-
-    # 查找指定代理
-    the_agent = agent_dict.get(agent_id, {})
-    if not the_agent or not isinstance(the_agent, dict):
-        logging.error(f'代理 {agent_id} 查询异常，数据不存在或格式错误，请检查数据。')
-        return the_agent
-
-    return the_agent
-
 
 def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
     """
@@ -165,6 +148,7 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
     ret_state, ret_msg = True, f"{cloud_name}-{account_id}-server task写入数据库完成"
     # logging.error(f"{cloud_name}, {account_id}")
     try:
+        all_agent_info = get_all_agent_info()
         with DBContext('w', None, True, **settings) as db_session:
             for __info in rows:
                 instance_id = __info['instance_id']
@@ -177,7 +161,7 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                 if exist_id:
                     # 更新时更新agent_id和agent_info
                     agent_id = db_session.query(AssetServerModels.agent_id).filter_by(**filter_map).first()[0]
-                    agent_info = get_agent_info(agent_id)
+                    agent_info = all_agent_info.get(agent_id, {})
                     try:
                         db_session.query(AssetServerModels).filter_by(**filter_map).update({
                             AssetServerModels.cloud_name: cloud_name,
