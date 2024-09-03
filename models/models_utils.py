@@ -17,6 +17,7 @@ from websdk2.db_context import DBContext
 from websdk2.model_utils import model_to_dict, insert_or_update
 from websdk2.client import AcsClient
 from websdk2.api_set import api_set
+from websdk2.configs import configs
 
 from settings import settings
 from models.cloud import SyncLogModels, CloudSettingModels
@@ -24,6 +25,8 @@ from models.asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, 
     AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetImagesModels
 from models.event import CloudEventsModels
 from models import asset_mapping
+
+if configs.can_import: configs.import_dict(**settings)
 
 
 def mark_expired(resource_type: Optional[str], account_id: Optional[str]):
