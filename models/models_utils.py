@@ -6,20 +6,27 @@ Author  : shenshuo
 Date    : 2023/2/15 14:59
 Desc    : 操作Models公共方法
 """
-
+import json
 import datetime
 import logging
-from settings import settings
 from typing import *
+
 import pymysql
 from sqlalchemy.sql import or_
 from websdk2.db_context import DBContext
 from websdk2.model_utils import model_to_dict, insert_or_update
+from websdk2.client import AcsClient
+from websdk2.api_set import api_set
+from websdk2.configs import configs
+
+from settings import settings
 from models.cloud import SyncLogModels, CloudSettingModels
 from models.asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels, AssetVPCModels, \
     AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetImagesModels
 from models.event import CloudEventsModels
 from models import asset_mapping
+
+if configs.can_import: configs.import_dict(**settings)
 
 
 def mark_expired(resource_type: Optional[str], account_id: Optional[str]):
@@ -114,6 +121,21 @@ def sync_log_task(data: Dict[str, str]):
         db_session.commit()
 
 
+def get_all_agent_info() -> dict:
+    agent_info = {}
+    try:
+        client = AcsClient()
+        resp = client.do_action_v2(**api_set.get_agent_list)
+        if resp.status_code != 200:
+            logging.error(f"获取agent列表失败，状态码={resp.status_code}")
+            return {}
+        agent_info = resp.json()
+    except Exception as err:
+        logging.error(f"获取失败，{err}")
+
+    return agent_info
+
+
 def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
     """
 
@@ -126,16 +148,19 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
     ret_state, ret_msg = True, f"{cloud_name}-{account_id}-server task写入数据库完成"
     # logging.error(f"{cloud_name}, {account_id}")
     try:
+        all_agent_info = get_all_agent_info()
         with DBContext('w', None, True, **settings) as db_session:
             for __info in rows:
                 instance_id = __info['instance_id']
                 region = __info.get('region')
                 inner_ip = __info.get('inner_ip')
                 filter_map = dict(instance_id=instance_id)
-                exist_id = db_session.query(AssetServerModels.id).filter_by(**filter_map).first()
+                exist_id = db_session.query(AssetServerModels.id, AssetServerModels.agent_id).filter_by(**filter_map).first()
                 agent_id = f"{inner_ip}:0"
 
                 if exist_id:
+                    # 更新时更新agent_info
+                    agent_info = all_agent_info.get(exist_id[1], {})
                     try:
                         db_session.query(AssetServerModels).filter_by(**filter_map).update({
                             AssetServerModels.cloud_name: cloud_name,
@@ -145,6 +170,7 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                             AssetServerModels.zone: __info.get('zone'),
                             AssetServerModels.state: __info.get('state'),
                             # AssetServerModels.agent_id: agent_id,
+                            AssetServerModels.agent_info: agent_info,
                             AssetServerModels.outer_ip: __info.get('outer_ip'),
                             AssetServerModels.inner_ip: inner_ip,
                             AssetServerModels.is_expired: False,  # 改为正常状态

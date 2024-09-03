@@ -100,12 +100,12 @@ class RedisSubscriber:
                         if agent_info and 'agent_id' in agent_info:
                             agent_id = agent_info.get('agent_id')
                             logging.debug(f"agent info sync {agent_id} {agent_info}")
-                            try:
-                                with DBContext('w', None, True) as session:
-                                    session.query(serverModel).filter(serverModel.agent_id == agent_id).update(
-                                        dict(agent_info=agent_info))
-                            except Exception as e:
-                                logging.error(f"写入数据库失败{e}")
+                            # try:
+                            #     with DBContext('w', None, True) as session:
+                            #         session.query(serverModel).filter(serverModel.agent_id == agent_id).update(
+                            #             dict(agent_info=agent_info))
+                            # except Exception as e:
+                            #     logging.error(f"写入数据库失败{e}")
 
                     except Exception as err:
                         logging.error(f"Error processing message {msg_id}: {err}")
