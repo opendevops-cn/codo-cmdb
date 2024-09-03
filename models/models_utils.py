@@ -6,15 +6,19 @@ Author  : shenshuo
 Date    : 2023/2/15 14:59
 Desc    : 操作Models公共方法
 """
-
+import json
 import datetime
 import logging
-from settings import settings
 from typing import *
+
 import pymysql
 from sqlalchemy.sql import or_
 from websdk2.db_context import DBContext
 from websdk2.model_utils import model_to_dict, insert_or_update
+from websdk2.client import AcsClient
+from websdk2.api_set import api_set
+
+from settings import settings
 from models.cloud import SyncLogModels, CloudSettingModels
 from models.asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels, AssetVPCModels, \
     AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetImagesModels
@@ -114,6 +118,38 @@ def sync_log_task(data: Dict[str, str]):
         db_session.commit()
 
 
+def get_all_agent_info() -> dict:
+    agent_info = {}
+    try:
+        client = AcsClient()
+        resp = client.do_action_v2(**api_set.get_agent_list)
+        if resp.status_code != 200:
+            logging.error(f"获取agent列表失败，状态码={resp.status_code}")
+            return {}
+        agent_info = resp.json()
+    except Exception as err:
+        logging.error(f"获取失败，{err}")
+
+    return agent_info
+
+def get_agent_info(agent_id: str) -> dict:
+    the_agent = {}
+    if not agent_id:
+        logging.error(f"agent_id不能为空")
+        return the_agent
+
+    # 获取所有代理信息
+    agent_dict = get_all_agent_info()
+
+    # 查找指定代理
+    the_agent = agent_dict.get(agent_id, {})
+    if not the_agent or not isinstance(the_agent, dict):
+        logging.error(f'代理 {agent_id} 查询异常，数据不存在或格式错误，请检查数据。')
+        return the_agent
+
+    return the_agent
+
+
 def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
     """
 
@@ -136,6 +172,9 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                 agent_id = f"{inner_ip}:0"
 
                 if exist_id:
+                    # 更新时更新agent_id和agent_info
+                    agent_id = db_session.query(AssetServerModels.agent_id).filter_by(**filter_map).first()[0]
+                    agent_info = get_agent_info(agent_id)
                     try:
                         db_session.query(AssetServerModels).filter_by(**filter_map).update({
                             AssetServerModels.cloud_name: cloud_name,
@@ -144,7 +183,8 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                             AssetServerModels.region: region,
                             AssetServerModels.zone: __info.get('zone'),
                             AssetServerModels.state: __info.get('state'),
-                            # AssetServerModels.agent_id: agent_id,
+                            AssetServerModels.agent_id: agent_id,
+                            AssetServerModels.agent_info: agent_info,
                             AssetServerModels.outer_ip: __info.get('outer_ip'),
                             AssetServerModels.inner_ip: inner_ip,
                             AssetServerModels.is_expired: False,  # 改为正常状态
