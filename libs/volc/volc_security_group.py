@@ -86,25 +86,26 @@ class VolCSecurityGroup(VolCVPC):
         items = []
         if detail is not None:
             permissions = detail.permissions
-            for permission in permissions:
-                item = dict()
-                item['security_group_id'] = detail.security_group_id
-                item['ip_protocol'] = permission.protocol
-                item['source_cidr_ip'] = permission.cidr_ip if permission.direction == "ingress" else ""  # 入方向规则设置源地址
-                item['source_group_name'] = ''
-                item['dest_group_name'] = ''
-                item['ipv6_source_cidr_ip'] = ''
-                item['dest_cidr_ip'] = permission.cidr_ip if permission.direction == "egress" else ""  # 出方向规则设置目标地址
-                item['ipv6_dest_cidr_ip'] = ''
-                item['policy'] = permission.policy
-                item['port_range'] = get_port_range(permission.port_start, permission.port_end)
-                item['port_start'] = permission.port_start
-                item['port_end'] = permission.port_end
-                item['description'] = permission.description
-                item['direction'] = permission.direction
-                item['priority'] = permission.priority
-                item['creation_time'] = permission.creation_time
-                items.append(item)
+            if permissions:
+                for permission in permissions:
+                    item = dict()
+                    item['security_group_id'] = detail.security_group_id
+                    item['ip_protocol'] = permission.protocol
+                    item['source_cidr_ip'] = permission.cidr_ip if permission.direction == "ingress" else ""  # 入方向规则设置源地址
+                    item['source_group_name'] = ''
+                    item['dest_group_name'] = ''
+                    item['ipv6_source_cidr_ip'] = ''
+                    item['dest_cidr_ip'] = permission.cidr_ip if permission.direction == "egress" else ""  # 出方向规则设置目标地址
+                    item['ipv6_dest_cidr_ip'] = ''
+                    item['policy'] = permission.policy
+                    item['port_range'] = get_port_range(permission.port_start, permission.port_end)
+                    item['port_start'] = permission.port_start
+                    item['port_end'] = permission.port_end
+                    item['description'] = permission.description
+                    item['direction'] = permission.direction
+                    item['priority'] = permission.priority
+                    item['creation_time'] = permission.creation_time
+                    items.append(item)
 
         res['security_info'] = dict(items=items)
         return res

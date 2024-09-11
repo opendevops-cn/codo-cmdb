@@ -136,10 +136,10 @@ class VolCECS:
             # res['charge_type'] = get_pay_type(data.InstanceChargeType)
 
             # 内外网IP,可能有多个
-            # outer_ip = data.eip_address
+            eip_address = data.eip_address
             inner_ip = network_interface.primary_ip_address
             res['inner_ip'] = inner_ip
-            # res['outer_ip'] = outer_ip
+            res['outer_ip'] = eip_address.ip_address if eip_address else ""
 
             res['os_name'] = data.os_name
             res['os_type'] = data.os_type
