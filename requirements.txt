@@ -28,7 +28,7 @@ tencentcloud-sdk-python-redis==3.0.885
 tencentcloud-sdk-python-vpc==3.0.856
 tencentcloud-sdk-python-clb==3.0.873
 # 火山云
-volcengine-python-sdk==1.0.56
+volcengine-python-sdk==1.0.100
 # 谷歌云
 google-api-core==2.15.0
 google-auth==2.25.2
