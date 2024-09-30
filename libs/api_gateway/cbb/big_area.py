@@ -14,7 +14,7 @@ class BigArea(TypedDict):
     tags: List[str]
     address: str
     utc_offset: int
-    invisible: bool
+    visible: bool
     ext: str
 
 class Body(TypedDict):
