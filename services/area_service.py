@@ -26,7 +26,7 @@ class BigArea(BaseModel):
     name: str  # 大区名称
     ext: Optional[str] = ""  # 扩展信息
     tags: List[str] = []  # 大区标签
-    invisible: bool = False  # 玩家是否可见
+    visible: bool = False  # 玩家是否可见
     utc_offset: int = 0  # UTC偏移
     address: str = None  # 大区地址
 
@@ -36,7 +36,7 @@ class BigArea(BaseModel):
             raise ValueError("大区编号不能为空")
         if "name" not in values or not values["name"]:
             raise ValueError("大区名称不能为空")
-        if "invisible" not in values:
+        if "visible" not in values:
             raise ValueError("玩家可见不能为空")
         if "utc_offset" not in values:
             raise ValueError("UTC时间偏移不能为空")
@@ -63,8 +63,8 @@ class BigArea(BaseModel):
                 raise ValueError("大区标签最多15个字符")
         return v
 
-    @field_validator("invisible", mode="before")
-    def validate_invisible(cls, v):
+    @field_validator("visible", mode="before")
+    def validate_visible(cls, v):
         if not isinstance(v, bool):
             raise ValueError("玩家可见必须为bool类型")
         return v
@@ -101,7 +101,7 @@ class Area(BaseModel):
     max_alive_count: int  # 最大在线人数
     is_top: bool  # 是否为置顶
     open_timestamp: int  # 开服时间(ms)
-    invisible: bool  # 玩家不可见 (如果设置为true，则仅白名单玩家可见)
+    visible: bool  # 玩家不可见 (如果设置为true，则仅白名单玩家可见)
     gate_address: List[str] = []  # 区服网关地址
 
     @model_validator(mode="before")
@@ -122,8 +122,8 @@ class Area(BaseModel):
             raise ValueError("是否置顶不能为空")
         if "open_timestamp" not in values:
             raise ValueError("开服时间(ms)不能为空")
-        if "invisible" not in values:
-            raise ValueError("玩家不可见不能为空")
+        if "visible" not in values:
+            raise ValueError("玩家可见不能为空")
         if "gate_address" not in values:
             raise ValueError("区服网关地址不能为空")
         return values
@@ -214,10 +214,10 @@ class Area(BaseModel):
             raise ValueError("开服时间(ms)必须为int类型")
         return v
 
-    @field_validator("invisible", mode="before")
-    def validate_invisible(cls, v):
+    @field_validator("visible", mode="before")
+    def validate_visible(cls, v):
         if not isinstance(v, bool):
-            raise ValueError("玩家不可见必须为bool类型")
+            raise ValueError("玩家可见必须为bool类型")
         return v
 
 
