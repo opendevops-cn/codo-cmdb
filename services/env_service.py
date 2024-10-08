@@ -79,9 +79,9 @@ class EnvData(BaseModel):
 
     @field_validator('env_no', mode="before")
     def env_no_must_be_str(cls, v):
-        if not isinstance(v, str):
-            raise ValueError("env_no必须为字符串")
-        if len(v) > 50:
+        if not isinstance(v, int):
+            raise ValueError("env_no必须为整数")
+        if len(str(v)) > 50:
             raise ValueError("env_no长度不能超过50")
         return v
 
@@ -89,8 +89,8 @@ class EnvData(BaseModel):
     def env_name_must_be_str(cls, v):
         if not isinstance(v, str):
             raise ValueError("env_name必须为字符串")
-        if len(v) > 50:
-            raise ValueError("env_name长度不能超过50")
+        if len(v) > 100:
+            raise ValueError("env_name长度不能超过100")
         return v
 
     @field_validator('app_id', mode="before")
@@ -129,10 +129,15 @@ def get_env_list_for_api(**params) -> dict:
     value = params.get('searchValue') if "searchValue" in params else params.get('searchVal')
     filter_map = params.pop('filter_map') if "filter_map" in params else {}
     if 'page_size' not in params: params['page_size'] = 300  # 默认获取到全部数据
+    if 'order_by' not in params: params['order_by'] = 'is_test'
+    if 'order' not in params: params['order'] = 'descend'
     with DBContext('r') as session:
         page = paginate(session.query(EnvModels).filter(_get_env_by_val(value),
                                                        ).filter_by(**filter_map), **params)
-    return dict(code=0, msg='获取成功', data=page.items, count=page.total)
+    # 优先展示非测试环境，其余使用环境编号倒排
+    items = [item for item in page.items if not item["is_test"]] + \
+    sorted([item for item in page.items if item["is_test"]], key=lambda x: int(x["env_no"]), reverse=True)
+    return dict(code=0, msg='获取成功', data=items, count=page.total)
 
 
 def get_all_env_list_for_api() -> dict:
