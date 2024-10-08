@@ -101,7 +101,7 @@ class Area(BaseModel):
     max_alive_count: int  # 最大在线人数
     is_top: bool  # 是否为置顶
     open_timestamp: int  # 开服时间(ms)
-    visible: bool  # 玩家不可见 (如果设置为true，则仅白名单玩家可见)
+    visible: bool  # 玩家可见
     gate_address: List[str] = []  # 区服网关地址
 
     @model_validator(mode="before")
@@ -249,7 +249,7 @@ def get_env_details(env_id: int) -> Dict[str, Any]:
 def get_game_appid(biz_id: str) -> str:
     game_appid = GameBizMapping.get(str(biz_id))
     if not game_appid:
-        raise ValueError('当前业务暂无相关数据')
+        raise ValueError('当前业务暂无相关数据,请切换到RO3或MS2业务')
     return game_appid
 
 
