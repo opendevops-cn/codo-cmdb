@@ -79,8 +79,10 @@ class EnvData(BaseModel):
 
     @field_validator('env_no', mode="before")
     def env_no_must_be_str(cls, v):
-        if not isinstance(v, int):
-            raise ValueError("env_no必须为整数")
+        try:
+            int(v)
+        except:
+            raise ValueError("env_no必须为数字")
         if len(str(v)) > 50:
             raise ValueError("env_no长度不能超过50")
         return v
