@@ -15,9 +15,14 @@ from services.env_service import get_env_by_id
 from libs.mycrypt import mc
 
 
+# todo 存入数据库
 GameBizMapping = {
     "515": "ROmeta",
-    "522": "MS2"
+    "522": "MS2", 
+    "536": "baokemeng", # 宝可梦
+    "511": "ACT", # ACT
+    "516": "qa", # QA
+    "517": "cbb" # CBB  
 }
 
 
