@@ -162,7 +162,7 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                     # 更新时更新agent_info
                     agent_info = all_agent_info.get(exist_id[1], {})
                     try:
-                        db_session.query(AssetServerModels).filter_by(**filter_map).update({
+                        update_data = {
                             AssetServerModels.cloud_name: cloud_name,
                             AssetServerModels.account_id: account_id,
                             AssetServerModels.name: __info.get('name'),
@@ -170,12 +170,15 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                             AssetServerModels.zone: __info.get('zone'),
                             AssetServerModels.state: __info.get('state'),
                             # AssetServerModels.agent_id: agent_id,
-                            AssetServerModels.agent_info: agent_info,
+                            # AssetServerModels.agent_info: agent_info,
                             AssetServerModels.outer_ip: __info.get('outer_ip'),
                             AssetServerModels.inner_ip: inner_ip,
                             AssetServerModels.is_expired: False,  # 改为正常状态
                             AssetServerModels.ext_info: __info  # 存json
-                        })
+                        }
+                        if agent_info:
+                            update_data[AssetServerModels.agent_info] = agent_info
+                        db_session.query(AssetServerModels).filter_by(**filter_map).update(update_data)
                     except Exception as err:
                         logging.error(err)
                 else:
