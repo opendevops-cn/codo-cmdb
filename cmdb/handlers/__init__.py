@@ -26,6 +26,7 @@ from cmdb.handlers.audit_handler import audit_urls
 from cmdb.handlers.interface_handler import interface_urls
 from cmdb.handlers.area_handler import area_urls
 from cmdb.handlers.env_handler import env_urls
+from cmdb.handlers.nat_handler import nat_urls
 
 urls = []
 urls.extend(biz_urls)
@@ -53,4 +54,5 @@ urls.extend(audit_urls)
 urls.extend(interface_urls)
 urls.extend(area_urls)
 urls.extend(env_urls)
+urls.extend(nat_urls)
 
