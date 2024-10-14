@@ -22,7 +22,7 @@ from websdk2.configs import configs
 from settings import settings
 from models.cloud import SyncLogModels, CloudSettingModels
 from models.asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels, AssetVPCModels, \
-    AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetImagesModels
+    AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetImagesModels, AssetNatModels
 from models.event import CloudEventsModels
 from models import asset_mapping
 
@@ -562,6 +562,47 @@ def cloud_event_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool
                     logging.error(err)
     except Exception as error:
         ret_state, ret_msg = False, f"{cloud_name}-{account_id}-维护事件task写入数据库失败,错误行:{row},详细信息:{error}"
+    return ret_state, ret_msg
+
+
+def nat_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
+    """
+     NAT网关资源入库
+    :param cloud_name:
+    :param account_id:
+    :param rows:
+    :return:
+    """
+    # 定义返回
+    ret_state, ret_msg = True, f"{cloud_name}-{account_id}-NAT网关task写入数据库完成"
+
+    try:
+        with DBContext("w", None, True, **settings) as session:
+            for row in rows:
+                if not row: continue
+                instance_id = row.get("instance_id")
+                try:
+                    session.add(insert_or_update(AssetNatModels, f"instance_id='{instance_id}'",
+                                                 cloud_name=cloud_name, account_id=account_id,
+                                                 instance_id=instance_id,
+                                                 region=row.get('region'),
+                                                 name=row.get('name'),
+                                                 network_type=row.get('network_type'),
+                                                 network_interface_id=row.get('network_interface_id'),
+                                                 charge_type=row.get('charge_type'),
+                                                 outer_ip=row.get('outer_ip'),
+                                                 zone=row.get('zone'),
+                                                 description=row.get('description'),
+                                                 spec=row.get('spec'),
+                                                 subnet_id=row.get('subnet_id'),
+                                                 project_name=row.get('project_name'),
+                                                 vpc_id=row.get('vpc_id'),
+                                                 state=row.get('state')
+                                                 ))
+                except Exception as err:
+                    logging.error(err)
+    except Exception as error:
+        ret_state, ret_msg = False, f"{cloud_name}-{account_id}-NAT网关task写入数据库失败,错误行:{row},详细信息:{error}"
     return ret_state, ret_msg
 
 

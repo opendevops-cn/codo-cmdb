@@ -226,3 +226,20 @@ class AssetBackupModels(TimeBaseModel):
 #
 # class StorageModel(AssetBaseModel):
 #     pass
+
+class AssetNatModels(AssetBaseModel):
+    """NAT网关"""
+    __tablename__ = 't_asset_nat'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column('name', String(128), nullable=False, comment='名称')
+    state = Column('state', String(50), index=True, comment='状态')
+    network_type = Column('network_type', String(50), comment='网络类型')
+    outer_ip = Column('outer_ip', JSON(), comment='外网IP', default=[])
+    network_type = Column('network_type', String(50), comment='网络类型')
+    charge_type = Column('charge_type', String(50), comment='计费类型')
+    subnet_id = Column('subnet_id', String(50), comment='子网ID')
+    project_name = Column('project_name', String(50), comment='项目名称')
+    vpc_id = Column('vpc_id', String(50), comment='VPC ID')
+    description = Column('description', String(255), comment='描述信息')
+    spec = Column('spec', String(50), comment='规格')
+    network_interface_id = Column('network_interface_id', String(50), comment='网络接口ID')
