@@ -17,6 +17,7 @@ from libs.qcloud.qcloud_vswitch import QcloudVSwitch
 from libs.qcloud.qcloud_security_group import QCloudSecurityGroup
 from libs.qcloud.qcloud_events import QCloudEventClient
 from libs.qcloud.qcloud_img import QCloudCImg
+from libs.qcloud.qcloud_nat import QCloudNAT
 
 DEFAULT_CLOUD_NAME = 'qcloud'
 # 同步的资产对应关系
@@ -60,5 +61,9 @@ mapping: Dict[str, dict] = {
     '维修任务': {
         "type": "events",
         "obj": QCloudEventClient
+    },
+    'NAT网关': {
+        "type": "nat",
+        "obj": QCloudNAT
     }
 }
