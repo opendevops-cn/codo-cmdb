@@ -46,6 +46,6 @@ mapping: Dict[str, dict] = {
     },
     'NAT网关': {
         "type": "nat",
-        "obj": VolCSecurityGroup
+        "obj": VolNAT
     }
 }
