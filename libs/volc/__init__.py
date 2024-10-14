@@ -9,6 +9,7 @@ from libs.volc.volc_clb import VolCCLB
 from libs.volc.volc_vpc import VolCVPC
 from libs.volc.volc_vswitch import VolCSubnet
 from libs.volc.volc_security_group import VolCSecurityGroup
+from libs.volc.volc_nat import VolNAT
 
 # 用来标记这是火山云的作业
 DEFAULT_CLOUD_NAME = 'volc'
@@ -43,4 +44,8 @@ mapping: Dict[str, dict] = {
         "type": "security_group",
         "obj": VolCSecurityGroup
     },
+    'NAT网关': {
+        "type": "nat",
+        "obj": VolNAT
+    }
 }
