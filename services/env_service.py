@@ -133,6 +133,8 @@ def get_env_list_for_api(**params) -> dict:
     if 'page_size' not in params: params['page_size'] = 300  # 默认获取到全部数据
     if 'order_by' not in params: params['order_by'] = 'is_test'
     if 'order' not in params: params['order'] = 'descend'
+    if "env_no" in params:
+        return get_env_list_by_env_no(**params)
     with DBContext('r') as session:
         page = paginate(session.query(EnvModels).filter(_get_env_by_val(value),
                                                        ).filter_by(**filter_map), **params)
@@ -142,6 +144,21 @@ def get_env_list_for_api(**params) -> dict:
     return dict(code=0, msg='获取成功', data=items, count=page.total)
 
 
+def get_env_list_by_env_no(**params) -> dict:
+    """ 通过env_no精准查询 """
+    env_no = params.get('env_no')
+    filter_map = params.pop('filter_map') if "filter_map" in params else {}
+    with DBContext('r') as session:
+        if env_no:
+            page = paginate(session.query(EnvModels).filter(EnvModels.env_no == env_no).filter_by(**filter_map), **params)
+        else:
+            page = paginate(session.query(EnvModels).filter().filter_by(**filter_map), **params)
+    # 优先展示非测试环境，其余使用环境编号倒排
+    items = [item for item in page.items if not item["is_test"]] + \
+    sorted([item for item in page.items if item["is_test"]], key=lambda x: int(x["env_no"]), reverse=True)
+    return dict(code=0, msg='获取成功', data=items, count=page.total)
+        
+    
 def get_all_env_list_for_api() -> dict:
     env_obj = namedtuple('Env', ['id', 'env_name', 'env_no'])
     try:
@@ -170,6 +187,8 @@ def update_env_for_api(data: dict) -> dict:
             if env_obj.app_secret != env_data.app_secret:
                 # 修改app_secret加密
                 env_data.app_secret = mc.my_encrypt(env_data.app_secret)
+            if session.query(EnvModels).filter(EnvModels.env_no == env_data.env_no, EnvModels.id != env_id).first():
+                return dict(code=-1, msg='环境编号已存在')                
             session.query(EnvModels).filter(EnvModels.id == env_id).update(env_data.model_dump())
         return dict(code=0, msg='更新成功')
     except Exception as e:
