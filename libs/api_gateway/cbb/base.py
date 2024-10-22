@@ -63,7 +63,7 @@ class CBBBaseAPI:
         response = requests.request(method, url, headers=self.headers, json=body, timeout=self.timeout)
         # HTTP 200 OK
         if response.status_code != 200:
-            logging.error(f"CBB API请求失败, 请求地址：{url}, 请求方法：{method}, 请求body：{body}, "
+            logging.error(f"CBB API请求失败, 请求地址：{url}, 请求方法：{method}, 请求body:{body}, 请求headers:{self.headers},"
                           f"响应状态码：{response.status_code}, 响应：{response.text}")
             raise requests.exceptions.RequestException(f"请求失败，状态码：{response.status_code}")
 
@@ -74,8 +74,8 @@ class CBBBaseAPI:
                 self.create_collection()
                 # 抛出异常，重新请求一次
                 raise requests.exceptions.RequestException("已创建表结构，重新请求")
-            logging.error(f"CBB API请求失败, 请求地址：{url}, 请求方法：{method}, 请求body：{body}, 返回值：{resp}")
-            raise Exception(f"CBB API请求失败, 请求地址：{url}, 请求方法：{method}, 请求body：{body}, 返回值：{resp}")
+            logging.error(f"CBB API请求失败, 请求地址：{url}, 请求方法：{method}, 请求body:{body}, 请求headers:{self.headers},返回值：{resp}")
+            raise Exception(f"CBB API请求失败, 请求地址：{url}, 请求方法：{method}, 请求body:{body},请求headers:{self.headers}, 返回值：{resp}")
 
         return resp
 

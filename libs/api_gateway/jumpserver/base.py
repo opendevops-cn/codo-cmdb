@@ -16,7 +16,7 @@ from websdk2.consts import const
 from settings import settings as app_settings
 
 
-def retry_on_exception(retries=3, delay=0.5, exceptions: Tuple[Type[Exception]] = (requests.RequestException,), ):
+def retry_on_exception(retries=2, delay=0.5, exceptions: Tuple[Type[Exception]] = (requests.RequestException,), ):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -77,7 +77,6 @@ class JumpServerBaseAPI:
         try:
             response = getattr(requests, method.lower())(url=url, params=params, headers=headers, auth=auth, json=data,
                                                          timeout=self.timeout)
-            response.raise_for_status()
             return response.json() if response.status_code != 204 else response.ok
         except requests.RequestException as e:
             logging.error(f"请求JumpSever发生异常: {e}, url: {url}, params:{params}, data:{data}, method: {method}")
