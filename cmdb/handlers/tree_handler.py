@@ -24,7 +24,7 @@ from services.tree_service import get_biz_name, get_tree_by_api, add_tree_by_api
 from services.tree_asset_service import get_tree_env_list, get_tree_form_env_list, get_tree_form_module_list, \
     get_tree_form_set_list, register_asset, del_tree_asset, get_tree_asset_by_api, add_tree_asset_by_api, \
     update_tree_asset_by_api, get_server_tree_for_api, get_tree_module_list, update_tree_leaf, del_tree_leaf,\
-    delete_jms_asset
+    delete_jms_asset, get_tree_server_assets_by_api
 
 from models import asset_mapping as mapping
 
@@ -351,6 +351,12 @@ class TreeModuleHandler(BaseHandler, ABC):
     def get(self):
         res = get_tree_module_list(**self.params)
         return self.write(res)
+    
+
+class TreeServerAssetHandler(BaseHandler, ABC):
+    def get(self):
+        res = get_tree_server_assets_by_api(**self.params)
+        return self.write(res)
 
 
 tree_urls = [
@@ -365,6 +371,7 @@ tree_urls = [
     (r"/api/v2/cmdb/tree/module/", TreeModuleHandler,
      {"handle_name": "配置平台-树-获取业务环境集群下模块数据", "method": ["GET"]}),
     (r"/api/v2/cmdb/tree/asset/", TreeAssetHandler, {"handle_name": "配置平台-树-资产关系", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/tree/asset/server/", TreeServerAssetHandler, {"handle_name": "配置平台-树-主机资产", "method": ["GET"]}),
     (r"/api/v2/cmdb/tree/asset/relation/", TreeAssetRelationHandler,
      {"handle_name": "配置平台-树-查询所在拓扑结构", "handle_status": "y", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tree/server/relation/", TreeServerRelationHandler,

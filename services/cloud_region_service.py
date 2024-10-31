@@ -97,7 +97,7 @@ def update_server_agent_id_by_cloud_region_rules(asset_group_rules: List[List[Di
                 filters.append(func.json_extract(AssetServerModels.ext_info, '$.vpc_id') == vpc_value)
 
             servers = query.filter(or_(*filters)) if filters else query
-
+            cnt = 0
             for server in servers:
                 # 跳过已同步的AgentID
                 if server.agent_id and ":" in server.agent_id:
@@ -105,9 +105,10 @@ def update_server_agent_id_by_cloud_region_rules(asset_group_rules: List[List[Di
                     if str(_cloud_region_id) == str(cloud_region_id):
                         continue
                 server.agent_id = f"{server.inner_ip}:{cloud_region_id}"
+                cnt += 1
 
             session.commit()
-            logging.info(f"成功更新了{servers.count()}台服务器的AgentID")
+            logging.info(f"成功更新了{cnt}台服务器的AgentID")
             return True
     except Exception as e:
         logging.error(f"更新服务器AgentID失败: {e}")

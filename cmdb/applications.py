@@ -78,7 +78,8 @@ class Application(myApplication, ABC):
             init_scheduler()
             # 资产备份同步和变更通知任务
             init_cmdb_change_tasks()
-            self.sub_app.start_server()
+            # agent同步暂停使用redis stream
+            # self.sub_app.start_server()
             logging.info('[App Init] progressid: %(progid)s' % dict(progid=options.progid))
             logging.info('[App Init] server address: %(addr)s:%(port)d' % dict(addr=options.addr, port=options.port))
             logging.info('[App Init] web server start sucessfuled.')
