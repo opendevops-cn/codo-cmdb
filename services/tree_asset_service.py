@@ -573,7 +573,7 @@ def get_tree_server_assets(params: Dict[str, Any]) -> Tuple[Union[list, dict], i
         tree_asset_ids = session.query(TreeAssetModels.asset_id).distinct(TreeAssetModels.asset_id).filter_by(**params).filter(TreeAssetModels.asset_type == asset_type)
         tree_asset_ids = [tree_asset_id[0] for tree_asset_id in tree_asset_ids.all()]
         
-        page = paginate(session.query(AssetServerModels).filter(AssetServerModels.id.in_(tree_asset_ids)).filter(AssetServerModels.inner_ip.like(f'%{search_val}%')),
+        page = paginate(session.query(AssetServerModels).filter(AssetServerModels.id.in_(tree_asset_ids)).filter(AssetServerModels.inner_ip == search_val),
                            **{'page_size': page_size, 'page_number': page_number})
         count = page.total
         data = _models_to_list(page.items)
