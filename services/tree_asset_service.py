@@ -561,6 +561,7 @@ def get_tree_server_assets(params: Dict[str, Any]) -> Tuple[Union[list, dict], i
     page_size = int(params.pop('page_size', 10))
     page_number = int(params.pop('page_number', 1)) or 1
     search_val = params.pop('searchVal', '')
+    is_fuzzy = params.pop('is_fuzzy', False) # 标识是否模糊查询, 默认为False
     asset_type = params.get('asset_type', 'server')
     # 删除不必要的参数
     pop_list = ['nodeKey', 'selected', '__ob__', 'length']
@@ -572,8 +573,11 @@ def get_tree_server_assets(params: Dict[str, Any]) -> Tuple[Union[list, dict], i
     with DBContext('r', None, None) as session:
         tree_asset_ids = session.query(TreeAssetModels.asset_id).distinct(TreeAssetModels.asset_id).filter_by(**params).filter(TreeAssetModels.asset_type == asset_type)
         tree_asset_ids = [tree_asset_id[0] for tree_asset_id in tree_asset_ids.all()]
-        
-        page = paginate(session.query(AssetServerModels).filter(AssetServerModels.id.in_(tree_asset_ids)).filter(AssetServerModels.inner_ip == search_val),
+        if is_fuzzy:
+            page = paginate(session.query(AssetServerModels).filter(AssetServerModels.id.in_(tree_asset_ids)).filter(AssetServerModels.inner_ip.like(f"%{search_val}%")),
+                            **{'page_size': page_size, 'page_number': page_number})
+        else:
+            page = paginate(session.query(AssetServerModels).filter(AssetServerModels.id.in_(tree_asset_ids)).filter(AssetServerModels.inner_ip == search_val),
                            **{'page_size': page_size, 'page_number': page_number})
         count = page.total
         data = _models_to_list(page.items)
