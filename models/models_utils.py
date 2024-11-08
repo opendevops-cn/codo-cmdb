@@ -600,7 +600,8 @@ def nat_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
                                                  subnet_id=row.get('subnet_id'),
                                                  project_name=row.get('project_name'),
                                                  vpc_id=row.get('vpc_id'),
-                                                 state=row.get('state')
+                                                 state=row.get('state'),
+                                                 update_time=datetime.datetime.now(),
                                                  ))
                 except Exception as err:
                     logging.error(err)
