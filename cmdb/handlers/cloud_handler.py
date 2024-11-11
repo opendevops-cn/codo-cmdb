@@ -11,8 +11,12 @@ import json
 from abc import ABC
 from typing import *
 from shortuuid import uuid
+from enum import Enum
+
 from concurrent.futures import ThreadPoolExecutor
 from tornado.concurrent import run_on_executor
+from apscheduler.schedulers.tornado import TornadoScheduler
+
 from libs.base_handler import BaseHandler
 from libs.aliyun.synchronize import mapping as aliyun_mapping
 from libs.aliyun.synchronize import main as aliyun_synchronize
@@ -28,17 +32,69 @@ from libs.volc.synchronize import mapping as vol_mapping
 from libs.volc.synchronize import main as vol_synchronize
 from libs.gcp.synchronize import mapping as gcp_mapping
 from libs.gcp.synchronize import main as gcp_synchronize
+from libs.pve.synchronize import mapping as pve_mapping
+from libs.pve.synchronize import main as pve_synchronize
 from models.models_utils import get_all_cloud_interval
 from services.cloud_service import opt_obj, get_cloud_settings, get_cloud_sync_log, update_cloud_settings
-from apscheduler.schedulers.tornado import TornadoScheduler
 from libs.mycrypt import mc
 
 # 同步关系
 mapping = {"aws": aws_synchronize, "aliyun": aliyun_synchronize, "qcloud": qcloud_synchronize,
-           "cds": cbs_synchronize, "vmware": vm_synchronize, "volc": vol_synchronize, "gcp": gcp_synchronize}
+           "cds": cbs_synchronize, "vmware": vm_synchronize, "volc": vol_synchronize, "gcp": gcp_synchronize,
+           "pve": pve_synchronize}
 # 定时器
 scheduler = TornadoScheduler(timezone="Asia/Shanghai")
 
+
+# 云厂商枚举
+class CloudProvider(Enum):
+    AWS = "aws"
+    ALIYUN = "aliyun" 
+    QCLOUD = "qcloud"
+    CDS = "cds"
+    VMWARE = "vmware"
+    VOLC = "volc"
+    GCP = "gcp"
+    PVE = "pve"
+    
+    
+class CloudService:
+    """云厂商服务类，用于同步云厂商资源
+    """
+    def __init__(self):
+        # 同步关系
+        self.sync_mappings = {
+            CloudProvider.AWS.value: aws_synchronize,
+            CloudProvider.ALIYUN.value: aliyun_synchronize,
+            CloudProvider.QCLOUD.value: qcloud_synchronize,
+            CloudProvider.CDS.value: cbs_synchronize,
+            CloudProvider.VMWARE.value: vm_synchronize,
+            CloudProvider.VOLC.value: vol_synchronize,
+            CloudProvider.GCP.value: gcp_synchronize,
+            CloudProvider.PVE.value: pve_synchronize
+        }
+        # 资源类型映射
+        self.resource_mappings = {
+            CloudProvider.AWS.value: aws_mapping,
+            CloudProvider.ALIYUN.value: aliyun_mapping,
+            CloudProvider.QCLOUD.value: qcloud_mapping,
+            CloudProvider.CDS.value: cbs_mapping,
+            CloudProvider.VMWARE.value: vm_mapping,
+            CloudProvider.VOLC.value: vol_mapping,
+            CloudProvider.GCP.value: gcp_mapping,
+            CloudProvider.PVE.value: pve_mapping
+        }
+    
+    
+    def get_sync_function(self, cloud_name: str) -> Optional[Callable]:
+        """获取同步函数"""
+        return self.sync_mappings.get(cloud_name)
+        
+    def get_resource_types(self, cloud_name: str) -> List[str]:
+        """获取资源类型列表"""
+        mapping = self.resource_mappings.get(cloud_name, {})
+        return list(mapping.keys())
+    
 
 # 资产自动同步任务
 # 2023年5月9日 必须添加到 mapping 才能提供同步功能
@@ -128,7 +184,7 @@ class CloudSyncHandler(BaseHandler, ABC):
 
     def get(self):
         """
-        cloud_name: 'aliyun' / 'qcloud' / 'aws' / 'cds' / 'vmware' / 'volc'
+        cloud_name: 'aliyun' / 'qcloud' / 'aws' / 'cds' / 'vmware' / 'volc'/ 'gcp'/ 'pve'
         """
         cloud_name: Optional[str] = self.get_argument('cloud_name', None)
         if not cloud_name:
@@ -141,7 +197,8 @@ class CloudSyncHandler(BaseHandler, ABC):
             "cds": cbs_mapping,
             "vmware": vm_mapping,
             "volc": vol_mapping,
-            "gcp": gcp_mapping
+            "gcp": gcp_mapping,
+            "pve": pve_mapping
         }
         # 不同产品支持的类型
         resources = mappings.get(cloud_name).keys()  # type dict_keys
@@ -156,7 +213,7 @@ class CloudSyncHandler(BaseHandler, ABC):
         if not cloud_name or not resources:
             return self.write({"code": 1, "msg": "缺少账号/资源类型信息"})
 
-        if cloud_name not in ['aliyun', 'aws', 'qcloud', 'cds', 'vmware', 'volc', 'gcp']:
+        if cloud_name not in ['aliyun', 'aws', 'qcloud', 'cds', 'vmware', 'volc', 'gcp', 'pve']:
             return self.write({"code": 1, "msg": "不支持的云厂商"})
 
         await self.asset_sync_main(cloud_name, account_id, resources)
