@@ -178,11 +178,11 @@ class PveVM(object):
             return ""
         
         data = interfaces_data.get('data', {})
-        if data is None:
+        if not data:
             return ""
         
         interfaces = data.get('result', [])
-        if interfaces is None:
+        if not interfaces:
             return ""
 
         
