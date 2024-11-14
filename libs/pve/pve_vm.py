@@ -4,7 +4,7 @@
 # @Time    :   2024/11/11 10:34:24
 # @Author  :   DongdongLiu
 # @Version :   1.0
-# @Desc    :   Predictive Virtual Environment虚拟机实例
+# @Desc    :   Proxmox VE 虚拟机实例
 from typing import Optional, Dict, Any, Tuple, List
 from dataclasses import dataclass
 import logging
@@ -39,18 +39,19 @@ def handle_pve_exceptions(func):
 
     return wrapper
 
+
 def convert_bytes_to_gb(bytes_value: Optional[int]) -> float:
     """将字节转换为GB
-    
+
     Args:
         bytes_value: 字节大小
-        
+
     Returns:
         float: GB大小,保留2位小数
     """
     if not bytes_value:
         return 0.0
-        
+
     BYTES_IN_GB = 1024 * 1024 * 1024  # 1GB = 1024^3 bytes
     return round(bytes_value / BYTES_IN_GB, 2)
 
@@ -59,7 +60,7 @@ class PveVM(object):
     DEFAULT_TIMEOUT = 10
     VERIFY_SSL = False
     API_PATH = "api2/json"
-    
+
     def __init__(self, access_id: str, access_key: str, account_id: str, server_addr: str) -> None:
         """初始化参数
 
@@ -77,7 +78,7 @@ class PveVM(object):
         self.server_addr = server_addr
         self.base_url = f"https://{self.server_addr}/{self.API_PATH}"
         self.__ticket: Optional[Dict[str, str]] = None
-        
+
     def _make_request(self, method: str, path: str, data: Optional[Dict[str, Any]] = None,  **kwargs) -> requests.Response:
         """构建请求
 
@@ -103,15 +104,16 @@ class PveVM(object):
         })
         response = requests.request(method, url, data=data, **kwargs)
         return response
-        
+
     @handle_pve_exceptions
-    def get_ticket(self) ->bool:
+    def get_ticket(self) -> bool:
         """认证获取PVE API票据
 
         Returns:
             bool: 认证是否成功
         """
-        response = self._make_request('POST', '/access/ticket', data={'username': self.username, 'password': self.password})
+        response = self._make_request(
+            'POST', '/access/ticket', data={'username': self.username, 'password': self.password})
         data = response.json()
         if 'data' not in data:
             logging.error("获取票据响应格式错误")
@@ -128,12 +130,12 @@ class PveVM(object):
         """
         if not self.__ticket:
             raise PVERequestError("未获取认证票据")
-            
+
         response = self._make_request('GET', '/nodes')
         return response.json()
-        
+
     @handle_pve_exceptions
-    def get_vm_list(self, node: str) ->  Dict[str, Any]:
+    def get_vm_list(self, node: str) -> Dict[str, Any]:
         """获取虚拟机实例列表
 
         Args:
@@ -146,7 +148,7 @@ class PveVM(object):
             raise PVERequestError("未获取认证票据")
         response = self._make_request('GET', f'/nodes/{node}/qemu')
         return response.json()
-    
+
     @handle_pve_exceptions
     def get_vm_interfaces(self, node: str, vmid: str) -> Dict[str, Any]:
         """获取虚拟机网络接口信息
@@ -160,10 +162,10 @@ class PveVM(object):
         """
         if not self.__ticket:
             raise PVERequestError("未获取认证票据")
-        response = self._make_request('GET', f'/nodes/{node}/qemu/{vmid}/agent/network-get-interfaces')
+        response = self._make_request(
+            'GET', f'/nodes/{node}/qemu/{vmid}/agent/network-get-interfaces')
         return response.json()
-    
-    
+
     @handle_pve_exceptions
     def get_ipv4_from_interfaces(self, interfaces_data: Dict[str, Any]) -> str:
         """获取IPV4地址
@@ -176,16 +178,15 @@ class PveVM(object):
         """
         if not interfaces_data:
             return ""
-        
+
         data = interfaces_data.get('data', {})
         if not data:
             return ""
-        
+
         interfaces = data.get('result', [])
         if not interfaces:
             return ""
 
-        
         for interface in interfaces:
             if interface.get("name").lower() == "lo":
                 continue
@@ -195,8 +196,7 @@ class PveVM(object):
                     return ip_address.get('ip-address')
         else:
             return ""
-        
-    
+
     def get_all_vm_list(self) -> List[Dict]:
         """获取所有虚拟机实例
 
@@ -207,7 +207,7 @@ class PveVM(object):
         if not self.get_ticket():
             return []
         nodes = self.get_node_list()
-        
+
         for node in nodes['data']:
             vms = self.get_vm_list(node['node'])
             if not vms:
@@ -224,8 +224,7 @@ class PveVM(object):
                 for vm in vms['data']
             ])
         return all_vms
-        
-    
+
     def process_data(self, data: Dict[str, Any]) -> Dict:
         """处理数据
 
@@ -247,9 +246,8 @@ class PveVM(object):
         item['disk'] = convert_bytes_to_gb(data.get('maxdisk', 0))
         item['zone'] = ""
         return item
-        
-    def sync_cmdb(self, cloud_name: Optional[str] = 'pve', resource_type: Optional[str] = 'server') -> Tuple[
-        Dict[str, Any], Dict[str, Any]]:
+
+    def sync_cmdb(self, cloud_name: Optional[str] = 'pve', resource_type: Optional[str] = 'server') -> Tuple[bool, str]:
         """同步CMDB
 
         Args:
@@ -263,11 +261,12 @@ class PveVM(object):
         if not all_vm_list:
             return False, "主机列表为空"
         # 更新资源
-        ret_state, ret_msg = server_task(account_id=self.account_id, cloud_name=cloud_name, rows=all_vm_list)
+        ret_state, ret_msg = server_task(
+            account_id=self.account_id, cloud_name=cloud_name, rows=all_vm_list)
         # 标记过期
         mark_expired(resource_type=resource_type, account_id=self.account_id)
         return ret_state, ret_msg
-        
+
 
 if __name__ == '__main__':
     pass

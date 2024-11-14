@@ -73,8 +73,8 @@ class EnvData(BaseModel):
     def idip_must_be_str(cls, v):
         if not isinstance(v, str):
             raise ValueError("idip必须为字符串")
-        if len(v) > 50:
-            raise ValueError("idip长度不能超过50")
+        if len(v) > 255:
+            raise ValueError("idip长度不能超过255")
         return v
 
     @field_validator('env_no', mode="before")
