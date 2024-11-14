@@ -34,6 +34,7 @@ class BigArea(BaseModel):
     visible: bool = False  # 玩家是否可见
     utc_offset: int = 0  # UTC偏移
     address: str = None  # 大区地址
+    protocol_converter_host: str = None  # gm回调地址
 
     @model_validator(mode="before")
     def val_must_not_null(cls, values):
@@ -93,6 +94,12 @@ class BigArea(BaseModel):
     def validate_ext(cls, v):
         if len(v) > 500:
             raise ValueError("ext最多500个字符")
+        return v
+    
+    @field_validator("protocol_converter_host")
+    def validate_protocol_converter_host(cls, v):
+        if len(v) > 1000:
+            raise ValueError("protocol_converter_host最多1000个字符")
         return v
 
 class Area(BaseModel):

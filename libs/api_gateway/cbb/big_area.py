@@ -16,6 +16,7 @@ class BigArea(TypedDict):
     utc_offset: int
     visible: bool
     ext: str
+    protocol_converter_host: str
 
 class Body(TypedDict):
     big_area_count: int
