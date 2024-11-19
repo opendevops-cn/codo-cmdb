@@ -441,12 +441,12 @@ def update_area(**data):
     detail = area_obj.get('body', {}).get('areas', [])
     if not detail:
         return dict(code=-1, msg='区服不存在', data=[])
-    is_test = bool(data.get('is_test'))
+    is_test = env["is_test"]
     gate_address = data.get('gate_address', [])
     if not is_test:
         curr_gate_address = detail[0].get('gate_address', [])
         if set(gate_address) != set(curr_gate_address):
-            return dict(code=-1, msg='生产环境不允许编辑区服网管地址，请联系运维修改', data=[])
+            return dict(code=-1, msg='生产环境不允许编辑区服网关地址，请联系运维修改', data=[])
         now = int(time.time() * 1000)
         open_timestamp = data.get('open_timestamp')
         curr_open_timestamp = detail[0].get('open_timestamp')
