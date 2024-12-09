@@ -238,4 +238,4 @@ def check_idip_connection(data: dict) -> dict:
     result, err = check_connection(idip)
     if err:
         return dict(code=-1, msg=str(err), data=result)
-    return dict(code=0, data=result)
+    return dict(code=0, data=result, msg="连接成功")
