@@ -57,6 +57,12 @@ JMS_API_BASE_URL = os.getenv('JMS_API_BASE_URL', '')
 JMS_API_KEY_ID = os.getenv('JMS_API_KEY_ID', '')
 JMS_API_KEY_SECRET = os.getenv('JMS_API_KEY_SECRET', '')
 
+# 内网交换机配置
+SWITCH_COMMUNITY = os.getenv("SWITCH_COMMUNITY", "")  # 交换机 公共团体字符串
+SWITCH_MODEL_OID = os.getenv("SWITCH_MODEL_OID", "")  #  交换机型号Oid
+SWITCH_NAME_OID = os.getenv("SWITCH_NAME_OID", "")    # 交换机设备名Oid
+SWITCH_SN_OID = os.getenv("SWITCH_SN_OID", "")        # 交换机序列号oid
+
 try:
     from local_settings import *
 except ImportError:
@@ -70,7 +76,11 @@ settings = dict(
     api_gw=api_gw,
     asset_change_notify=asset_change_notify,
     settings_auth_key=settings_auth_key,
-    app_name='cmdb',
+    switch_community=SWITCH_COMMUNITY,
+    switch_model_oid=SWITCH_MODEL_OID,
+    switch_name_oid=SWITCH_NAME_OID,
+    switch_sn_oid=SWITCH_SN_OID,
+    app_name="cmdb",
     databases={
         const.DEFAULT_DB_KEY: {
             const.DBHOST_KEY: DEFAULT_DB_DBHOST,
@@ -85,7 +95,7 @@ settings = dict(
             const.DBUSER_KEY: READONLY_DB_DBUSER,
             const.DBPWD_KEY: READONLY_DB_DBPWD,
             const.DBNAME_KEY: READONLY_DB_DBNAME,
-        }
+        },
     },
     redises={
         const.DEFAULT_RD_KEY: {
@@ -94,7 +104,7 @@ settings = dict(
             const.RD_DB_KEY: DEFAULT_REDIS_DB,
             const.RD_AUTH_KEY: DEFAULT_REDIS_AUTH,
             const.RD_CHARSET_KEY: DEFAULT_REDIS_CHARSET,
-            const.RD_PASSWORD_KEY: DEFAULT_REDIS_PASSWORD
+            const.RD_PASSWORD_KEY: DEFAULT_REDIS_PASSWORD,
         }
     },
     consuls={
@@ -102,14 +112,14 @@ settings = dict(
             const.CONSUL_HOST_KEY: DEFAULT_CONSUL_HOST,
             const.CONSUL_PORT_KEY: DEFAULT_CONSUL_PORT,
             const.CONSUL_TOKEN_KEY: DEFAULT_CONSUL_TOKEN,
-            const.CONSUL_SCHEME_KEY: DEFAULT_CONSUL_SCHEME
+            const.CONSUL_SCHEME_KEY: DEFAULT_CONSUL_SCHEME,
         }
     },
     jmss={
         const.DEFAULT_JMS_KEY: {
             const.JMS_API_BASE_URL: JMS_API_BASE_URL,
             const.JMS_API_KEY_ID: JMS_API_KEY_ID,
-            const.JMS_API_KEY_SECRET: JMS_API_KEY_SECRET
+            const.JMS_API_KEY_SECRET: JMS_API_KEY_SECRET,
         }
-    }
+    },
 )

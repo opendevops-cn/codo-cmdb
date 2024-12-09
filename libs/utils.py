@@ -7,7 +7,9 @@ import time
 from datetime import datetime
 import types
 from functools import wraps
-import traceback
+from urllib.parse import urlparse
+import socket
+from typing import Tuple
 from contextlib import contextmanager
 
 
@@ -75,3 +77,45 @@ def compare_dicts(dict1, dict2):
 
     _compare(dict1, dict2)
     return changes
+
+
+def check_connection(domain: str) -> Tuple[bool, str]:
+    """
+    检查连接是否可用
+
+    Args:
+        domain: 域名或URL
+
+    Returns:
+        Tuple[bool, str]: (是否连接成功, 错误信息)
+    """
+    try:
+        # 解析URL
+        parsed_url = urlparse(domain)
+        host = parsed_url.netloc or parsed_url.path
+
+        # 如果没有端口号，根据协议添加默认端口
+        if ":" not in host:
+            if parsed_url.scheme == "https":
+                host = f"{host}:443"
+            else:
+                host = f"{host}:80"
+
+        # 分割主机名和端口
+        hostname, port = host.split(":")
+
+        # 创建socket并设置超时
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)  # 2秒超时
+
+        # 尝试连接
+        result = sock.connect_ex((hostname, int(port)))
+        sock.close()
+
+        if result == 0:
+            return True, ""
+        else:
+            return False, "连接失败"
+
+    except Exception as e:
+        return False, f"连接检查失败: {str(e)}"

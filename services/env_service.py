@@ -6,7 +6,7 @@
 from typing import Optional, List
 from collections import namedtuple
 
-from pydantic import model_validator, field_validator, ValidationError, BaseModel, validator
+from pydantic import model_validator, field_validator, ValidationError, BaseModel
 from sqlalchemy import or_
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.sqlalchemy_pagination import paginate
@@ -15,6 +15,7 @@ from websdk2.model_utils import model_to_dict
 
 from models.env import EnvModels
 from libs.mycrypt import mc
+from libs.utils import check_connection
 
 opt_obj = CommonOptView(EnvModels)
 
@@ -219,3 +220,22 @@ def get_env_by_id(env_id: int) -> dict:
         if not env_obj:
             return {}
         return model_to_dict(env_obj)
+
+
+def check_idip_connection(data: dict) -> dict:
+    """
+    检查连接是否可用
+
+    Args:
+        domain: 域名或URL
+
+    Returns:
+        Tuple[bool, str]: (是否连接成功, 错误信息)
+    """
+    idip = data.get("idip")
+    if not idip:
+        return {"code": -1, "msg": "idip不能为空"}
+    result, err = check_connection(idip)
+    if err:
+        return dict(code=-1, msg=str(err), data=result)
+    return dict(code=0, data=result)

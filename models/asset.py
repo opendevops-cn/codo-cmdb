@@ -6,13 +6,30 @@ Author  : shenshuo
 Date    : 2023/2/15 14:59
 Desc    : 基础资产Models
 """
-
-from models.base import TimeBaseModel
-from sqlalchemy import Column, String, Integer, Boolean, JSON, TEXT, UniqueConstraint, Date
+from sqlalchemy import Column, String, Integer, Boolean, JSON, TEXT, UniqueConstraint, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
+
 from libs.utils import human_date
+from models.base import TimeBaseModel
 
 Base = declarative_base()
+
+
+# 内网交换机角色枚举
+class SwitchRole(Enum):
+    CORE_SWITCH = 1  # 核心交换机
+    AGG_SWITCH = 2  # 汇聚交换机
+    ACCESS_SWITCH = 3  # 接入交换机
+    POE_SWITCH = 4  # POE交换机
+    WLC = 5  # 无线控制器
+
+
+# 内网交换机状态枚举
+class SwitchStatus(Enum):
+    ONLINE = 1  # 在线
+    OFFLINE = 2  # 离线
+    REPAIRING = 3  # 维修中
+    RETIRED = 4  # 下架
 
 
 class AssetBaseModel(TimeBaseModel, Base):
@@ -152,6 +169,24 @@ class AssetVSwitchModels(AssetBaseModel):
     cloud_region_id = Column('cloud_region_id', String(50), comment='云区域ID，后置变更')
     is_default = Column('is_default', Boolean(), default=False, comment='是否是默认')
 
+
+class AssetSwitchModels(TimeBaseModel, Base):
+    """内网交换机"""
+    __tablename__ = "t_asset_switch"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column("name", String(64), comment="设备名称", default="")
+    manage_ip = Column("manage_ip", String(39), unique=True, comment="管理IP", default="")
+    sn = Column("sn", String(64),  unique=True, comment="序列号")
+    mac_address = Column("mac_address", String(17), unique=True, comment="MAC地址", default="")
+    vendor = Column("vendor", String(64), comment="厂商", default="")
+    model = Column("model", String(255), comment="型号", default="")
+    idc = Column("idc", String(64), index=True, comment="机房", default="")
+    rack = Column("rack", String(64), comment="机柜", default="")
+    position = Column("position", String(64), comment="U位", default="")
+    role = Column("role", String(64), index=True, comment="角色", default="")
+    status = Column("status", String(64), index=True,comment='状态', default="")
+    description = Column("description", String(64), comment="备注", default="")
+    
 
 class SecurityGroupModels(AssetBaseModel):
     """安全组"""
