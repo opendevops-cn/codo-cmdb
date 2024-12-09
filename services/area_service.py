@@ -243,7 +243,7 @@ def handle_api_exceptions(func):
         except ValueError as e:
             return dict(code=-1, msg=str(e), data=[])
         except Exception as e:
-            return dict(code=-1, msg='操作失败', data=[])
+            return dict(code=-1, msg=str(e), data=[])
     return wrapper
 
 
