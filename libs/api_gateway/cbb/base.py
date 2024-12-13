@@ -19,14 +19,19 @@ def retry_on_exception(retries=2, delay=0.5, exceptions: Tuple[Type[Exception]] 
         @wraps(func)
         def wrapper(*args, **kwargs):
             attempts = 0
+            e = None
             while attempts < retries:
                 try:
                     return func(*args, **kwargs)
-                except exceptions as e:
+                except exceptions as ex:
                     logging.error(f"请求异常：{e}, 重试中, {delay}s后重试...")
                     time.sleep(delay)
                     attempts += 1
-            raise e
+                    e = ex
+            if e is not None:
+                raise e
+            else:
+                raise Exception("请求异常")
 
         return wrapper
 
