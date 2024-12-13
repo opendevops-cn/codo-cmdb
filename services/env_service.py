@@ -5,6 +5,7 @@
 
 from typing import Optional, List
 from collections import namedtuple
+from shortuuid import uuid
 
 from pydantic import model_validator, field_validator, ValidationError, BaseModel
 from sqlalchemy import or_
@@ -21,7 +22,7 @@ opt_obj = CommonOptView(EnvModels)
 
 class EnvData(BaseModel):
     env_name: str
-    env_no: str
+    env_no: Optional[str] = None
     is_test: int
     idip: str
     app_id: Optional[str] = None
@@ -33,8 +34,6 @@ class EnvData(BaseModel):
     def val_must_not_null(cls, values):
         if "env_name" not in values or not values["env_name"]:
             raise ValueError("env_name不能为空")
-        if "env_no" not in values or not values["env_no"]:
-            raise ValueError("env_no不能为空")
         if "is_test" not in values:
             raise ValueError("is_test不能为空")
         if "idip" not in values or not values["idip"]:
@@ -78,15 +77,6 @@ class EnvData(BaseModel):
             raise ValueError("idip长度不能超过255")
         return v
 
-    @field_validator('env_no', mode="before")
-    def env_no_must_be_str(cls, v):
-        try:
-            int(v)
-        except:
-            raise ValueError("env_no必须为数字")
-        if len(str(v)) > 50:
-            raise ValueError("env_no长度不能超过50")
-        return v
 
     @field_validator('env_name', mode="before")
     def env_name_must_be_str(cls, v):
@@ -141,7 +131,7 @@ def get_env_list_for_api(**params) -> dict:
                                                        ).filter_by(**filter_map), **params)
     # 优先展示非测试环境，其余使用环境编号倒排
     items = [item for item in page.items if not item["is_test"]] + \
-    sorted([item for item in page.items if item["is_test"]], key=lambda x: int(x["env_no"]), reverse=True)
+    sorted([item for item in page.items if item["is_test"]], key=lambda x: int(x["id"]), reverse=True)
     return dict(code=0, msg='获取成功', data=items, count=page.total)
 
 
@@ -188,8 +178,9 @@ def update_env_for_api(data: dict) -> dict:
             if env_obj.app_secret != env_data.app_secret:
                 # 修改app_secret加密
                 env_data.app_secret = mc.my_encrypt(env_data.app_secret)
-            if session.query(EnvModels).filter(EnvModels.env_no == env_data.env_no, EnvModels.id != env_id).first():
-                return dict(code=-1, msg='环境编号已存在')                
+            # if session.query(EnvModels).filter(EnvModels.env_no == env_data.env_no, EnvModels.id != env_id).first():
+            #     return dict(code=-1, msg='环境编号已存在')
+            env_data.env_no = env_obj.env_no                
             session.query(EnvModels).filter(EnvModels.id == env_id).update(env_data.model_dump())
         return dict(code=0, msg='更新成功')
     except Exception as e:
@@ -204,6 +195,8 @@ def add_env_for_api(data: dict) -> dict:
         return dict(code=-1, msg=str(e))
     # app_secret加密
     env_data.app_secret = mc.my_encrypt(env_data.app_secret)
+    # 生产随机环境编号
+    env_data.env_no = uuid()
     try:
         with DBContext('w', None, True) as session:
             if session.query(EnvModels).filter(EnvModels.env_no == env_data.env_no).first():

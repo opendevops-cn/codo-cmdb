@@ -55,7 +55,7 @@ def sync_consul():
                 cmdb_ins = []
                 for server in consul_sync_factory(asset_type):
                     cmdb_ins.append(server[1])
-                    c.register_service(*server)
+                    c.create_or_update_service(*server)
 
                 for ins in c.get_instances(f'{asset_type}-exporter').get('data'):
                     if ins.get('ServiceID') not in cmdb_ins:
@@ -63,7 +63,7 @@ def sync_consul():
             except Exception as err:
                 logging.error(f'sync to consul {asset_type} error,{err} {datetime.datetime.now()}')
 
-        logging.info(f'同步数据到consul结束 ！！！')
+        logging.info('同步数据到consul结束 ！！！')
 
     index()
 
@@ -121,9 +121,34 @@ class ConsulOpt(object):
         try:
             for service_id in id_list:
                 self._consul.agent.service.deregister(service_id=service_id)
-            return dict(code=0, msg=f'删除完成')
+            return dict(code=0, msg='删除完成')
         except Exception as err:
             return dict(code=-1, msg=f'删除失败 {err}')
+        
+    def create_or_update_service(self, name:str, service_id:str, host:str, port:int, tags:list, meta=dict, check=None) -> None:
+        """ 
+        注册服务，如果服务已存在，则更新其 meta 信息
+        Args:
+            name (str): 服务名
+            service_id (str): service_id
+            host (str): 主机地址
+            port (int): 端口
+            tags (list): 标签
+            meta (dict): meta数据
+            check (consul.Check): 健康检查
+
+        Returns:
+            _type_: None
+        """
+        service_info = self._consul.agent.services().get(service_id)
+        # 如果服务已存在，更新其 meta 信息
+        if service_info:
+            # 获取当前的 meta 信息并更新
+            current_meta = service_info.get("Meta", {})
+            current_meta.update(meta)  # 合并新的 meta 数据
+            self.register_service(name, service_id, host, port, tags, current_meta, check)  # 重新注册
+        else:
+            self.register_service(name, service_id, host, port, tags, meta, check)  # 注册服务
 
     def get_services(self) -> dict:
         url = f'{self.consul_api_url}/v1/internal/ui/services'
