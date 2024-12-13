@@ -70,7 +70,7 @@ class CBBBaseAPI:
         if response.status_code != 200:
             logging.error(f"CBB API请求失败, 请求地址：{url}, 请求方法：{method}, 请求body:{body}, 请求headers:{self.headers},"
                           f"响应状态码：{response.status_code}, 响应：{response.text}")
-            raise requests.exceptions.RequestException(f"请求失败，状态码：{response.status_code}")
+            raise requests.exceptions.RequestException(f"请求失败，CBB API返回状态码：{response.status_code}")
 
         resp = response.json()
         if resp.get("head", {}).get("errno") != 0:
