@@ -26,7 +26,7 @@ def retry_on_exception(retries=2, delay=0.5, exceptions: Tuple[Type[Exception]] 
                     logging.error(f"请求异常：{e}, 重试中, {delay}s后重试...")
                     time.sleep(delay)
                     attempts += 1
-            raise Exception(f"请求失败，重试{retries}次后仍失败")
+            raise e
 
         return wrapper
 
@@ -44,12 +44,12 @@ class CBBBaseAPI:
         self.idip = idip or "http://cbb-common-preview.huanle.com"
         self.base_url = f"{self.idip}/idip/"
         self.game_appid = game_appid
-        self.timeout = 10
+        self.timeout = 5
 
     def sign_headers(self):
         return self.signer.gen_sign_header()
 
-    @retry_on_exception(retries=3, delay=0.5, exceptions=(requests.RequestException,))
+    @retry_on_exception(retries=2, delay=0.5, exceptions=(requests.RequestException,))
     def send_request(self, url: str, body: dict, method: str = "POST"):
         """
         封装请求.
