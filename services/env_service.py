@@ -146,7 +146,7 @@ def get_env_list_by_env_no(**params) -> dict:
             page = paginate(session.query(EnvModels).filter().filter_by(**filter_map), **params)
     # 优先展示非测试环境，其余使用环境编号倒排
     items = [item for item in page.items if not item["is_test"]] + \
-    sorted([item for item in page.items if item["is_test"]], key=lambda x: int(x["env_no"]), reverse=True)
+    sorted([item for item in page.items if item["is_test"]], key=lambda x: int(x["id"]), reverse=True)
     return dict(code=0, msg='获取成功', data=items, count=page.total)
         
     
