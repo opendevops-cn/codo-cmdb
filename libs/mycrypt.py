@@ -33,9 +33,10 @@ class MyCrypt:
     def my_decrypt(self, text: str):
         if isinstance(text, str): text = text.encode('utf-8')
         return self.f.decrypt(text).decode('utf-8')
-
+    
 
 mc = MyCrypt()
+
 
 if __name__ == '__main__':
     # mc = MyCrypt()

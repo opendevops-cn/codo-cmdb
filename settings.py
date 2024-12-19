@@ -17,6 +17,8 @@ xsrf_cookies = False
 expire_seconds = 365 * 24 * 60 * 60
 cookie_secret = os.getenv('DEFAULT_COOKIE_SECRET',
                           '61oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2X6TP1o/Vo=')
+sword_secret = os.getenv("DEFAULT_SWORD_SECRET", 
+                         "feflCCJLWlpGvfyrrTezkfwSgKx_AEuP2_xy0J6RvQI=")
 
 # 这是写库，
 DEFAULT_DB_DBHOST = os.getenv('DEFAULT_DB_DBHOST', '')  # 修改
@@ -72,6 +74,7 @@ settings = dict(
     debug=debug,
     xsrf_cookies=xsrf_cookies,
     cookie_secret=cookie_secret,
+    sword_secret=sword_secret,
     expire_seconds=expire_seconds,
     api_gw=api_gw,
     asset_change_notify=asset_change_notify,
