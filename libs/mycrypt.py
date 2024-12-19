@@ -33,9 +33,20 @@ class MyCrypt:
     def my_decrypt(self, text: str):
         if isinstance(text, str): text = text.encode('utf-8')
         return self.f.decrypt(text).decode('utf-8')
+    
+
+class SwordSecretCrypt(MyCrypt):
+    """
+        欢乐剑加密工具
+    """
+    def __init__(
+        self, key: bytes = b"feflCCJLWlpGvfyrrTezkfwSgKx_AEuP2_xy0J6RvQI="
+    ):        
+        super().__init__(key)
 
 
 mc = MyCrypt()
+sword_mc = SwordSecretCrypt()
 
 if __name__ == '__main__':
     # mc = MyCrypt()

@@ -16,7 +16,7 @@ from websdk2.model_utils import model_to_dict, CommonOptView
 from websdk2.sqlalchemy_pagination import paginate
 
 from models.secret import SecretModels
-from libs.mycrypt import mc
+from libs.mycrypt import sword_mc
 
 opt_obj = CommonOptView(SecretModels)
 
@@ -99,7 +99,7 @@ def get_secret_by_uuid_for_api(uuid: str) -> CommonResponseDict:
     secret_obj = get_secret_by_uuid(uuid)
     if not secret_obj:
         return dict(code=-1, msg="查询失败", data=[])
-    secret_obj['secret'] = mc.my_decrypt(secret_obj['secret'])
+    secret_obj["secret"] = sword_mc.my_decrypt(secret_obj["secret"])
     return CommonResponseDict(code=0, msg="查询成功", data=secret_obj)
     
 def get_secret_list_for_api(**params: dict) -> CommonResponseDict:
@@ -122,7 +122,7 @@ def get_secret_list_for_api(**params: dict) -> CommonResponseDict:
     # 解密
     decrypted_items = []
     for item in page.items:
-        item["secret"] = mc.my_decrypt(item["secret"])
+        item["secret"] = sword_mc.my_decrypt(item["secret"])
         decrypted_items.append(item)
     return CommonResponseDict(
         code=0, msg="获取成功", data=decrypted_items, count=page.total
@@ -142,7 +142,7 @@ def add_secret_for_api(data: dict) -> CommonResponseDict:
         secret_obj = Secret(**data)
     except ValidationError as e:
         return CommonResponseDict(code=-1, msg=f"参数不合法:{str(e)}")
-    secret_obj.secret = mc.my_encrypt(secret_obj.secret)
+    secret_obj.secret = sword_mc.my_encrypt(secret_obj.secret)
     with DBContext('w', None, True) as session:
         if get_secret_by_uuid(secret_obj.uuid):
             return CommonResponseDict(code=-1, msg="添加失败，已存在")

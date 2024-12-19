@@ -54,7 +54,7 @@ class CBBBaseAPI:
     def __init__(self, signer: Signer, idip: str = None, game_appid: str = None):
         self.signer = signer
         self.headers = {"Content-Type": "application/json"}
-        self.idip = idip or "http://cbb-common-preview.huanle.com"
+        self.idip = idip
         self.base_url = f"{self.idip}/idip/"
         self.game_appid = game_appid
         self.timeout = 3
