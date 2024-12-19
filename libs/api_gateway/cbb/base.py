@@ -10,11 +10,17 @@ import json
 from functools import wraps
 
 import requests
+from requests.exceptions import Timeout
 
 from libs.api_gateway.cbb.sign import Signer
 
 
-def retry_on_exception(retries=2, delay=0.5, exceptions: Tuple[Type[Exception]] = (requests.RequestException,), ):
+def retry_on_exception(
+    retries=2,
+    delay=0.5,
+    exceptions: Tuple[Type[Exception]] = (requests.RequestException,),
+    no_retry_exceptions: Tuple[Type[Exception]] = (Timeout,),
+):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -23,6 +29,8 @@ def retry_on_exception(retries=2, delay=0.5, exceptions: Tuple[Type[Exception]] 
             while attempts < retries:
                 try:
                     return func(*args, **kwargs)
+                except no_retry_exceptions as ex:
+                    raise ex
                 except exceptions as ex:
                     logging.error(f"请求异常：{e}, 重试中, {delay}s后重试...")
                     time.sleep(delay)
@@ -49,12 +57,12 @@ class CBBBaseAPI:
         self.idip = idip or "http://cbb-common-preview.huanle.com"
         self.base_url = f"{self.idip}/idip/"
         self.game_appid = game_appid
-        self.timeout = 5
+        self.timeout = 3
 
     def sign_headers(self):
         return self.signer.gen_sign_header()
 
-    @retry_on_exception(retries=2, delay=0.5, exceptions=(requests.RequestException,))
+    @retry_on_exception(retries=2, delay=0.5, exceptions=(requests.RequestException,), no_retry_exceptions=(Timeout,))
     def send_request(self, url: str, body: dict, method: str = "POST"):
         """
         封装请求.

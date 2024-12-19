@@ -15,6 +15,7 @@ from models.autdit import Base as AuditBase
 from websdk2.consts import const
 from settings import settings as app_settings
 from models.env import Base as EnvBase
+from models.secret import Base as SecretBase
 
 # ORM创建表结构
 from sqlalchemy import create_engine
@@ -42,6 +43,7 @@ def create():
     OrderBase.metadata.create_all(engine)
     AuditBase.metadata.create_all(engine)
     EnvBase.metadata.create_all(engine)
+    SecretBase.metadata.create_all(engine)
     print('[Success] 表结构创建成功!')
 
 
