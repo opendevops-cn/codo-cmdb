@@ -16,7 +16,10 @@ from websdk2.model_utils import model_to_dict, CommonOptView
 from websdk2.sqlalchemy_pagination import paginate
 
 from models.secret import SecretModels
-from libs.mycrypt import sword_mc
+from libs.mycrypt import MyCrypt
+from settings import settings
+
+sword_mc = MyCrypt(key=settings["sword_secret"])
 
 opt_obj = CommonOptView(SecretModels)
 
