@@ -101,8 +101,7 @@ def get_secret_by_uuid_for_api(uuid: str) -> CommonResponseDict:
     """
     secret_obj = get_secret_by_uuid(uuid)
     if not secret_obj:
-        return dict(code=-1, msg="查询失败", data=[])
-    secret_obj["secret"] = sword_mc.my_decrypt(secret_obj["secret"])
+        return dict(code=-1, msg="secret不存在", data=[])
     return CommonResponseDict(code=0, msg="查询成功", data=secret_obj)
     
 def get_secret_list_for_api(**params: dict) -> CommonResponseDict:
