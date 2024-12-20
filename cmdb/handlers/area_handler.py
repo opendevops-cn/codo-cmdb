@@ -113,8 +113,8 @@ class CBBBigAreaHandler(BaseHandler, ABC):
 
 
 area_urls = [
-    (r"/api/v2/cmdb/area/", CBBAreaHandler, {"handle_name": "配置平台-区服管理", "method": ["ALL"]}),
-    (r"/api/v2/cmdb/big_area/", CBBBigAreaHandler, {"handle_name": "配置平台-大区管理", "method": ["ALL"]}),
-    (r"/api/v2/cmdb/big_area/detail/", CBBBigAreaDetailHandler, {"handle_name": "配置平台-大区详情", "method": ["GET"]}),
+    (r"/cbb_area/area/", CBBAreaHandler, {"handle_name": "配置平台-区服管理", "method": ["ALL"]}),
+    (r"/cbb_area/big_area/", CBBBigAreaHandler, {"handle_name": "配置平台-大区管理", "method": ["ALL"]}),
+    (r"/cbb_area/big_area/detail/", CBBBigAreaDetailHandler, {"handle_name": "配置平台-大区详情", "method": ["GET"]}),
 ]
 
