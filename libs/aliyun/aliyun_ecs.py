@@ -94,6 +94,8 @@ class AliyunEcsClient:
         """
         # 定义返回
         res: Dict[str, Any] = {}
+        vpc_id = data.get('VpcAttributes', {}).get('VpcId', '')
+        res['vpc_id'] = vpc_id
         res['instance_id'] = data.get('InstanceId')
         res['state'] = get_run_type(data.get('Status'))
         res['instance_type'] = data.get('InstanceType')
