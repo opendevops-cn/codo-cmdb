@@ -14,7 +14,7 @@ from libs.base_handler import BaseHandler
 from services.secret_service import (
     get_secret_list_for_api,
     add_secret_for_api,
-    opt_obj as opt_obj_secret,
+    delete_secret_for_api
 )
 
 
@@ -25,7 +25,7 @@ class SecretHandler(BaseHandler, ABC):
 
     def delete(self):
         data = json.loads(self.request.body.decode("utf-8"))
-        res = opt_obj_secret.handle_delete(data)
+        res = delete_secret_for_api(data)
         self.write(res)
 
     def post(self):

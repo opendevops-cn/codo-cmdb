@@ -110,24 +110,22 @@ def get_secret_list_for_api(**params: dict) -> CommonResponseDict:
     Args:
         params(dict): 查询参数
     """
-    value = params.get('searchValue') or params.get('searchVal')
-    filter_map = params.pop('filter_map', {})
-    if 'page_size' not in params:
-        params.setdefault("page_size", 300) # 默认获取到全部数据
-    if 'order' not in params: 
-        params.setdefault("order", 'descend')
-    if "uuid" in params:
-        # 根据uuid查询
-        uuid = params.pop('uuid')
-        return get_secret_by_uuid_for_api(uuid)
-    with DBContext('r') as session:
-        page = paginate(session.query(SecretModels).filter(_get_secret_by_val(value)).filter_by(**filter_map), **params)
-    # 解密
-    # decrypted_items = []
-    # for item in page.items:
-    #     item["secret"] = sword_mc.my_decrypt(item["secret"])
-    #     decrypted_items.append(item)
-    return CommonResponseDict(code=0, msg="获取成功", data=page.items, count=page.total)
+    if "uuid" not in params:
+        return CommonResponseDict(code=-1, msg="uuid不能为空")
+    uuid = params.pop('uuid')
+    return get_secret_by_uuid_for_api(uuid)
+    # value = params.get('searchValue') or params.get('searchVal')
+    # filter_map = params.pop('filter_map', {})
+    # if 'page_size' not in params:
+    #     params.setdefault("page_size", 300) # 默认获取到全部数据
+    # if 'order' not in params: 
+    #     params.setdefault("order", 'descend')
+    # if "uuid" in params:
+    #     # 根据uuid查询
+    #     return get_secret_by_uuid_for_api(uuid)
+    # with DBContext('r') as session:
+    #     page = paginate(session.query(SecretModels).filter(_get_secret_by_val(value)).filter_by(**filter_map), **params)
+    # return CommonResponseDict(code=0, msg="获取成功", data=page.items, count=page.total)
 
 
 def add_secret_for_api(data: dict) -> CommonResponseDict:
@@ -150,4 +148,24 @@ def add_secret_for_api(data: dict) -> CommonResponseDict:
         secret_obj = SecretModels(**secret_obj.model_dump())
         session.add(secret_obj)
     return CommonResponseDict(code=0, msg="添加成功")
+
+
+def delete_secret_for_api(data: dict) -> CommonResponseDict:
+    """ 
+    删除欢乐剑密钥
+    
+    Args:
+        data(dict): 数据字典
+    Returns:
+        CommonResponseDict: 返回结果
+    """
+    uuid = data.get("uuid")
+    if not uuid:
+        return CommonResponseDict(code=-1, msg="uuid不能为空")
+    with DBContext('w', None, True) as session:
+        secret_obj = session.query(SecretModels).filter(SecretModels.uuid == uuid).first()
+        if not secret_obj:
+            return CommonResponseDict(code=-1, msg="secret不存在")
+        session.delete(secret_obj)
+    return CommonResponseDict(code=0, msg="删除成功")
 
