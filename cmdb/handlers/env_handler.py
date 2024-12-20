@@ -45,17 +45,17 @@ class IdipConnectionCheckHandler(BaseHandler, ABC):
 
 env_urls = [
     (
-        r"/api/v2/cmdb/env/",
+        r"/cbb_area/env/",
         EnvHandler,
         {"handle_name": "配置平台-环境管理", "method": ["ALL"]},
     ),
     (
-        r"/api/v2/cmdb/env/list/",
+        r"/cbb_area/env/list/",
         EnvListHandler,
         {"handle_name": "配置平台-环境列表", "method": ["GET"]},
     ),
     (
-        r"/api/v2/cmdb/env/idip/check/",
+        r"/cbb_area/env/idip/check/",
         IdipConnectionCheckHandler,
         {"handle_name": "配置平台-环境列表-IDIP连通性检测", "method": ["POST"]},
     ),
