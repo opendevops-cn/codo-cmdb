@@ -123,13 +123,11 @@ def get_secret_list_for_api(**params: dict) -> CommonResponseDict:
     with DBContext('r') as session:
         page = paginate(session.query(SecretModels).filter(_get_secret_by_val(value)).filter_by(**filter_map), **params)
     # 解密
-    decrypted_items = []
-    for item in page.items:
-        item["secret"] = sword_mc.my_decrypt(item["secret"])
-        decrypted_items.append(item)
-    return CommonResponseDict(
-        code=0, msg="获取成功", data=decrypted_items, count=page.total
-    )
+    # decrypted_items = []
+    # for item in page.items:
+    #     item["secret"] = sword_mc.my_decrypt(item["secret"])
+    #     decrypted_items.append(item)
+    return CommonResponseDict(code=0, msg="获取成功", data=page.items, count=page.total)
 
 
 def add_secret_for_api(data: dict) -> CommonResponseDict:
