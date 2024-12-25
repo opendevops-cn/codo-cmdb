@@ -240,5 +240,5 @@ tag_urls = [
     (r"/api/v2/cmdb/tag/asset_id/", TagAssetIOHandler, {"handle_name": "配置平台-业务-获取资产ID", "method": ["GET"]}),
     (r"/api/v2/cmdb/tag/asset_detail/", TagAssetDetailHandler,
      {"handle_name": "配置平台-业务-标签资产关系详细信息", "method": ["GET"]}),
-    (r"/api/v2/cmdb/tag/list/", TagListHandler, {"handle_name": "配置平台-业务-标签列表", "handle_status": "y"}),
+    (r"/api/v2/cmdb/tag/list/", TagListHandler, {"handle_name": "配置平台-业务-标签列表", "handle_status": "y", "method": ["GET"]}),
 ]
