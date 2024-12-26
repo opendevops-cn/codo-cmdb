@@ -360,7 +360,7 @@ class TreeServerAssetHandler(BaseHandler, ABC):
 
 
 tree_urls = [
-    (r"/api/v2/cmdb/tree/", TreeHandler, {"handle_name": "配置平台-服务树"}),
+    (r"/api/v2/cmdb/tree/", TreeHandler, {"handle_name": "配置平台-服务树", "method":["ALL"]}),
     (r"/api/v2/cmdb/tree/env/", TreeEnvHandler, {"handle_name": "配置平台-树-获取业务下环境列表", "method": ["GET"]}),
     (r"/api/v2/cmdb/tree/form/env/", TreeFormEnvHandler,
      {"handle_name": "配置平台-树-获取业务环境列表-form", "method": ["GET"]}),
@@ -376,7 +376,7 @@ tree_urls = [
      {"handle_name": "配置平台-树-查询所在拓扑结构", "handle_status": "y", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tree/server/relation/", TreeServerRelationHandler,
      {"handle_name": "配置平台-树-根据内网IP查询关联", "handle_status": "y", "method": ["ALL"]}),
-    (r"/api/v2/cmdb/tree/search_info/", TreeSearchInfoHandler, {"handle_name": "配置平台-服务树-查询ID"}),
+    (r"/api/v2/cmdb/tree/search_info/", TreeSearchInfoHandler, {"handle_name": "配置平台-服务树-查询ID", "method": ["GET"]}),
     (r"/api/v2/cmdb/tree/register/", TreeRegisterHandler,
      {"handle_name": "配置平台-树-数据注册-未测试", "handle_status": "y", "method": ["ALL"]}),
     (r"/api/v2/cmdb/tree/v2/register/", TreeRegisterV2Handler,

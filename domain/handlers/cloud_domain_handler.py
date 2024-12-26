@@ -405,9 +405,9 @@ class DomainInfoSync(BaseHandler, ABC):
 
 
 cloud_domain_urls = [
-    (r"/api/v2/cmdb/dns/domain/", CloudDomainHandler),
-    (r"/api/v2/cmdb/dns/record/", CloudRecordHandler),
-    (r"/api/v2/cmdb/dns/logs/", DomainOptLogHandler),
-    (r"/api/v2/cmdb/dns/sync/", DomainInfoSync),
-    (r"/api/v2/cmdb/dns/remark/", RecordRemarkHandler)
+    (r"/api/v2/cmdb/dns/domain/", CloudDomainHandler, {"handle_name": "配置平台-DNS-域名管理", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/dns/record/", CloudRecordHandler, {"handle_name": "配置平台-DNS-记录", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/dns/logs/", DomainOptLogHandler, {"handle_name": "配置平台-DNS-日志", "method": ["GET"]}),
+    (r"/api/v2/cmdb/dns/sync/", DomainInfoSync, {"handle_name": "配置平台-DNS-同步","method": ["POST"]}),
+    (r"/api/v2/cmdb/dns/remark/", RecordRemarkHandler, {"handle_name": "配置平台-DNS-说明文档", "method": ["POST"]}),
 ]
