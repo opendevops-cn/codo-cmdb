@@ -49,7 +49,7 @@ class BizModels(TimeBaseModel, Base):
     life_cycle = Column('life_cycle', String(15), default='开发', index=True, comment='生命周期')  ###
     description = Column('description', String(255), default='')  ### 描述、备注
 
-    __mapper_args__ = {"order_by": (sort, biz_en_name)}
+    # __mapper_args__ = {"order_by": (sort, biz_en_name)}
 
 
 class SetTempModels(TimeBaseModel):

@@ -5,13 +5,13 @@ Contact : 191715030@qq.com
 Author  : shenshuo
 Date    : 2023年4月7日
 """
-
+import json
 import logging
 from typing import *
 from collections import namedtuple
 
-from sqlalchemy import func, or_
-from sqlalchemy.orm import aliased
+from sqlalchemy import func, or_, event
+from sqlalchemy.orm import Session
 from websdk2.model_utils import model_to_dict, queryset_to_list
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.sqlalchemy_pagination import paginate
@@ -20,6 +20,7 @@ from models.tree import TreeModels, TreeAssetModels
 from models.asset import AssetServerModels
 # from libs.tree import Tree
 from models.business import BizModels, PermissionGroupModels
+from models.agent import AgentModels
 from models import asset_mapping as mapping
 from services.audit_service import audit_log
 from services.tree_service import generate_tree_message
@@ -196,13 +197,15 @@ def del_tree_asset(data: dict) -> dict:
         # 获取资产ID
         _ids = get_asset_id_by_name(session, asset_type, names)
         # print(host_ids)
-        session.query(TreeAssetModels.id).filter(TreeAssetModels.biz_id == biz_id,
+        assets = session.query(TreeAssetModels).filter(TreeAssetModels.biz_id == biz_id,
                                                  TreeAssetModels.asset_type == asset_type,
                                                  TreeAssetModels.env_name == env_name,
                                                  TreeAssetModels.region_name == region_name,
                                                  TreeAssetModels.module_name == module_name,
                                                  TreeAssetModels.asset_id.in_(_ids)
-                                                 ).delete(synchronize_session=False)
+                                                 )
+        for asset in assets:
+            session.delete(asset)
         biz_obj = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
         _message = generate_tree_message(biz_obj.biz_cn_name, env_name, region_name, module_name, node_type=3)
     return {"code": 0, "msg": "删除成功", "audit_log_message": f"用户{modify_user}删除服务树{_message}资源, "
@@ -785,3 +788,109 @@ def get_server_tree_for_api(**params: Dict[str, Any]) -> dict:
                                     TreeAssetModels.is_enable == 1).all()
 
     return dict(code=0, msg='获取成功', data=queryset_to_list(__info))
+
+
+def get_biz_ids_by_server_ip(inner_ip: str, asset_type="server") -> List[int]:
+    """根据服务器内网IP查询业务ID
+
+    Args:
+        inner_ip (str): server inner ip
+        asset_type (str, optional): asset type. Defaults to "server".
+    Returns:
+        List[int]: 业务id 列表
+    """
+    __model = mapping[asset_type]
+    with DBContext('r') as session:
+        query = session.query(TreeAssetModels.biz_id).outerjoin(__model, __model.id == TreeAssetModels.asset_id).filter(
+                __model.inner_ip == inner_ip,
+                TreeAssetModels.asset_type == asset_type,
+                TreeAssetModels.is_enable == 1)
+        __info = query.all()
+    return list(set([i.biz_id for i in __info]))
+
+
+
+@event.listens_for(Session, "before_flush")
+def before_tree_asset_flush(session: Session, flush_context, instances) -> None:
+    """在 Session 刷新之前，处理 TreeAssetModels 的新增、更新和删除操作。
+
+    Args:
+        session (Session): SQLAlchemy 的会话对象。
+        flush_context: SQLAlchemy 的刷新上下文对象。
+        instances: 通常为 None，可以忽略。
+
+    Returns:
+        None
+    """
+
+    def get_agent_and_biz_ids(
+        tree_asset_instance: TreeAssetModels, asset_type: str, session: Session
+    ) -> Optional[Tuple[AgentModels, list]]:
+        """
+        根据 TreeAssetModels 实例获取关联的 AgentModels 和 biz_ids。
+
+        Args:
+            tree_asset_instance (TreeAssetModels): TreeAssetModels 的实例。
+            asset_type (str): 资产类型（如 "server"）。
+            session (Session): SQLAlchemy 的会话对象。
+
+        Returns:
+            Optional[Tuple[AgentModels, list]]: 返回 AgentModels 实例和 biz_ids 列表，如果查询失败则返回 None。
+        """
+        server = session.query(mapping[asset_type]).filter_by(id=tree_asset_instance.asset_id).first()
+        if not server:
+            return None
+
+        agent = session.query(AgentModels).filter_by(agent_id=server.agent_id).first()
+        if not agent:
+            return None
+
+        biz_ids = json.loads(agent.biz_ids) if agent.biz_ids else []
+        return agent, biz_ids
+
+    def update_biz_ids_for_new_instance(tree_asset_instance: TreeAssetModels, agent: AgentModels, biz_ids: list) -> None:
+        """
+        更新新增实例的 biz_ids。
+
+        Args:
+            tree_asset_instance (TreeAssetModels): 新增的 TreeAssetModels 实例。
+            agent (AgentModels): 关联的 AgentModels 实例。
+            biz_ids (list): 当前的 biz_ids 列表。
+        """
+        if tree_asset_instance.biz_id not in biz_ids:
+            biz_ids.append(tree_asset_instance.biz_id)
+            agent.biz_ids = json.dumps(biz_ids, ensure_ascii=False)
+
+    def update_biz_ids_for_deleted_instance(tree_asset_instance: TreeAssetModels, agent: AgentModels, biz_ids: list) -> None:
+        """
+        更新删除实例的 biz_ids。
+
+        Args:
+            tree_asset_instance (TreeAssetModels): 删除的 TreeAssetModels 实例。
+            agent (AgentModels): 关联的 AgentModels 实例。
+            biz_ids (list): 当前的 biz_ids 列表。
+        """
+        if tree_asset_instance.biz_id in biz_ids:
+            biz_ids.remove(tree_asset_instance.biz_id)
+            agent.biz_ids = json.dumps(biz_ids, ensure_ascii=False)
+
+    # 处理新增的 TreeAssetModels 实例
+    for new_instance in session.new:
+        if isinstance(new_instance, TreeAssetModels):
+            agent_and_biz_ids = get_agent_and_biz_ids(new_instance, "server", session)
+            if agent_and_biz_ids:
+                agent, biz_ids = agent_and_biz_ids
+                update_biz_ids_for_new_instance(new_instance, agent, biz_ids)
+
+    # 处理更新的 TreeAssetModels 实例
+    for updated_instance in session.dirty:
+        if isinstance(updated_instance, TreeAssetModels):
+            pass
+
+    # 处理删除的 TreeAssetModels 实例
+    for deleted_instance in session.deleted:
+        if isinstance(deleted_instance, TreeAssetModels):
+            agent_and_biz_ids = get_agent_and_biz_ids(deleted_instance, "server", session)
+            if agent_and_biz_ids:
+                agent, biz_ids = agent_and_biz_ids
+                update_biz_ids_for_deleted_instance(deleted_instance, agent, biz_ids)

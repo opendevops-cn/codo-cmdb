@@ -16,7 +16,7 @@ from cmdb.handlers import urls
 from domain.handlers import urls as domain_urls
 from libs.sync_utils_set import async_biz_info, async_agent, async_service_trees,\
     async_users, async_perm_groups, async_vswitch_cloud_region_id, async_cmdb_to_jms_with_enterprise, \
-    async_server_cloud_region_id, async_jms_orgs_to_cmdb
+    async_server_cloud_region_id, async_jms_orgs_to_cmdb, async_agent_server_id
 from domain.cloud_domain import async_domain_info
 from libs.consul_registry import async_consul_info
 from cmp.tasks import async_order_status
@@ -45,9 +45,13 @@ class Application(myApplication, ABC):
         # 同步虚拟子网云区域ID
         vswitch_callback = PeriodicCallback(async_vswitch_cloud_region_id, 360000) # 6分钟
         vswitch_callback.start()
+
+        # 同步agent server_id
+        agent_server_id_callback = PeriodicCallback(async_agent_server_id, 180000) # 3分钟
+        agent_server_id_callback.start()
         # 同步服务器云区域ID
-        server_callback = PeriodicCallback(async_server_cloud_region_id, 360000) # 6分钟
-        server_callback.start()
+        # server_callback = PeriodicCallback(async_server_cloud_region_id, 360000) # 6分钟
+        # server_callback.start()
         # # 同步用户到jms
         # user_callback = PeriodicCallback(async_users, 3600000)  # 60分钟
         # user_callback.start()
