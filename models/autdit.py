@@ -21,6 +21,6 @@ class AuditModels(Base, TimeBaseModel):
     message = Column('message', Text())
     operator = Column('operator', String(128), nullable=True, comment='操作人')
 
-    __mapper_args__ = {
-        "order_by": - id
-    }
+    # __mapper_args__ = {
+    #     "order_by": - id
+    # }

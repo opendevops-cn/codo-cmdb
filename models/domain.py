@@ -33,9 +33,9 @@ class DomainName(Base):
     create_time = Column('create_time', DateTime(), default=datetime.now)
     update_time = Column('update_time', DateTime(), default=datetime.now, onupdate=datetime.now)
 
-    __mapper_args__ = {
-        "order_by": -star_mark
-    }
+    # __mapper_args__ = {
+    #     "order_by": -star_mark
+    # }
 
 
 class DomainRecords(BizBaseModel):
@@ -71,9 +71,9 @@ class DomainOptLog(Base):
     record = Column('record', Text())  # 记录
     state = Column('状态', String(50), default='error')
     update_time = Column('update_time', DateTime(), default=datetime.now, onupdate=datetime.now, index=True)
-    __mapper_args__ = {
-        "order_by": -update_time
-    }
+    # __mapper_args__ = {
+    #     "order_by": -update_time
+    # }
 
 
 class DomainSyncLog(Base):
@@ -87,9 +87,9 @@ class DomainSyncLog(Base):
     record = Column('record', Text())  # 记录
     state = Column('状态', String(20), default='错误')
     update_time = Column('update_time', DateTime(), default=datetime.now, onupdate=datetime.now, index=True)
-    __mapper_args__ = {
-        "order_by": -update_time
-    }
+    # __mapper_args__ = {
+    #     "order_by": -update_time
+    # }
 
 # class DomainCheckSSL(Base):
 #     __tablename__ = 'domain_check_ssl'

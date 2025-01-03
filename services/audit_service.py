@@ -32,6 +32,7 @@ def _get_value(value: str = None):
 
 def get_audit_list_for_api(**params) -> dict:
     value = params.get('searchValue') if "searchValue" in params else params.get('searchVal')
+    if "order_by" not in params: params['order_by'] = 'id'
     filter_map = params.pop('filter_map') if "filter_map" in params else {}
     if 'page_size' not in params: params['page_size'] = 300  # 默认获取到全部数据
     with DBContext('r') as session:

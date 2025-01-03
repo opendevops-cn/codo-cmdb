@@ -29,6 +29,7 @@ from cmdb.handlers.env_handler import env_urls
 from cmdb.handlers.nat_handler import nat_urls
 from cmdb.handlers.asset_switch_handler import switch_urls
 from cmdb.handlers.secret import secret_urls
+from cmdb.handlers.agent_handler import agent_urls
 
 urls = []
 urls.extend(biz_urls)
@@ -59,3 +60,4 @@ urls.extend(env_urls)
 urls.extend(nat_urls)
 urls.extend(switch_urls)
 urls.extend(secret_urls)
+urls.extend(agent_urls)

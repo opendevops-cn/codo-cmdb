@@ -173,6 +173,8 @@ def get_domain_opt_log(**params) -> dict:
         return dict(code=-1, msg='关键参数域名不能为空')
 
     filter_map = params.pop('filter_map') if "filter_map" in params else {}
+    if "order_by" not in params:
+        params['order_by'] = 'update_time'
     if 'biz_id' in filter_map:
         filter_map.pop('biz_id')  # 暂时不隔离
     if 'page_size' not in params:

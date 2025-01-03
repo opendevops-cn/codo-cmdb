@@ -205,10 +205,10 @@ def add_cloud_region_for_api(data) -> dict:
         return {"code": 1, "msg": str(error)}
 
     # 处理自动更新 AgentID
-    auto_update_agent_id = data.get('auto_update_agent_id')
-    if auto_update_agent_id == "yes":
-        result = update_server_agent_id_by_cloud_region_rules(data.get('asset_group_rules'), data.get('cloud_region_id'))
-        logging.info(f"更新AgentID结果: {result}")
+    # auto_update_agent_id = data.get('auto_update_agent_id')
+    # if auto_update_agent_id == "yes":
+    #     result = update_server_agent_id_by_cloud_region_rules(data.get('asset_group_rules'), data.get('cloud_region_id'))
+    #     logging.info(f"更新AgentID结果: {result}")
 
     return {"code": 0, "msg": "添加成功"}
 
@@ -261,10 +261,10 @@ def put_cloud_region_for_api(data) -> dict:
         return {"code": 1, "msg": str(error)}
 
     # 处理自动更新AgentID
-    auto_update_agent_id = data.get('auto_update_agent_id')
-    if auto_update_agent_id == "yes":
-        result = update_server_agent_id_by_cloud_region_rules(data.get('asset_group_rules'), data.get('cloud_region_id'))
-        logging.info(f"更新AgentID结果: {result}")
+    # auto_update_agent_id = data.get('auto_update_agent_id')
+    # if auto_update_agent_id == "yes":
+    #     result = update_server_agent_id_by_cloud_region_rules(data.get('asset_group_rules'), data.get('cloud_region_id'))
+    #     logging.info(f"更新AgentID结果: {result}")
 
     return {"code": 0, "msg": "更新成功"}
 
@@ -408,3 +408,38 @@ def update_agent_id(asset_id_set, cloud_region_id):
         __info = session.query(AssetServerModels).filter(AssetServerModels.id.in_(asset_id_set)).all()
         all_info = [dict(id=asset.id, agent_id=f"{asset.inner_ip}:{cloud_region_id}") for asset in __info]
         session.bulk_update_mappings(AssetServerModels, all_info)
+
+
+def get_servers_by_cloud_region_id(region_id: str) -> List[Optional[AssetServerModels]]:
+    """
+    根据云区域ID获取服务器列表
+    :param region_id:
+    :return:
+    """
+    with DBContext('r') as session:
+        cloud_region_obj: CloudRegionModels = (
+            session.query(CloudRegionModels)
+            .filter(CloudRegionModels.cloud_region_id == region_id)
+            .first()
+        )
+        if not cloud_region_obj:
+            return []
+        asset_group_rules = cloud_region_obj.asset_group_rules
+        if not asset_group_rules:
+            return []
+        vpc_values = [query["query_value"][-1] for sublist in asset_group_rules for query in sublist
+                      if query["query_name"] == "vpc" and query['status'] == 1]
+        try:
+            # 使用JSON字段中的vpc_id进行过滤
+            query = session.query(AssetServerModels)
+            # 兼容5.7版本mysql, 不适用IN查询
+            filters = []
+            for vpc_value in vpc_values:
+                filters.append(func.json_extract(AssetServerModels.ext_info, '$.vpc_id') == vpc_value)
+
+            query = query.filter(or_(*filters)) if filters else query
+            servers = query.all()
+            return servers
+        except Exception as e:
+            logging.error(e)
+            return []

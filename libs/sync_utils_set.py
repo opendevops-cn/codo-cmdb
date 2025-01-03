@@ -12,8 +12,10 @@ import json
 import datetime
 import logging
 import os
+import re
 import time
 import traceback
+from http.cookiejar import unmatched
 from typing import List, Union, Any
 
 from shortuuid import uuid
@@ -36,6 +38,7 @@ from models.business import BizModels, PermissionGroupModels
 from models.asset import AssetServerModels, AssetVSwitchModels
 from models.cloud_region import CloudRegionModels
 from models.cloud import SyncLogModels
+from models.agent import AgentModels
 
 from libs.api_gateway.jumpserver.user import jms_user_api
 from libs.api_gateway.jumpserver.user_group import jms_user_group_api
@@ -48,7 +51,7 @@ from libs.api_gateway.jumpserver.org import jms_org_api
 from services.tree_service import get_tree_by_api
 from services.tree_asset_service import get_tree_assets
 from services.perm_group_service import preview_perm_group_for_api
-from services.cloud_region_service import update_server_agent_id_by_cloud_region_rules
+from services.cloud_region_service import update_server_agent_id_by_cloud_region_rules,get_servers_by_cloud_region_id
 
 if configs.can_import: configs.import_dict(**settings)
 
@@ -561,7 +564,6 @@ def sync_service_tree_assets(biz_id=None, org_id=None):
     try:
         index()
     except Exception as err:
-        print(traceback.format_exc())
         logging.error(f'同步服务树主机资产到JumpServer出错 {err}')
 
 
@@ -989,6 +991,79 @@ def async_jms_orgs_to_cmdb():
     executor = ThreadPoolExecutor(max_workers=1)
     executor.submit(sync_jms_orgs)
 
+
+def send_alert_to_noc(**alert):
+    """
+    发送告警到NOC
+    """
+    try:
+        client = AcsClient()
+        response = client.do_action_v2(**alert)
+        if response.status_code != 200:
+            logging.error(f'发送告警到NOC失败 {response.status_code}')
+            return
+        resp = response.json()
+        if resp.get('code') != 0:
+            logging.error('发送告警到NOC失败 {resp.get("message")}')
+    except Exception as err:
+        logging.error(f'发送告警到NOC出错 {err}')
+    logging.info('发送告警到NOC结束')
+
+def sync_agent():
+    """
+    更新server.agent_id
+    更新agent.asset_server_id
+    """
+    @deco(RedisLock("sync_agent_server_id_redis_lock_key"))
+    def index():
+        logging.info('开始更新agent！！！')
+        unmatched_agent_ids = set()
+        with DBContext('w', None, True) as session:
+            agents = session.query(AgentModels).all()
+            for agent in agents:
+                servers = get_servers_by_cloud_region_id(agent.proxy_id)
+                if not servers:
+                    unmatched_agent_ids.add(agent.agent_id)
+                    continue
+                matched_servers = [server for server in servers if server.inner_ip == agent.ip]
+                if not matched_servers:
+                    unmatched_agent_ids.add(agent.agent_id)
+                    continue
+                # 更新agent的asset_server_id
+                agent.asset_server_id = matched_servers[0].id
+
+                # 更新server的agent_id
+                server = session.query(AssetServerModels).filter_by(id=agent.asset_server_id).first()
+                if not server:
+                    continue
+                server.agent_id = agent.agent_id
+            session.commit()
+
+        if unmatched_agent_ids:
+            new_agent_ids = []
+            redis_conn = cache_conn()
+            for agent_id in unmatched_agent_ids:
+                if redis_conn.get(agent_id):
+                    continue
+                redis_conn.set(agent_id, 1, ex=24*60*60)
+                new_agent_ids.append(agent_id)
+            
+            agent_alert = settings.get('agent_alert', [])
+            if agent_alert:
+                for alert in agent_alert:
+                    alert["body"]["agent_ids"] = ";".join(new_agent_ids)
+                    send_alert_to_noc(**alert)
+        logging.info('更新agent结束！！！')
+
+
+    try:
+        index()
+    except Exception as err:
+        logging.error(f'更新agent出错 {str(err)}')
+
+def async_agent_server_id():
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(sync_agent)
 
 if __name__ == '__main__':
     pass

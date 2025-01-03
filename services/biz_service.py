@@ -76,6 +76,8 @@ def get_business_list(**params) -> dict:
         filter_map.pop('biz_id')  # 暂时不隔离
     if 'page_size' not in params:
         params['page_size'] = 300  # 默认获取到全部数据
+    if "order_by" not in params:
+        params["order_by"] = "biz_en_name"
     # add_default_business()
     with DBContext('r') as session:
         page = paginate(session.query(BizModels).filter(_get_biz_value(value)).filter_by(**filter_map), **params)

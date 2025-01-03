@@ -65,6 +65,29 @@ SWITCH_MODEL_OID = os.getenv("SWITCH_MODEL_OID", "")  #  交换机型号Oid
 SWITCH_NAME_OID = os.getenv("SWITCH_NAME_OID", "")    # 交换机设备名Oid
 SWITCH_SN_OID = os.getenv("SWITCH_SN_OID", "")        # 交换机序列号oid
 
+# agent回调
+AGENT_CALLBACKS = [
+    {
+        "method":"post",
+        "body": {
+            "agent_id": "",
+            "biz_ids": []
+        },
+        "url": "/api/agent/v1/hook/agent-biz-change"
+    }
+]
+
+# notice通知
+AGENT_ALERT = [
+    {
+    "method": "post",
+    "body": {
+        "agent_ids": ""
+    },
+    "url": "/api/noc/v1/router-alert?cmdb_agent_not_match=1"
+    }
+]
+
 try:
     from local_settings import *
 except ImportError:
@@ -83,6 +106,8 @@ settings = dict(
     switch_model_oid=SWITCH_MODEL_OID,
     switch_name_oid=SWITCH_NAME_OID,
     switch_sn_oid=SWITCH_SN_OID,
+    agent_callbacks=AGENT_CALLBACKS,
+    agent_alert=AGENT_ALERT,
     app_name="cmdb",
     databases={
         const.DEFAULT_DB_KEY: {

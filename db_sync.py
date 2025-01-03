@@ -16,6 +16,7 @@ from websdk2.consts import const
 from settings import settings as app_settings
 from models.env import Base as EnvBase
 from models.secret import Base as SecretBase
+from models.agent import Base as AgentBase
 
 # ORM创建表结构
 from sqlalchemy import create_engine
@@ -27,7 +28,7 @@ engine = create_engine('mysql+pymysql://%s:%s@%s:%s/%s?charset=utf8mb4' % (
     default_configs.get(const.DBHOST_KEY),
     default_configs.get(const.DBPORT_KEY),
     default_configs.get(const.DBNAME_KEY),
-), encoding='utf-8', echo=True)
+), echo=True)
 
 
 def create():
@@ -44,6 +45,7 @@ def create():
     AuditBase.metadata.create_all(engine)
     EnvBase.metadata.create_all(engine)
     SecretBase.metadata.create_all(engine)
+    AgentBase.metadata.create_all(engine)
     print('[Success] 表结构创建成功!')
 
 
