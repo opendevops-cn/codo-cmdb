@@ -1,5 +1,6 @@
 #opssdk===0.0.87
 SQLAlchemy==2.0.36
+pydantic==2.3.0
 boto3==1.26.134
 APScheduler==3.6.3
 # requests==2.28.2

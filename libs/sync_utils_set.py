@@ -992,19 +992,20 @@ def async_jms_orgs_to_cmdb():
     executor.submit(sync_jms_orgs)
 
 
-def send_alert_to_noc(**alert):
+def send_alert_to_noc(body: dict):
     """
     发送告警到NOC
     """
     try:
         client = AcsClient()
-        response = client.do_action_v2(**alert)
+        response = client.do_action_v2(url="/api/noc/v1/router-alert?cmdb_agent_not_match=1", method="POST", body=body)
         if response.status_code != 200:
             logging.error(f'发送告警到NOC失败 {response.status_code}')
             return
         resp = response.json()
         if resp.get('code') != 0:
-            logging.error('发送告警到NOC失败 {resp.get("message")}')
+            logging.error(f'发送告警到NOC失败 {resp.get("message")}')
+            return
     except Exception as err:
         logging.error(f'发送告警到NOC出错 {err}')
     logging.info('发送告警到NOC结束')
@@ -1047,12 +1048,13 @@ def sync_agent():
                     continue
                 redis_conn.set(agent_id, 1, ex=24*60*60)
                 new_agent_ids.append(agent_id)
-            
-            agent_alert = settings.get('agent_alert', [])
-            if agent_alert:
-                for alert in agent_alert:
-                    alert["body"]["agent_ids"] = ";".join(new_agent_ids)
-                    send_alert_to_noc(**alert)
+
+            if new_agent_ids:
+                body = {
+                    "agent_ids": ";".join(new_agent_ids),
+                    "alert_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                send_alert_to_noc(body)
         logging.info('更新agent结束！！！')
 
 
@@ -1066,4 +1068,4 @@ def async_agent_server_id():
     executor.submit(sync_agent)
 
 if __name__ == '__main__':
-    pass
+    sync_agent()

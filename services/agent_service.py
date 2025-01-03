@@ -114,7 +114,7 @@ def before_insert_listener(mapper, connection, target):
 def after_update_listener(mapper, connection, target):
     """更新后处理"""
     if getattr(target, '_biz_id_changed', False):
-        callback = AgentCallback(target, settings.get("agent_callbacks", []))
+        callback = AgentCallback(target)
         callback.on_update()
         if hasattr(target, '_biz_id_changed'):
             delattr(target, '_biz_id_changed')
@@ -304,37 +304,45 @@ class AgentCallback:
     """
     agent回调
     """
-    def __init__(self, agent: Agent, callbacks: List[Dict]) -> None:
+    def __init__(self, agent: Agent) -> None:
         self.agent = agent
-        self.callbacks = callbacks
         self.client = AcsClient()
 
 
-    def send_request(self, **kwargs):
+    def send_request(self, body: Dict[str, Union[str, List[str]]]):
         """
         发送请求
         :return:
         """
+        data = {
+            "method": "post",
+            "body": {
+                "agent_id": "",
+                "biz_ids": []
+            },
+            "url": "/api/agent/v1/hook/agent-biz-change"
+        }
         try:
-            response = self.client.do_action_v2(**kwargs)
+            response = self.client.do_action_v2(url="/api/agent/v1/hook/agent-biz-change", method="post", body=body)
             if response.status_code != 200:
-                logging.error(f"agent回调请求 {kwargs} 状态码非200: {response.text}")
+                logging.error(f"agent回调请求状态码非200: {response.text}")
+                return
             resp = response.json()
             if resp.get("status") != 0:
-                logging.error(f"agent回调请求 {kwargs} 失败: {resp}")
-            logging.info(f"agent回调请求 {kwargs} 成功: {resp}")
+                logging.error(f"agent回调请求失败: {resp}")
+                return
+            logging.info(f"agent回调请求成功: {resp}")
         except Exception as e:
-            logging.error(f"agent回调请求 {kwargs} 失败: {str(e)}")
+            logging.error(f"agent回调请求失败: {str(e)}")
 
     def on_update(self):
         """
         更新成功回调
         :return:
         """
-        for callback in self.callbacks:
-            body = callback.get("body", {})
-            biz_ids = json.loads(self.agent.biz_ids) if self.agent.biz_ids else []
-            body.update(dict(agent_id=self.agent.agent_id, biz_ids=biz_ids))
-            callback.update(body=body)
-            self.send_request(**callback)
+        body = {
+            "agent_id": self.agent.agent_id,
+            "biz_ids": json.loads(self.agent.biz_ids) if (self.agent.biz_ids and isinstance(self.agent.biz_ids, str)) else []
+        }
+        self.send_request(body)
 

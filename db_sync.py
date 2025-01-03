@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from sqlalchemy import create_engine
+from sqlalchemy.engine.url import URL
 
 from models.business import Base as BusinessBase
 from models.base import Base as ABase
@@ -18,18 +20,18 @@ from models.env import Base as EnvBase
 from models.secret import Base as SecretBase
 from models.agent import Base as AgentBase
 
-# ORM创建表结构
-from sqlalchemy import create_engine
 
 default_configs = app_settings[const.DB_CONFIG_ITEM][const.DEFAULT_DB_KEY]
-engine = create_engine('mysql+pymysql://%s:%s@%s:%s/%s?charset=utf8mb4' % (
-    default_configs.get(const.DBUSER_KEY),
-    default_configs.get(const.DBPWD_KEY),
-    default_configs.get(const.DBHOST_KEY),
-    default_configs.get(const.DBPORT_KEY),
-    default_configs.get(const.DBNAME_KEY),
-), echo=True)
-
+url_object = URL.create(
+    drivername='mysql+pymysql',
+    username=default_configs.get(const.DBUSER_KEY),
+    password=default_configs.get(const.DBPWD_KEY),
+    host=default_configs.get(const.DBHOST_KEY),
+    port=int(default_configs.get(const.DBPORT_KEY)),
+    database=default_configs.get(const.DBNAME_KEY),
+    query={'charset': 'utf8mb4'}
+)
+engine = create_engine(url_object, echo=True)
 
 def create():
     ABase.metadata.create_all(engine)
