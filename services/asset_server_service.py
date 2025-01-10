@@ -154,7 +154,7 @@ def add_server(server: dict):
                 session.add(AssetServerModels(**dict(instance_id=instance_id, cloud_name=cloud_name,
                                                      account_id=server.get('account_id', uuid()).strip(),
                                                      # 随机uuid标记post写入
-                                                     agent_id=server.get('agent_id', f"{inner_ip}:0").strip(),
+                                                     agent_id=server.get('agent_id', "0"),
                                                      state=server.get('state', '运行中'), name=name,
                                                      region=server.get('region'), zone=server.get('zone'),
                                                      inner_ip=inner_ip, outer_ip=server.get('outer_ip'),

@@ -36,6 +36,7 @@ class Agent(BaseModel):
     workspace: str
     biz_ids: List[str] = []
     asset_server_id: int = None
+    agent_type: str 
 
     @model_validator(mode="before")
     def val_must_not_null(cls, values):
@@ -49,6 +50,8 @@ class Agent(BaseModel):
             raise ValueError("hostname不能为空")
         if "version" not in values or not values.get("version"):
             raise ValueError("version不能为空")
+        if "agent_type" not in values or not values.get("agent_type"):
+            raise ValueError("agnet_type不能为空")
         return values
 
     
@@ -136,7 +139,11 @@ def register_agent_for_api(**data) -> CommonResponse:
         agent = Agent(**data)
     except ValidationError as e:
         return CommonResponse(code=-1, msg=f"参数错误:{str(e)}")
-
+    
+    if agent.agent_type.upper() != "NORMAL":
+        # 非normal类型的节点直接返回
+        return CommonResponse(code=0, msg="注册成功", data=[0])
+    del agent.agent_type
     # 查询主机所属业务
     biz_ids = get_biz_ids_by_server_ip(agent.ip)
     if exist_agent(agent.agent_id):
