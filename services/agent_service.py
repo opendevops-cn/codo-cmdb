@@ -314,14 +314,6 @@ class AgentCallback:
         发送请求
         :return:
         """
-        data = {
-            "method": "post",
-            "body": {
-                "agent_id": "",
-                "biz_ids": []
-            },
-            "url": "/api/agent/v1/hook/agent-biz-change"
-        }
         try:
             response = self.client.do_action_v2(url="/api/agent/v1/hook/agent-biz-change", method="post", body=body)
             if response.status_code != 200:
