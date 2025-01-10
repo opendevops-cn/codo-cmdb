@@ -156,7 +156,7 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                 inner_ip = __info.get('inner_ip')
                 filter_map = dict(instance_id=instance_id)
                 exist_id = db_session.query(AssetServerModels.id, AssetServerModels.agent_id).filter_by(**filter_map).first()
-                agent_id = f"{inner_ip}:0"
+                agent_id = "0"
 
                 if exist_id:
                     # 更新时更新agent_info

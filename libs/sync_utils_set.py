@@ -1033,25 +1033,30 @@ def sync_agent():
                 # 更新agent的asset_server_id
                 agent.asset_server_id = matched_servers[0].id
 
-                # 更新server的agent_id
-                server = session.query(AssetServerModels).filter_by(id=agent.asset_server_id).first()
+                # 更新server的agent_id 只更新增量数据, 忽略存量数据
+                server = (
+                    session.query(AssetServerModels)
+                    .filter(AssetServerModels.agent_id == "0")
+                    .filter_by(id=matched_servers[0].id)
+                    .first()
+                )
                 if not server:
                     continue
                 server.agent_id = agent.agent_id
             session.commit()
 
         if unmatched_agent_ids:
-            new_agent_ids = []
+            new_agent_ids = set()
             redis_conn = cache_conn()
             for agent_id in unmatched_agent_ids:
                 if redis_conn.get(agent_id):
                     continue
                 redis_conn.set(agent_id, 1, ex=24*60*60)
-                new_agent_ids.append(agent_id)
+                new_agent_ids.add(agent_id)
 
             if new_agent_ids:
                 body = {
-                    "agent_ids": ";".join(new_agent_ids),
+                    "agent_ids": list(new_agent_ids),
                     "alert_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 send_alert_to_noc(body)
