@@ -142,7 +142,7 @@ def register_agent_for_api(**data) -> CommonResponse:
     
     if agent.agent_type.upper() != "NORMAL":
         # 非normal类型的节点直接返回
-        return CommonResponse(code=0, msg="注册成功", data=[0])
+        return CommonResponse(code=0, msg="注册成功", data=['0'])
     del agent.agent_type
     # 查询主机所属业务
     biz_ids = get_biz_ids_by_server_ip(agent.ip)
