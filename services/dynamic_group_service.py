@@ -8,9 +8,10 @@ Desc    : 动态分组逻辑处理
 """
 
 import logging
+from collections import namedtuple
 from typing import *
 from shortuuid import uuid
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from websdk2.sqlalchemy_pagination import paginate
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import CommonOptView, model_to_dict
@@ -189,8 +190,20 @@ def preview_dynamic_group_for_api(exec_uuid_list: list) -> dict:
             __asset = session.query(the_model.instance_id, the_model.name, the_model.inner_ip, the_model.outer_ip,
                                     the_model.state, the_model.agent_status, the_model.agent_id).filter(
                 the_model.id.in_(asset_set)).all()
-
-            server_list = [dict(zip(res.keys(), res)) for res in __asset]
+            Asset = namedtuple(
+                "Asset",
+                [
+                    "instance_id",
+                    "name",
+                    "inner_ip",
+                    "outer_ip",
+                    "state",
+                    "agent_status",
+                    "agent_id",
+                ],
+            )
+            __asset = [Asset(*res) for res in __asset]
+            server_list = [row._asdict() for row in __asset]
             __count = len(server_list)
             return dict(msg='获取成功', code=0, data=server_list, count=__count)
         except Exception as error:
@@ -315,7 +328,7 @@ def get_dynamic_hosts(group_info: Optional[dict]) -> Tuple[bool, Union[list]]:
     sql_string += sql_conditions
     try:
         with DBContext('r') as session:
-            results = session.execute(sql_string)
+            results = session.execute(text(sql_string))
             server_list = [res[0] for res in results]
     except Exception as error:
         logging.error(f"{error}")
@@ -389,7 +402,7 @@ def get_dynamic_hosts_v2(group_info: Optional[dict]) -> Tuple[bool, Union[list]]
 
     try:
         with DBContext('r') as session:
-            results = session.execute(sql_string)
+            results = session.execute(text(sql_string))
             server_list = [res[0] for res in results]
     except Exception as error:
         logging.error(f"{error}")

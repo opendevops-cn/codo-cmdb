@@ -6,6 +6,7 @@
 import logging
 from typing import *
 from shortuuid import uuid
+from collections import namedtuple
 
 from sqlalchemy import or_
 from websdk2.sqlalchemy_pagination import paginate
@@ -150,7 +151,20 @@ def preview_perm_group_for_api(exec_uuid_list: list) -> dict:
                                     the_model.state, the_model.agent_status, the_model.agent_id).filter(
                 the_model.id.in_(asset_set)).all()
 
-            server_list = [dict(zip(res.keys(), res)) for res in __asset]
+            Asset = namedtuple(
+                "Asset",
+                [
+                    "instance_id",
+                    "name",
+                    "inner_ip",
+                    "outer_ip",
+                    "state",
+                    "agent_status",
+                    "agent_id",
+                ],
+            )
+            __asset = [Asset(*res) for res in __asset]
+            server_list = [row._asdict() for row in __asset]
             __count = len(server_list)
             return dict(msg='获取成功', code=0, data=server_list, count=__count)
         except Exception as error:
