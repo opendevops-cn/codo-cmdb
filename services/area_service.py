@@ -11,9 +11,9 @@ from pydantic import BaseModel, ValidationError, model_validator, field_validato
 from libs.api_gateway.cbb.area import AreaAPI
 from libs.api_gateway.cbb.big_area import BigAreaAPI
 from libs.api_gateway.cbb.sign import Signer
-from services.env_service import get_env_by_id
 from libs.mycrypt import mc
-
+from models import EnvType
+from services.env_service import get_env_by_id
 
 # todo 存入数据库
 GameBizMapping = {
@@ -291,7 +291,7 @@ def get_big_area_list(**params):
     big_area_list = big_areas_body.get('big_areas', [])
     big_area_count = big_areas_body.get('big_area_count', 0)
     for big_area in big_area_list:
-        big_area.update({'env_id': env_id, 'env_name': env.get('env_name'), 'is_test': env.get('is_test')})
+        big_area.update({'env_id': env_id, 'env_name': env.get('env_name'), 'env_type': env.get('env_type')})
     return dict(code=0, msg='获取成功', data=big_area_list, count=big_area_count)
 
 
@@ -318,7 +318,7 @@ def get_big_area_detail(**params):
     big_areas_body = big_areas.get("body", {})
     big_area_list = big_areas_body.get('big_areas', [])
     for big_area in big_area_list:
-        big_area.update({'env_id': env_id, 'env_name': env.get('env_name'), 'is_test': env.get('is_test')})
+        big_area.update({'env_id': env_id, 'env_name': env.get('env_name'), 'env_type': env.get('env_type')})
     return dict(code=0, msg='获取成功', data=big_area_list)
 
 
@@ -398,7 +398,7 @@ def get_area_list(**params):
     area_list = areas_body.get('areas', [])
     area_count = areas_body.get('area_count', 0)
     for r in area_list:
-        r.update({'env_id': env_id, 'env_name': env.get('env_name'), 'big_area': big_area, 'is_test': env.get('is_test')})
+        r.update({'env_id': env_id, 'env_name': env.get('env_name'), 'big_area': big_area, 'env_type': env.get('env_type')})
     return dict(code=0, msg='获取成功', data=area_list, count=area_count)
 
 @handle_api_exceptions
@@ -441,9 +441,9 @@ def update_area(**data):
     detail = area_obj.get('body', {}).get('areas', [])
     if not detail:
         return dict(code=-1, msg='区服不存在', data=[])
-    is_test = env["is_test"]
+    env_type = env["env_type"]
     gate_address = data.get('gate_address', [])
-    if not is_test:
+    if env_type == EnvType.Prd:
         curr_gate_address = detail[0].get('gate_address', [])
         if set(gate_address) != set(curr_gate_address):
             return dict(code=-1, msg='生产环境不允许编辑区服网关地址，请联系运维修改', data=[])

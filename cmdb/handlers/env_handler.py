@@ -13,6 +13,8 @@ from services.env_service import get_env_list_for_api, update_env_for_api, add_e
 
 class EnvHandler(BaseHandler, ABC):
     def get(self):
+        if self.request_tenantid:
+            self.params.update(biz_id=self.request_tenantid)
         res = get_env_list_for_api(**self.params)
         return self.write(res)
 
@@ -23,11 +25,15 @@ class EnvHandler(BaseHandler, ABC):
 
     def post(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        if "biz_id" not in data:
+            data.update(biz_id=self.request_tenantid)
         res = add_env_for_api(data)
         self.write(res)
 
     def put(self):
         data = json.loads(self.request.body.decode("utf-8"))
+        if "biz_id" not in data:
+            data.update(biz_id=self.request_tenantid)
         res = update_env_for_api(data)
         self.write(res)
 
