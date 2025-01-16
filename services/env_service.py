@@ -3,7 +3,6 @@
 # @Date: 2024/9/23
 # @Description: 区服环境
 
-from tkinter import E
 from typing import Optional, List
 from collections import namedtuple
 from shortuuid import uuid
