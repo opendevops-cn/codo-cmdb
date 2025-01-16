@@ -40,7 +40,9 @@ class EnvHandler(BaseHandler, ABC):
 
 class EnvListHandler(BaseHandler, ABC):
     def get(self):
-        res = get_all_env_list_for_api()
+        if self.request_tenantid:
+            self.params.update(biz_id=self.request_tenantid)
+        res = get_all_env_list_for_api(**self.params)
         return self.write(res)
     
 class IdipConnectionCheckHandler(BaseHandler, ABC):
