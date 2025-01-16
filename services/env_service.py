@@ -3,6 +3,7 @@
 # @Date: 2024/9/23
 # @Description: 区服环境
 
+from tkinter import E
 from typing import Optional, List
 from collections import namedtuple
 from shortuuid import uuid
@@ -15,6 +16,7 @@ from websdk2.model_utils import CommonOptView
 from websdk2.model_utils import model_to_dict
 
 from models.env import EnvModels
+from models import EnvType
 from libs.mycrypt import mc
 from libs.utils import check_connection
 
@@ -23,31 +25,36 @@ opt_obj = CommonOptView(EnvModels)
 class EnvData(BaseModel):
     env_name: str
     env_no: Optional[str] = None
-    is_test: int
+    biz_id: str
     idip: str
     app_id: Optional[str] = None
     app_secret: Optional[str] = None
     ext_info: Optional[str] = None
     env_tags: List[str] = []
+    env_type: int
 
     @model_validator(mode="before")
     def val_must_not_null(cls, values):
         if "env_name" not in values or not values["env_name"]:
             raise ValueError("env_name不能为空")
-        if "is_test" not in values:
-            raise ValueError("is_test不能为空")
         if "idip" not in values or not values["idip"]:
             raise ValueError("idip不能为空")
         if "app_id" not in values or not values["app_id"]:
             raise ValueError("app_id不能为空")
         if "app_secret" not in values or not values["app_secret"]:
             raise ValueError("app_secret不能为空")
+        if "env_type" not in values:
+            raise ValueError("env_type不能为空")
+        if "biz_id" not in values or not values["biz_id"]:
+            raise ValueError("biz_id不能为空")
         return values
 
-    @field_validator('is_test', mode="before")
-    def is_test_must_be_int(cls, v):
-        if not isinstance(v, bool):
-            raise ValueError("is_test必须为布尔类型")
+    @field_validator('env_type', mode="before")
+    def env_type_must_be_int(cls, v):
+        if not isinstance(v, int):
+            raise ValueError("env_type必须为int类型")
+        if v not in [EnvType.Dev, EnvType.Test, EnvType.Prd]:
+            raise ValueError("环境类型错误")
         return v
 
     @field_validator('env_tags')
@@ -101,7 +108,10 @@ class EnvData(BaseModel):
         if len(v) > 255:
             raise ValueError("app_secret长度不能超过255")
         return v
-
+    
+    @field_validator("biz_id", mode="before")
+    def biz_id_must_be_str(cls, v):
+        return str(v)
 
 def _get_env_by_val(value: str = None):
     """模糊查询"""
@@ -112,50 +122,40 @@ def _get_env_by_val(value: str = None):
         EnvModels.env_name.like(f'%{value}%'),
         EnvModels.env_no.like(f'%{value}%'),
         EnvModels.env_tags.like(f'%{value}%'),
-        EnvModels.is_test.like(f'%{value}%'),
+        EnvModels.env_type.like(f'%{value}%'),
         EnvModels.idip.like(f'%{value}%'),
         EnvModels.ext_info.like(f'%{value}%'),
     )
 
-
 def get_env_list_for_api(**params) -> dict:
     value = params.get('searchValue') if "searchValue" in params else params.get('searchVal')
     filter_map = params.pop('filter_map') if "filter_map" in params else {}
-    if 'page_size' not in params: params['page_size'] = 300  # 默认获取到全部数据
-    if 'order_by' not in params: params['order_by'] = 'is_test'
-    if 'order' not in params: params['order'] = 'descend'
+    if 'page_size' not in params: 
+        params['page_size'] = 300  # 默认获取到全部数据
+    if 'order' not in params: 
+        params['order'] = 'descend'
+    if 'biz_id' in params:
+        biz_id = params.get("biz_id")
+        if biz_id and str(biz_id) != "500":
+            filter_map['biz_id'] = biz_id
     if "env_no" in params:
-        return get_env_list_by_env_no(**params)
+        filter_map['env_no'] = params.get('env_no')
     with DBContext('r') as session:
-        page = paginate(session.query(EnvModels).filter(_get_env_by_val(value),
-                                                       ).filter_by(**filter_map), **params)
-    # 优先展示非测试环境，其余使用环境编号倒排
-    items = [item for item in page.items if not item["is_test"]] + \
-    sorted([item for item in page.items if item["is_test"]], key=lambda x: int(x["id"]), reverse=True)
-    return dict(code=0, msg='获取成功', data=items, count=page.total)
-
-
-def get_env_list_by_env_no(**params) -> dict:
-    """ 通过env_no精准查询 """
-    env_no = params.get('env_no')
-    filter_map = params.pop('filter_map') if "filter_map" in params else {}
-    with DBContext('r') as session:
-        if env_no:
-            page = paginate(session.query(EnvModels).filter(EnvModels.env_no == env_no).filter_by(**filter_map), **params)
-        else:
-            page = paginate(session.query(EnvModels).filter().filter_by(**filter_map), **params)
-    # 优先展示非测试环境，其余使用环境编号倒排
-    items = [item for item in page.items if not item["is_test"]] + \
-    sorted([item for item in page.items if item["is_test"]], key=lambda x: int(x["id"]), reverse=True)
-    return dict(code=0, msg='获取成功', data=items, count=page.total)
+        page = paginate(session.query(EnvModels).filter(_get_env_by_val(value)).filter_by(**filter_map), **params)
+    items = sorted(
+        page.items,
+        key=lambda x: (x["env_type"], x["create_time"]),
+        reverse=True,
+    )
+    return dict(code=0, msg="获取成功", data=items, count=page.total)
         
     
 def get_all_env_list_for_api() -> dict:
-    env_obj = namedtuple('Env', ['id', 'env_name', 'env_no'])
+    env_obj = namedtuple('Env', ['id', 'env_name', 'env_no', 'env_type'])
     try:
         with DBContext('r') as session:
             envs = session.query(EnvModels).filter()
-            env_list = [env_obj(env.id, env.env_name, env.env_no)._asdict() for env in envs]
+            env_list = [env_obj(env.id, env.env_name, env.env_no, env.env_type)._asdict() for env in envs]
         return dict(code=0, msg='获取成功', data=env_list, count=envs.count())
     except Exception as e:
         return dict(code=-1, msg=str(e))

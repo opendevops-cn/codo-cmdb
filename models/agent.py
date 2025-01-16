@@ -5,7 +5,6 @@
 # @Author  :   DongdongLiu
 # @Version :   1.0
 # @Desc    :   agent server 模块
-from pygments.lexer import default
 from sqlalchemy import Column,String,Integer,JSON
 from sqlalchemy.ext.declarative import declarative_base
 

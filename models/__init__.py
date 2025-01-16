@@ -5,6 +5,12 @@ from .tree import TreeModels, TreeAssetModels
 from .tag import TagModels
 from .domain import DomainRecords
 
+
+class EnvType:
+    Dev = 0
+    Test = 1
+    Prd = 2
+
 asset_type_enum = Enum(
     'server',
     'process',
