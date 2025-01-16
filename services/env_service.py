@@ -149,11 +149,16 @@ def get_env_list_for_api(**params) -> dict:
     return dict(code=0, msg="获取成功", data=items, count=page.total)
         
     
-def get_all_env_list_for_api() -> dict:
+def get_all_env_list_for_api(**params) -> dict:
     env_obj = namedtuple('Env', ['id', 'env_name', 'env_no', 'env_type'])
+    filter_map = params.pop('filter_map') if "filter_map" in params else {}
+    if 'biz_id' in params:
+        biz_id = params.get("biz_id")
+        if biz_id and str(biz_id) != "500":
+            filter_map['biz_id'] = biz_id
     try:
         with DBContext('r') as session:
-            envs = session.query(EnvModels).filter()
+            envs = session.query(EnvModels).filter().filter_by(**filter_map)
             env_list = [env_obj(env.id, env.env_name, env.env_no, env.env_type)._asdict() for env in envs]
         return dict(code=0, msg='获取成功', data=env_list, count=envs.count())
     except Exception as e:
