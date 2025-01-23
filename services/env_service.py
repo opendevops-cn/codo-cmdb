@@ -132,6 +132,13 @@ def _get_env_by_val(value: str = None):
     )
 
 
+def _get_env_by_biz_id(biz_id: str):
+    if str(biz_id) == "500":
+        return True
+    biz_ids = biz_id.split(",")
+    return EnvModels.biz_id.in_(biz_ids)
+
+
 def get_env_list_for_api(**params) -> dict:
     value = (
         params.get("searchValue")
@@ -143,16 +150,15 @@ def get_env_list_for_api(**params) -> dict:
         params["page_size"] = 300  # 默认获取到全部数据
     if "order" not in params:
         params["order"] = "descend"
-    if "biz_id" in params:
-        biz_id = params.get("biz_id")
-        if biz_id and str(biz_id) != "500":
-            filter_map["biz_id"] = biz_id
-    if "env_no" in params:
+    biz_id = params.get("biz_id")
+    if not biz_id:
+        return dict(code=-1, msg="biz_id不能为空")
+    if "env_no" in params and params.get("env_no"):
         filter_map["env_no"] = params.get("env_no")
     with DBContext("r") as session:
         page = paginate(
             session.query(EnvModels)
-            .filter(_get_env_by_val(value))
+            .filter(_get_env_by_val(value), _get_env_by_biz_id(biz_id))
             .filter_by(**filter_map),
             **params,
         )
