@@ -173,6 +173,7 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                             # AssetServerModels.agent_info: agent_info,
                             AssetServerModels.outer_ip: __info.get('outer_ip'),
                             AssetServerModels.inner_ip: inner_ip,
+                            AssetServerModels.vpc_id: __info.get('vpc_id'),
                             AssetServerModels.is_expired: False,  # 改为正常状态
                             AssetServerModels.ext_info: __info  # 存json
                         }
@@ -186,7 +187,7 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
                         db_session.add(AssetServerModels(
                             cloud_name=cloud_name, account_id=account_id, instance_id=instance_id,
                             state=__info.get('state'), name=__info.get('name'),
-                            region=region, zone=__info.get('zone'),
+                            region=region, zone=__info.get('zone'), vpc_id=__info.get('vpc_id'),
                             inner_ip=inner_ip, outer_ip=__info.get('outer_ip'), agent_id=agent_id,
                             ext_info=__info, is_expired=False  # 新机器标记正常
                         ))

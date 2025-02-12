@@ -14,9 +14,19 @@ from websdk2.application import Application as myApplication
 from libs.scheduler import scheduler, init_scheduler
 from cmdb.handlers import urls
 from domain.handlers import urls as domain_urls
-from libs.sync_utils_set import async_biz_info, async_agent, async_service_trees,\
-    async_users, async_perm_groups, async_vswitch_cloud_region_id, async_cmdb_to_jms_with_enterprise, \
-    async_server_cloud_region_id, async_jms_orgs_to_cmdb, async_agent_server_id
+from libs.sync_utils_set import (
+    async_biz_info,
+    async_agent,
+    async_service_trees,
+    async_users,
+    async_perm_groups,
+    async_vswitch_cloud_region_id,
+    async_cmdb_to_jms_with_enterprise,
+    async_server_cloud_region_id,
+    async_jms_orgs_to_cmdb,
+    async_agent_server_id,
+    async_check_server,
+)
 from domain.cloud_domain import async_domain_info
 from libs.consul_registry import async_consul_info
 from cmp.tasks import async_order_status
@@ -31,7 +41,9 @@ class Application(myApplication, ABC):
         biz_callback = PeriodicCallback(async_biz_info, 360000)  # 360000 6分钟
         biz_callback.start()
         # 同步consul 信息
-        consul_callback = PeriodicCallback(async_consul_info, 120000)  # 120000 2分钟
+        consul_callback = PeriodicCallback(
+            async_consul_info, 120000
+        )  # 120000 2分钟
         consul_callback.start()
         # 同步agent 状态信息
         agent_callback = PeriodicCallback(async_agent, 180000)  # 180000 3分钟
@@ -43,12 +55,20 @@ class Application(myApplication, ABC):
         biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒
         biz_callback.start()
         # 同步虚拟子网云区域ID
-        vswitch_callback = PeriodicCallback(async_vswitch_cloud_region_id, 360000) # 6分钟
+        vswitch_callback = PeriodicCallback(
+            async_vswitch_cloud_region_id, 360000
+        )  # 6分钟
         vswitch_callback.start()
 
         # 同步agent server_id
-        agent_server_id_callback = PeriodicCallback(async_agent_server_id, 180000) # 3分钟
+        agent_server_id_callback = PeriodicCallback(
+            async_agent_server_id, 3600000
+        )  # 1小时
         agent_server_id_callback.start()
+
+        # 检查服务器是否关联服务树
+        check_server_callback = PeriodicCallback(async_check_server, 60000)
+        check_server_callback.start()
         # 同步服务器云区域ID
         # server_callback = PeriodicCallback(async_server_cloud_region_id, 360000) # 6分钟
         # server_callback.start()
@@ -62,10 +82,14 @@ class Application(myApplication, ABC):
         # perm_group_callback = PeriodicCallback(async_perm_groups, 3600000)  # 60分钟
         # perm_group_callback.start()
         # # 同步cmdb到jms企业版
-        jms_callback = PeriodicCallback(async_cmdb_to_jms_with_enterprise, 600000)  # 10分钟
+        jms_callback = PeriodicCallback(
+            async_cmdb_to_jms_with_enterprise, 600000
+        )  # 10分钟
         jms_callback.start()
         # # 同步jms组织到cmdb
-        jms_org_callback = PeriodicCallback(async_jms_orgs_to_cmdb, 600000)  # 10分钟
+        jms_org_callback = PeriodicCallback(
+            async_jms_orgs_to_cmdb, 600000
+        )  # 10分钟
         jms_org_callback.start()
         urls.extend(domain_urls)
         urls.extend(order_urls)
@@ -84,17 +108,26 @@ class Application(myApplication, ABC):
             init_cmdb_change_tasks()
             # agent同步暂停使用redis stream
             # self.sub_app.start_server()
-            logging.info('[App Init] progressid: %(progid)s' % dict(progid=options.progid))
-            logging.info('[App Init] server address: %(addr)s:%(port)d' % dict(addr=options.addr, port=options.port))
-            logging.info('[App Init] web server start sucessfuled.')
+            logging.info(
+                "[App Init] progressid: %(progid)s"
+                % dict(progid=options.progid)
+            )
+            logging.info(
+                "[App Init] server address: %(addr)s:%(port)d"
+                % dict(addr=options.addr, port=options.port)
+            )
+            logging.info("[App Init] web server start sucessfuled.")
             self.io_loop.start()
         except (KeyboardInterrupt, SystemExit):
             scheduler.shutdown(wait=True)
             self.io_loop.stop()
         except:
             import traceback
-            logging.error('traceback %(tra)s' % dict(tra=traceback.format_exc()))
+
+            logging.error(
+                "traceback %(tra)s" % dict(tra=traceback.format_exc())
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

@@ -63,7 +63,7 @@ def sync_region(conf: Dict[str, str], region: str, obj: Callable, cloud_type: st
     logging.info(f'同步结束, 信息：「{DEFAULT_CLOUD_NAME}」-「{cloud_type}」-「{region}」.')
 
 
-@deco(RedisLock("async_volc_to_cmdb_redis_lock_key"))
+# @deco(RedisLock("async_volc_to_cmdb_redis_lock_key"))
 def main(account_id: Optional[str] = None, resources: List[str] = None):
     """
     这些类型都是为了前端点击的，定时都是自动同步全账号，全类型
@@ -76,16 +76,19 @@ def main(account_id: Optional[str] = None, resources: List[str] = None):
     if account_id is not None:
         for _, v in sync_mapping.items():
             v['account_id'] = account_id
-    # 如果用户给了资源列表，就只要用户的
-    if resources is not None:
-        pop_list = list(set(sync_mapping.keys()).difference(set(resources)))
-        for i in pop_list:
-            sync_mapping.pop(i)
-    # 同步
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(sync_mapping.keys())) as executor:
-        executor.map(
-            sync, sync_mapping.values()
-        )
+
+        @deco(RedisLock(f"async_volc_to_cmdb_{account_id}_redis_lock_key"))
+        def index():
+            # 如果用户给了资源列表，就只要用户的
+            if resources:
+                pop_list = list(set(sync_mapping.keys()).difference(set(resources)))
+                for i in pop_list:
+                    sync_mapping.pop(i)
+            # 同步
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(sync_mapping.keys())) as executor:
+                executor.map(
+                    sync, sync_mapping.values()
+                )
 
 if __name__ == '__main__':
     pass
