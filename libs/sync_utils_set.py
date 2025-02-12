@@ -15,6 +15,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import *
 from typing import List
 
+from boto3 import client
+from httplib2.auth import params
 from shortuuid import uuid
 from sqlalchemy import func
 from websdk2.api_set import api_set
@@ -1193,30 +1195,6 @@ def async_jms_orgs_to_cmdb():
     executor.submit(sync_jms_orgs)
 
 
-def send_alert_to_noc(url: str, body: dict):
-    """
-    发送告警到NOC
-    """
-    try:
-        client = AcsClient()
-        response = client.do_action_v2(
-            url=url,
-            method="POST",
-            body=body,
-        )
-        if response.status_code != 200:
-            logging.error(f"发送告警到NOC失败 {response.status_code}")
-            return
-        resp = response.json()
-        print(resp)
-        if resp.get("code") != 0:
-            logging.error(f'发送告警到NOC失败 {resp.get("message")}')
-            return
-    except Exception as err:
-        logging.error(f"发送告警到NOC出错 {err}")
-    logging.info("发送告警到NOC结束")
-
-
 def sync_agent():
     """
     更新server.agent_id
@@ -1274,10 +1252,17 @@ def sync_agent():
                 ),
                 'title': "【CMDB】agent未匹配主机",
             }
-            send_alert_to_noc(
-                url="/api/noc/v1/router-alert?cmdb_agent_not_match=1",
+            client = AcsClient()
+            api_set.send_router_alert.update(
+                params={"cmdb_agent_not_match": 1},
                 body=body,
             )
+            try:
+                resp = client.do_action_v2(**api_set.send_router_alert)
+                if resp.status_code != 200:
+                    logging.error(f"发送告警到NOC失败 {resp.status_code}")
+            except Exception as err:
+                logging.error(f"发送告警到NOC出错 {err}")
         logging.info("更新agent结束！！！")
 
     try:
@@ -1358,10 +1343,17 @@ def check_server():
                     ),
                     'title': "【CMDB】主机未绑定服务树",
                 }
-                send_alert_to_noc(
-                    url="/api/noc/v1/router-alert?cmdb_server_not_bind_tree=1",
+                client = AcsClient()
+                api_set.send_router_alert.update(
+                    params={"cmdb_server_not_bind_tree": 1},
                     body=body,
                 )
+                try:
+                    resp = client.do_action_v2(**api_set.send_router_alert)
+                    if resp.status_code != 200:
+                        logging.error(f"发送告警到NOC失败 {resp.status_code}")
+                except Exception as err:
+                    logging.error(f"发送告警到NOC出错 {err}")
 
             logging.info("检查server是否绑定服务树结束！！！")
 
@@ -1377,4 +1369,4 @@ def async_check_server():
 
 
 if __name__ == "__main__":
-    sync_agent()
+    pass

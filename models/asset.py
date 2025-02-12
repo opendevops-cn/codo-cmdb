@@ -6,6 +6,7 @@ Author  : shenshuo
 Date    : 2023/2/15 14:59
 Desc    : 基础资产Models
 """
+from pygments.styles.dracula import comment
 from sqlalchemy import Column, String, Integer, Boolean, JSON, TEXT, UniqueConstraint, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -60,7 +61,7 @@ class AssetServerModels(AssetBaseModel):
     is_product = Column("is_product", Integer, default=0, comment="标记是否上线", index=True)
     ownership = Column('ownership', String(120), default="内部", nullable=False, comment='归属')
     vpc_id = Column('vpc_id', String(120), comment='VPC ID')
-    tags = Column('tags', JSON(), comment='标签', default=[])
+    tags = Column('tags', JSON(), comment='标签')
     # 联合键约束 2023年5月23日 添加关机支持
     # __table_args__ = (
     #     UniqueConstraint('region', 'inner_ip', 'state', 'is_expired', name='host_key'),
