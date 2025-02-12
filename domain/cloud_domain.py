@@ -16,6 +16,9 @@ from concurrent.futures import ThreadPoolExecutor
 from websdk2.configs import configs
 from websdk2.model_utils import queryset_to_list, insert_or_update
 from websdk2.db_context import DBContext
+from sqlalchemy import event
+
+from models.domain import DomainOptLog
 from models.domain import DomainName, DomainRecords, DomainSyncLog
 from models.cloud import CloudSettingModels
 from websdk2.tools import RedisLock
@@ -23,6 +26,7 @@ from libs.domain.qcloud_domain import QCloud
 # from libs.domain.dnspod_domain import DNSPod
 from libs.domain.godaddy_domain import GoDaddy
 from libs.domain.aliyun_domain import AliYun
+from libs.kafka_utils import KafkaProducer
 
 from settings import settings
 
@@ -332,3 +336,24 @@ def mark_expired(resource_model, domain_name: Optional[str], record_id: Optional
 def async_domain_info():
     executor = ThreadPoolExecutor(max_workers=1)
     executor.submit(all_domain_sync_index)
+
+
+@event.listens_for(DomainOptLog, "after_insert")
+def after_opt_log_insert(mapper, connection, target):
+    """发送操作日志到安全soc"""
+    try:
+        message = {
+            "domain_name": target.domain_name,
+            "username": target.username,
+            "action": target.action,
+            "record": target.record,
+            "state": target.state,
+            "update_time": target.update_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "id": target.id
+        }
+        producer = KafkaProducer(bootstrap_servers=settings["kafka_bootstrap_servers"], topic=settings["kafka_topic"],
+                                 client_id=settings["kafka_client_id"])
+        producer.send(message)
+        logging.info(f"发送操作日志到Kafka成功: {message}")
+    except Exception as e:
+        logging.error(f"发送操作日志到Kafka失败: {e}")

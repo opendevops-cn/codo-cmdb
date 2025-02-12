@@ -59,6 +59,8 @@ class AssetServerModels(AssetBaseModel):
     agent_info = Column('agent_info', JSON(), comment='agent上报信息字段存JSON', default={})
     is_product = Column("is_product", Integer, default=0, comment="标记是否上线", index=True)
     ownership = Column('ownership', String(120), default="内部", nullable=False, comment='归属')
+    vpc_id = Column('vpc_id', String(120), comment='VPC ID')
+    tags = Column('tags', JSON(), comment='标签', default=[])
     # 联合键约束 2023年5月23日 添加关机支持
     # __table_args__ = (
     #     UniqueConstraint('region', 'inner_ip', 'state', 'is_expired', name='host_key'),

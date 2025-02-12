@@ -4,6 +4,7 @@
 # @Description: Description
 import ipaddress
 import json
+from enum import unique
 from typing import List, Dict, Union
 import logging
 
@@ -19,6 +20,7 @@ from websdk2.configs import configs
 from models import AssetServerModels
 from services.tree_asset_service import get_biz_ids_by_server_ip
 from services.cloud_region_service import get_servers_by_cloud_region_id
+from services.asset_server_service import get_unique_servers
 from services import CommonResponse
 from models.agent import AgentModels
 from settings import settings
@@ -150,11 +152,21 @@ def register_agent_for_api(**data) -> CommonResponse:
         return CommonResponse(code=0, msg=f"agent已存在:{agent.agent_id}", data=biz_ids)
 
     # 查询云区域关联的主机
+    matched_server = None
     servers = get_servers_by_cloud_region_id(agent.proxy_id)
-    server_ids = [server.id for server in servers if server.inner_ip == agent.ip]
+    for server in servers:
+        if server.inner_ip == agent.ip and server.state == "运行中":
+            matched_server = server
+            break
+
+    if not matched_server:
+        unique_servers = get_unique_servers()
+        matched_server = unique_servers.get(agent.ip)
+
+    if matched_server:
+        agent.asset_server_id = matched_server.id
+
     agent.biz_ids = json.dumps(biz_ids, ensure_ascii=False)
-    if server_ids:
-        agent.asset_server_id = server_ids[0]
 
     # 创建agent
     try:

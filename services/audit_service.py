@@ -11,6 +11,7 @@ from sqlalchemy import or_
 from websdk2.model_utils import CommonOptView
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.sqlalchemy_pagination import paginate
+from websdk2.utils.date_format import date_format_to8
 
 from models.autdit import AuditModels
 
@@ -35,9 +36,13 @@ def get_audit_list_for_api(**params) -> dict:
     if "order_by" not in params: params['order_by'] = 'id'
     filter_map = params.pop('filter_map') if "filter_map" in params else {}
     if 'page_size' not in params: params['page_size'] = 300  # 默认获取到全部数据
+    start_date = params.get('start_date')
+    end_date = params.get('end_date')
+    start_time_tuple, end_time_tuple = date_format_to8(start_date, end_date)
     with DBContext('r') as session:
-        page = paginate(session.query(AuditModels).filter(_get_value(value),
-                                                          ).filter_by(**filter_map), **params)
+        page = paginate(session.query(AuditModels).filter(_get_value(value)).filter(AuditModels.create_time.between(
+            start_time_tuple, end_time_tuple
+        )).filter_by(**filter_map), **params)
     return dict(code=0, msg='获取成功', data=page.items, count=page.total)
 
 

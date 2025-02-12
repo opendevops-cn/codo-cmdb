@@ -134,7 +134,8 @@ def _get_record_value(value: str = None):
         DomainRecords.line.like(f'{value}%'),
         DomainRecords.state.like(f'%{value}%'),
         DomainRecords.account.like(f'%{value}%'),
-        DomainRecords.record_id.like(f'%{value}%')
+        DomainRecords.record_id.like(f'%{value}%'),
+        DomainRecords.remark.like(f'%{value}%')
     )
 
 

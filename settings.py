@@ -65,6 +65,11 @@ SWITCH_MODEL_OID = os.getenv("SWITCH_MODEL_OID", "")  #  交换机型号Oid
 SWITCH_NAME_OID = os.getenv("SWITCH_NAME_OID", "")    # 交换机设备名Oid
 SWITCH_SN_OID = os.getenv("SWITCH_SN_OID", "")        # 交换机序列号oid
 
+# kafka配置
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "")
+KAFKA_CLIENT_ID = os.getenv("KAFKA_CLIENT_ID", "")
+KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "")
+
 try:
     from local_settings import *
 except ImportError:
@@ -83,6 +88,9 @@ settings = dict(
     switch_model_oid=SWITCH_MODEL_OID,
     switch_name_oid=SWITCH_NAME_OID,
     switch_sn_oid=SWITCH_SN_OID,
+    kafka_bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+    kafka_client_id=KAFKA_CLIENT_ID,
+    kafka_topic=KAFKA_TOPIC,
     app_name="cmdb",
     databases={
         const.DEFAULT_DB_KEY: {

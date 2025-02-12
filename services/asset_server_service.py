@@ -9,7 +9,7 @@ Desc    : 解释一下吧
 
 import logging
 from shortuuid import uuid
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from typing import *
 from websdk2.db_context import DBContextV2 as DBContext
 from models.asset import AssetServerModels
@@ -284,3 +284,36 @@ def check_delete(data: dict, asset_type) -> bool:
                 return True
 
     return False
+
+
+def get_unique_servers():
+    """查询唯一的inner_ip -> server 映射"""
+    with DBContext("r") as session:
+        subquery = (
+            session.query(
+                AssetServerModels.inner_ip,
+                func.max(AssetServerModels.id).label(
+                    "max_id"
+                ),  # 获取最大 id 作为唯一标识
+            )
+            .filter(AssetServerModels.is_expired.is_(False))  # 只查询未过期的记录
+            .filter(AssetServerModels.state == "运行中")  # 只查询运行中的记录
+            .filter(AssetServerModels.inner_ip.isnot(None))  # 过滤掉 inner_ip 为空的记录
+            .filter(AssetServerModels.inner_ip != "")  # 过滤掉 inner_ip 为空字符串的记录
+            .group_by(AssetServerModels.inner_ip)  # 按 inner_ip 分组
+            .having(
+                func.count(AssetServerModels.inner_ip) == 1
+            )  # 只保留每个 inner_ip 出现一次的记录
+            .subquery()  # 创建一个子查询
+        )
+        # 主查询：基于子查询结果连接，确保每个 inner_ip 只对应一条记录
+        servers = (
+            session.query(AssetServerModels)
+            .join(subquery, AssetServerModels.id == subquery.c.max_id)
+            .filter(AssetServerModels.is_expired.is_(False))
+            .filter(AssetServerModels.state == "运行中")
+            .filter(AssetServerModels.inner_ip.isnot(None))  # 过滤掉 inner_ip 为空的记录
+            .filter(AssetServerModels.inner_ip != "")  # 过滤掉 inner_ip 为空字符串的记录
+            .all()
+        )
+        return {server.inner_ip: server for server in servers}
