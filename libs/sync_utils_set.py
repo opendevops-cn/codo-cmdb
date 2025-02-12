@@ -15,8 +15,6 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import *
 from typing import List
 
-from boto3 import client
-from httplib2.auth import params
 from shortuuid import uuid
 from sqlalchemy import func
 from websdk2.api_set import api_set
