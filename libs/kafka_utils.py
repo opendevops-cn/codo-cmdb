@@ -5,14 +5,25 @@
 import json
 
 from confluent_kafka import Producer
+from websdk2.configs import configs
+from websdk2.consts import const
 
 
 class KafkaProducer:
     def __init__(
         self, bootstrap_servers=None, client_id: str = None, topic=None):
-        self.bootstrap_servers = bootstrap_servers
-        self.client_id = client_id
-        self.topic = topic
+        if bootstrap_servers is None:
+            self.bootstrap_servers = configs[const.KAFKA_BOOTSTRAP_SERVERS]
+        else:
+            self.bootstrap_servers = bootstrap_servers
+        if client_id is None:
+            self.client_id = configs[const.KAFKA_CLIENT_ID]
+        else:
+            self.client_id = client_id
+        if topic is None:
+            self.topic = configs[const.KAFKA_TOPIC]
+        else:
+            self.topic = topic
         self._create_producer()
 
     def _create_producer(self):

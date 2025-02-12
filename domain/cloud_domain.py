@@ -351,8 +351,7 @@ def after_opt_log_insert(mapper, connection, target):
             "update_time": target.update_time.strftime("%Y-%m-%d %H:%M:%S"),
             "id": target.id
         }
-        producer = KafkaProducer(bootstrap_servers=settings["kafka_bootstrap_servers"], topic=settings["kafka_topic"],
-                                 client_id=settings["kafka_client_id"])
+        producer = KafkaProducer()
         producer.send(message)
         logging.info(f"发送操作日志到Kafka成功: {message}")
     except Exception as e:

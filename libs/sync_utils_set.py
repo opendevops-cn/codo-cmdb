@@ -1223,7 +1223,7 @@ def sync_agent():
     更新agent.asset_server_id
     """
 
-    # @deco(RedisLock("sync_agent_server_id_redis_lock_key"))
+    @deco(RedisLock("sync_agent_server_id_redis_lock_key"))
     def index():
         logging.info("开始更新agent！！！")
         unmatched_agent_ids = set()
@@ -1231,36 +1231,40 @@ def sync_agent():
             agents = session.query(AgentModels).all()
             unique_servers = get_unique_servers()
             for agent in agents:
-                matched_server = None
-                # 查找云区域关联的云主机
-                servers = get_servers_by_cloud_region_id(agent.proxy_id)
-                for server in servers:
-                    if (
-                        server.inner_ip == agent.ip
-                        and server.state == "运行中"
-                    ):
-                        matched_server = server
-                        break
-                #  若 servers 没匹配到，则在 unique_servers 里找
-                if not matched_server:
-                    matched_server = unique_servers.get(agent.ip)
+                try:
+                    matched_server = None
+                    # 查找云区域关联的云主机
+                    servers = get_servers_by_cloud_region_id(agent.proxy_id)
+                    for server in servers:
+                        if (
+                            server.inner_ip == agent.ip
+                            and server.state == "运行中"
+                        ):
+                            matched_server = server
+                            break
+                    #  若 servers 没匹配到，则在 unique_servers 里找
+                    if not matched_server:
+                        matched_server = unique_servers.get(agent.ip)
 
-                # 如果仍未找到 server，则记录 unmatched_agent_id
-                if not matched_server:
-                    unmatched_agent_ids.add(
-                        f"【{agent.hostname}:{agent.ip}:{agent.agent_id}】"
-                    )
-                    continue
-                # 更新agent的asset_server_id
-                agent.asset_server_id = matched_server.id
-                # 更新server的agent_id 只更新增量数据, 忽略存量数据
-                if matched_server.agent_id == "0":
-                    server = (
-                        session.query(AssetServerModels)
-                        .filter(AssetServerModels.id == matched_server.id)
-                        .first()
-                    )
-                    server.agent_id = agent.agent_id
+                    # 如果仍未找到 server，则记录 unmatched_agent_id
+                    if not matched_server:
+                        unmatched_agent_ids.add(
+                            f"【{agent.hostname}:{agent.ip}:{agent.agent_id}】"
+                        )
+                        continue
+
+                    # 更新agent的asset_server_id
+                    agent.asset_server_id = matched_server.id
+                    # 更新server的agent_id 只更新增量数据, 忽略存量数据
+                    if matched_server.agent_id == "0":
+                        server = (
+                            session.query(AssetServerModels)
+                            .filter(AssetServerModels.id == matched_server.id)
+                            .first()
+                        )
+                        server.agent_id = agent.agent_id
+                except Exception as err:
+                    logging.error(f"更新agent出错 {str(err)}")
             session.commit()
         if unmatched_agent_ids:
             body = {
@@ -1289,74 +1293,82 @@ def async_agent_server_id():
 
 def check_server():
     """检查server是否绑定服务树"""
-    logging.info("开始检查server是否绑定服务树！！！")
-    with DBContext("w", None, True) as session:
-        # 获取所有绑定服务树的server
-        tree_asset_ids = (
-            session.query(TreeAssetModels.asset_id)
-            .filter(
-                TreeAssetModels.asset_type == "server",
+
+    @deco(RedisLock("sync_check_server_redis_lock_key"))
+    def index():
+        logging.info("开始检查server是否绑定服务树！！！")
+        with DBContext("w", None, True) as session:
+            # 获取所有绑定服务树的server
+            tree_asset_ids = (
+                session.query(TreeAssetModels.asset_id)
+                .filter(
+                    TreeAssetModels.asset_type == "server",
+                )
+                .all()
             )
-            .all()
-        )
-        # 提取出所有的 asset_id 列表
-        tree_asset_ids = [item[0] for item in tree_asset_ids]
-        servers = (
-            session.query(AssetServerModels)
-            .filter(
-                AssetServerModels.state == "运行中",
-                AssetServerModels.is_expired.is_(False),
-                AssetServerModels.id.notin_(tree_asset_ids),
+            # 提取出所有的 asset_id 列表
+            tree_asset_ids = [item[0] for item in tree_asset_ids]
+            servers = (
+                session.query(AssetServerModels)
+                .filter(
+                    AssetServerModels.state == "运行中",
+                    AssetServerModels.is_expired.is_(False),
+                    AssetServerModels.id.notin_(tree_asset_ids),
+                )
+                .all()
             )
-            .all()
-        )
-        # tke-, node-, as-tke- 开头的 server 不发送告警
-        servers = [
-            server
-            for server in servers
-            if not server.name.startswith("tke-")
-            and not server.name.startswith("node-")
-            and not server.name.startswith("as-tke-")
-        ]
-        # 1. 归类（基于前10个字符）
-        from collections import defaultdict, Counter
+            # tke-, node-, as-tke- 开头的 server 不发送告警
+            servers = [
+                server
+                for server in servers
+                if not server.name.startswith("tke-")
+                and not server.name.startswith("node-")
+                and not server.name.startswith("as-tke-")
+            ]
+            # 1. 归类（基于前10个字符）
+            from collections import defaultdict, Counter
 
-        grouped_servers = defaultdict(list)
-        for server in servers:
-            prefix = (
-                server.name[:10] if len(server.name) >= 10 else server.name
-            )  # 截取前10个字符
-            grouped_servers[prefix].append(server)
+            grouped_servers = defaultdict(list)
+            for server in servers:
+                prefix = (
+                    server.name[:10] if len(server.name) >= 10 else server.name
+                )  # 截取前10个字符
+                grouped_servers[prefix].append(server)
 
-        # 2. 统计每个分组的数量
-        group_counts = {k: len(v) for k, v in grouped_servers.items()}
+            # 2. 统计每个分组的数量
+            group_counts = {k: len(v) for k, v in grouped_servers.items()}
 
-        # 3. 取 Top 3 最大分组
-        top_3_groups = Counter(group_counts).most_common(3)
-        ready_to_send_servers = []
-        for prefix, size in top_3_groups:
-            ready_to_send_servers += grouped_servers[prefix]
+            # 3. 取 Top 3 最大分组
+            top_3_groups = Counter(group_counts).most_common(3)
+            ready_to_send_servers = []
+            for prefix, size in top_3_groups:
+                ready_to_send_servers += grouped_servers[prefix]
 
-        # 4. 发送告警
-        if ready_to_send_servers:
-            body = {
-                "alert_time": datetime.datetime.now().strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
-                "servers": "\n".join(
-                    [
-                        f"【{server.name}:{server.inner_ip}】"
-                        for server in ready_to_send_servers
-                    ]
-                ),
-                'title': "【CMDB】主机未绑定服务树",
-            }
-            send_alert_to_noc(
-                url="/api/noc/v1/router-alert?cmdb_server_not_bind_tree=1",
-                body=body,
-            )
+            # 4. 发送告警
+            if ready_to_send_servers:
+                body = {
+                    "alert_time": datetime.datetime.now().strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                    "servers": "\n".join(
+                        [
+                            f"【{server.name}:{server.inner_ip}】"
+                            for server in ready_to_send_servers
+                        ]
+                    ),
+                    'title': "【CMDB】主机未绑定服务树",
+                }
+                send_alert_to_noc(
+                    url="/api/noc/v1/router-alert?cmdb_server_not_bind_tree=1",
+                    body=body,
+                )
 
-    logging.info("检查server是否绑定服务树结束！！！")
+            logging.info("检查server是否绑定服务树结束！！！")
+
+    try:
+        index()
+    except Exception as err:
+        logging.error(f"检查server是否绑定服务树出错 {str(err)}")
 
 
 def async_check_server():
