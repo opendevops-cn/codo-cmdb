@@ -1,12 +1,12 @@
 # 入口
 
-> 通&#x8FC7;**「灵息」全球一站式运维平台的门户导航顶部菜单栏**（[https://codo.123u.com](https://codo.123u.com/cmdb/)）
+> 通&#x8FC7;**「CODO」全球一站式运维平台的门户导航顶部菜单栏**（[https://demo.opendevops.cn](https://demo.opendevops.cn/cmdb/)）
 >
 > 可进入 **配置管理平台【CMDB】**&#x8FDB;行配置管理
 
 ![20250213153615.png](images%2F20250213153615.png)
 
-> 或者直接通过链接即可进入cmdb配置管理：<https://codo.123u.com/cmdb/>
+> 或者直接通过链接即可进入cmdb配置管理：<https://demo.opendevops.cn/cmdb/>
 
 # 高频场景使用说明
 
