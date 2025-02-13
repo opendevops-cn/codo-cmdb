@@ -17,20 +17,15 @@ from domain.handlers import urls as domain_urls
 from libs.sync_utils_set import (
     async_biz_info,
     async_agent,
-    async_service_trees,
-    async_users,
-    async_perm_groups,
     async_vswitch_cloud_region_id,
     async_cmdb_to_jms_with_enterprise,
-    async_server_cloud_region_id,
     async_jms_orgs_to_cmdb,
-    async_agent_server_id,
-    async_check_server,
 )
 from domain.cloud_domain import async_domain_info
 from libs.consul_registry import async_consul_info
 from cmp.tasks import async_order_status
 from libs.asset_change import init_cmdb_change_tasks
+from libs.scheduled_tasks import init_scheduled_tasks
 from cmp.handlers import urls as order_urls
 from cmdb.subscription import RedisSubscriber as SubApp
 
@@ -59,28 +54,6 @@ class Application(myApplication, ABC):
             async_vswitch_cloud_region_id, 360000
         )  # 6分钟
         vswitch_callback.start()
-
-        # 同步agent server_id
-        agent_server_id_callback = PeriodicCallback(
-            async_agent_server_id, 3600000
-        )  # 1小时
-        agent_server_id_callback.start()
-
-        # 检查服务器是否关联服务树
-        check_server_callback = PeriodicCallback(async_check_server, 3600000 * 24) # 24小时
-        check_server_callback.start()
-        # 同步服务器云区域ID
-        # server_callback = PeriodicCallback(async_server_cloud_region_id, 360000) # 6分钟
-        # server_callback.start()
-        # # 同步用户到jms
-        # user_callback = PeriodicCallback(async_users, 3600000)  # 60分钟
-        # user_callback.start()
-        # # 同步服务树
-        # service_tree_callback = PeriodicCallback(async_service_trees, 3600000)  # 60分钟
-        # service_tree_callback.start()
-        # # 同步权限组
-        # perm_group_callback = PeriodicCallback(async_perm_groups, 3600000)  # 60分钟
-        # perm_group_callback.start()
         # # 同步cmdb到jms企业版
         jms_callback = PeriodicCallback(
             async_cmdb_to_jms_with_enterprise, 600000
@@ -106,6 +79,8 @@ class Application(myApplication, ABC):
             init_scheduler()
             # 资产备份同步和变更通知任务
             init_cmdb_change_tasks()
+            # 定时任务
+            init_scheduled_tasks()
             # agent同步暂停使用redis stream
             # self.sub_app.start_server()
             logging.info(
