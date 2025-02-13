@@ -212,5 +212,4 @@ def init_scheduled_tasks():
     初始化定时任务
     """
     scheduler.add_job(agent_binding_tasks, 'cron', minute=0, id='agent_binding_tasks')
-    # scheduler.add_job(server_binding_tasks, 'cron', hour=10, minute=0, id='server_binding_tasks')
-    scheduler.add_job(server_binding_tasks, 'cron', minute=3, id='server_binding_tasks')
+    scheduler.add_job(server_binding_tasks, 'cron', hour=10, minute=0, id='server_binding_tasks')
