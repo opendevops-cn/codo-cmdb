@@ -5,6 +5,7 @@
 
 import logging
 import datetime
+from typing import Dict, Set
 from collections import defaultdict, Counter
 
 from websdk2.client import AcsClient
@@ -38,98 +39,94 @@ def send_router_alert(params: dict, body: dict):
         logging.error(f"发送告警到NOC出错 {err}")
 
 
-def get_unmatched_agents(session):
-    """
-    获取所有未匹配主机的agent
-    :param session: 数据库会话
-    :return: 未匹配主机的agent列表
-    """
-    unmatched_agent_ids = set()
-    agents = session.query(AgentModels).all()
-    unique_servers = get_unique_servers()
-
-    for agent in agents:
-        matched_server = None
-        # 查找云区域关联的云主机
-        servers = get_servers_by_cloud_region_id(agent.proxy_id)
-        for server in servers:
-            if server.inner_ip == agent.ip and server.state == "运行中":
-                matched_server = server
-                break
-        if not matched_server:
-            matched_server = unique_servers.get(agent.ip)
-
-        if not matched_server:
-            unmatched_agent_ids.add(f"【{agent.hostname}|{agent.ip}|{agent.agent_id}】")
-
-    return unmatched_agent_ids
-
-
-def agent_binding_tasks():
+def bind_agent_tasks():
     """
     检查agent是否能绑定主机
-    a.如果能绑定则更新agent的asset_server_id，同时更新server的agent_id
-    b.如果不能绑定则发送告警
+    如果能绑定则更新agent的asset_server_id，同时更新server的agent_id
     """
-
     @deco(RedisLock("agent_binding_tasks_redis_lock_key"))
     def index():
-        logging.info("开始更新agent！！！")
-        unmatched_agent_ids = set()
-        with DBContext("w", None, True) as session:
-            agents = session.query(AgentModels).all()
-            unique_servers = get_unique_servers()
-            for agent in agents:
-                try:
-                    matched_server = None
-                    # 查找云区域关联的云主机
-                    servers = get_servers_by_cloud_region_id(agent.proxy_id)
-                    for server in servers:
-                        if (
-                            server.inner_ip == agent.ip
-                            and server.state == "运行中"
-                        ):
-                            matched_server = server
-                            break
-                    #  若 servers 没匹配到，则在 unique_servers 里找
-                    if not matched_server:
-                        matched_server = unique_servers.get(agent.ip)
-
-                    # 如果仍未找到 server，则记录 unmatched_agent_id
-                    if not matched_server:
-                        unmatched_agent_ids.add(
-                            f"【{agent.hostname}|{agent.ip}|{agent.agent_id}】"
-                        )
-                        continue
-
-                    # 更新agent的asset_server_id
-                    agent.asset_server_id = matched_server.id
-                    # 更新server的agent_id 只更新增量数据, 忽略存量数据
-                    if matched_server.agent_id == "0":
-                        server = (
-                            session.query(AssetServerModels)
-                            .filter(AssetServerModels.id == matched_server.id)
-                            .first()
-                        )
-                        server.agent_id = agent.agent_id
-                except Exception as err:
-                    logging.error(f"更新agent出错 {str(err)}")
-            session.commit()
-        if unmatched_agent_ids:
-            body = {
-                "agent_ids": "\n".join(list(unmatched_agent_ids)),
-                "alert_time": datetime.datetime.now().strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
-                'title': "【CMDB】agent未匹配主机",
-            }
-            send_router_alert(params={"cmdb_agent_not_match": 1}, body=body)
-        logging.info("更新agent结束！！！")
+        logging.info("开始agent绑定主机！！！")
+        bind_agents()
+        logging.info("agent绑定主机结束！！！")
 
     try:
         index()
     except Exception as err:
-        logging.error(f"更新agent出错 {str(err)}")
+        logging.error(f"agent绑定主机出错 {str(err)}")
+
+def bind_agents() -> Set[str]:
+    """
+    绑定agent到服务器
+    :return: 未绑定的agent ID集合
+    """
+    unbound_agents = set()
+    with DBContext("w", None, True) as session:
+        agents = session.query(AgentModels).all()
+        unique_servers = get_unique_servers()
+        for agent in agents:
+            try:
+                matched_server = find_matched_server(agent, unique_servers)
+                if not matched_server:
+                    unbound_agents.add(
+                        f"【{agent.hostname}|{agent.ip}|{agent.agent_id}】"
+                    )
+                    continue
+
+                # 更新agent的asset_server_id
+                agent.asset_server_id = matched_server.id
+                # 更新server的agent_id 只更新增量数据, 忽略存量数据
+                if matched_server.agent_id == "0":
+                    server = (
+                        session.query(AssetServerModels)
+                        .filter(AssetServerModels.id == matched_server.id)
+                        .first()
+                    )
+                    server.agent_id = agent.agent_id
+            except Exception as err:
+                logging.error(f"更新agent出错 {str(err)}")
+        session.commit()
+    return unbound_agents
+
+
+def find_matched_server(agent: AgentModels, unique_servers: Dict[str, AssetServerModels]) -> AssetServerModels:
+    """
+    查找匹配的服务器
+    :param agent: Agent对象
+    :param unique_servers: 唯一服务器字典
+    :return: 匹配的服务器对象或None
+    """
+    # 查找云区域关联的云主机
+    servers = get_servers_by_cloud_region_id(agent.proxy_id)
+    for server in servers:
+        if server.inner_ip == agent.ip and server.state == "运行中":
+            return server
+
+    # 若 servers 没匹配到，则在 unique_servers 里找
+    return unique_servers.get(agent.ip)
+
+def notify_unbound_agents_tasks(unbound_agents: Set[str] = None) -> None:
+    """
+    发送未匹配agent的告警
+    :param unbound_agents: 未匹配的agent ID集合
+    """
+
+    @deco(RedisLock("notify_unbound_agents_tasks_redis_lock_key"))
+    def index():
+        unbound_agents = bind_agents()
+        if unbound_agents:
+            body = {
+                "agent_ids": "\n".join(list(unbound_agents)),
+                "alert_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'title': "【CMDB】agent未匹配主机",
+            }
+            send_router_alert(params={"cmdb_agent_not_match": 1}, body=body)
+
+    try:
+        index()
+    except Exception as err:
+        logging.error(f"发送未匹配agent告警出错 {str(err)}")
+
 
 
 def get_unbound_servers(session):
@@ -153,7 +150,7 @@ def get_unbound_servers(session):
         if not server.name.startswith(("tke-", "node-", "as-tke-"))
     ]
 
-def server_binding_tasks():
+def bind_server_tasks():
     """
     检查server是否绑定服务树, 如果未绑定则发送告警
     :return:
@@ -211,5 +208,6 @@ def init_scheduled_tasks():
     """
     初始化定时任务
     """
-    scheduler.add_job(agent_binding_tasks, 'cron', minute=0, id='agent_binding_tasks')
-    scheduler.add_job(server_binding_tasks, 'cron', hour=10, minute=0, id='server_binding_tasks')
+    scheduler.add_job(notify_unbound_agents_tasks, 'cron', minute=0, id='notify_unbound_agents_tasks')
+    scheduler.add_job(bind_agent_tasks, 'cron', minute='*/3', id='bind_agents_tasks')
+    scheduler.add_job(bind_server_tasks, 'cron', hour=10, minute=0, id='bind_server_tasks')
