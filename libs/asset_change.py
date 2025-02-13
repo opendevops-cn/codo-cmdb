@@ -211,7 +211,7 @@ class AssetChangeNotify:
                             },
                             "type": "primary",
                             "multi_url": {
-                                "url": "http://spug.123u.com/resource/host",
+                                "url": "",
                                 "pc_url": "",
                                 "android_url": "",
                                 "ios_url": ""
