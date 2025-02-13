@@ -67,7 +67,7 @@ class Application(myApplication, ABC):
         agent_server_id_callback.start()
 
         # 检查服务器是否关联服务树
-        check_server_callback = PeriodicCallback(async_check_server, 60000)
+        check_server_callback = PeriodicCallback(async_check_server, 3600000 * 24) # 24小时
         check_server_callback.start()
         # 同步服务器云区域ID
         # server_callback = PeriodicCallback(async_server_cloud_region_id, 360000) # 6分钟
