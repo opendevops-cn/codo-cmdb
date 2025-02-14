@@ -89,6 +89,7 @@ def main(account_id: Optional[str] = None, resources: List[str] = None):
                 executor.map(
                     sync, sync_mapping.values()
                 )
+        index()
 
 if __name__ == '__main__':
     pass

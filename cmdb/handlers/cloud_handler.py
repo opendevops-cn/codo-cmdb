@@ -105,7 +105,8 @@ def add_cloud_jobs():
         if not func_name: continue
         scheduler.add_job(
             func_name, 'interval', minutes=item.get('interval', 30),
-            replace_existing=True, id=item.get('account_id'), name=str(item)
+            replace_existing=True, id=item.get('account_id'), name=str(item),
+            kwargs=dict(account_id=item['account_id'])
         )  # 默认 30m
 
 
