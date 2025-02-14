@@ -3,21 +3,21 @@
 # @Date: 2025/2/13
 # @Description: Description
 
-import logging
 import datetime
+import logging
+from collections import Counter, defaultdict
 from typing import Dict, Set
-from collections import defaultdict, Counter
 
-from websdk2.client import AcsClient
 from websdk2.api_set import api_set
+from websdk2.client import AcsClient
 from websdk2.db_context import DBContext
+from websdk2.tools import RedisLock
 
-from models import TreeAssetModels
-from models.asset import AssetServerModels
-from models.agent import AgentModels
 from libs import deco
 from libs.scheduler import scheduler
-from websdk2.tools import RedisLock
+from models import TreeAssetModels
+from models.agent import AgentModels
+from models.asset import AssetServerModels
 from services.asset_server_service import get_unique_servers
 from services.cloud_region_service import get_servers_by_cloud_region_id
 
@@ -44,6 +44,7 @@ def bind_agent_tasks():
     检查agent是否能绑定主机
     如果能绑定则更新agent的asset_server_id，同时更新server的agent_id
     """
+
     @deco(RedisLock("agent_binding_tasks_redis_lock_key"))
     def index():
         logging.info("开始agent绑定主机！！！")
@@ -54,6 +55,7 @@ def bind_agent_tasks():
         index()
     except Exception as err:
         logging.error(f"agent绑定主机出错 {str(err)}")
+
 
 def bind_agents() -> Set[str]:
     """
@@ -89,7 +91,9 @@ def bind_agents() -> Set[str]:
     return unbound_agents
 
 
-def find_matched_server(agent: AgentModels, unique_servers: Dict[str, AssetServerModels]) -> AssetServerModels:
+def find_matched_server(
+    agent: AgentModels, unique_servers: Dict[str, AssetServerModels]
+) -> AssetServerModels:
     """
     查找匹配的服务器
     :param agent: Agent对象
@@ -105,6 +109,7 @@ def find_matched_server(agent: AgentModels, unique_servers: Dict[str, AssetServe
     # 若 servers 没匹配到，则在 unique_servers 里找
     return unique_servers.get(agent.ip)
 
+
 def notify_unbound_agents_tasks(unbound_agents: Set[str] = None) -> None:
     """
     发送未匹配agent的告警
@@ -117,8 +122,10 @@ def notify_unbound_agents_tasks(unbound_agents: Set[str] = None) -> None:
         if unbound_agents:
             body = {
                 "agent_ids": "\n".join(list(unbound_agents)),
-                "alert_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'title': "【CMDB】agent未匹配主机",
+                "alert_time": datetime.datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+                "title": "【CMDB】agent未匹配主机",
             }
             send_router_alert(params={"cmdb_agent_not_match": 1}, body=body)
 
@@ -128,27 +135,36 @@ def notify_unbound_agents_tasks(unbound_agents: Set[str] = None) -> None:
         logging.error(f"发送未匹配agent告警出错 {str(err)}")
 
 
-
 def get_unbound_servers(session):
     """
     获取未绑定服务树的服务器
     :param session: 数据库会话
     :return: 未绑定服务树的服务器列表
     """
-    tree_asset_ids = session.query(TreeAssetModels.asset_id).filter(TreeAssetModels.asset_type == "server").all()
+    tree_asset_ids = (
+        session.query(TreeAssetModels.asset_id)
+        .filter(TreeAssetModels.asset_type == "server")
+        .all()
+    )
     tree_asset_ids = [item[0] for item in tree_asset_ids]
 
-    servers = session.query(AssetServerModels).filter(
-        AssetServerModels.state == "运行中",
-        AssetServerModels.is_expired.is_(False),
-        AssetServerModels.id.notin_(tree_asset_ids)
-    ).all()
+    servers = (
+        session.query(AssetServerModels)
+        .filter(
+            AssetServerModels.state == "运行中",
+            AssetServerModels.is_expired.is_(False),
+            AssetServerModels.id.notin_(tree_asset_ids),
+        )
+        .all()
+    )
 
     # 排除不需要发送告警的服务器
     return [
-        server for server in servers
+        server
+        for server in servers
         if not server.name.startswith(("tke-", "node-", "as-tke-"))
     ]
+
 
 def bind_server_tasks():
     """
@@ -167,7 +183,9 @@ def bind_server_tasks():
                 grouped_servers = defaultdict(list)
                 for server in servers:
                     prefix = (
-                        server.name[:10] if len(server.name) >= 10 else server.name
+                        server.name[:10]
+                        if len(server.name) >= 10
+                        else server.name
                     )  # 截取前10个字符
                     grouped_servers[prefix].append(server)
 
@@ -192,9 +210,11 @@ def bind_server_tasks():
                                 for server in ready_to_send_servers
                             ]
                         ),
-                        'title': "【CMDB】主机未绑定服务树",
+                        "title": "【CMDB】主机未绑定服务树",
                     }
-                    send_router_alert(params={"cmdb_server_not_bind_tree": 1}, body=body)
+                    send_router_alert(
+                        params={"cmdb_server_not_bind_tree": 1}, body=body
+                    )
 
             logging.info("检查server是否绑定服务树结束！！！")
 
@@ -208,6 +228,16 @@ def init_scheduled_tasks():
     """
     初始化定时任务
     """
-    scheduler.add_job(notify_unbound_agents_tasks, 'cron', minute=0, id='notify_unbound_agents_tasks')
-    scheduler.add_job(bind_agent_tasks, 'cron', minute='*/3', id='bind_agents_tasks')
-    scheduler.add_job(bind_server_tasks, 'cron', hour=10, minute=0, id='bind_server_tasks')
+    scheduler.add_job(
+        notify_unbound_agents_tasks,
+        "cron",
+        hour="9-23",
+        minute=0,
+        id="notify_unbound_agents_tasks",
+    )
+    scheduler.add_job(
+        bind_agent_tasks, "cron", minute="*/3", id="bind_agents_tasks"
+    )
+    scheduler.add_job(
+        bind_server_tasks, "cron", hour=10, minute=0, id="bind_server_tasks"
+    )
