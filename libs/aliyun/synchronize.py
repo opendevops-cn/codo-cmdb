@@ -72,19 +72,19 @@ def main(account_id: Optional[str] = None, resources: List[str] = None):
         for _, v in sync_mapping.items():
             v['account_id'] = account_id
 
-            # 如果用户给了资源列表，就只要用户的
-            @deco(RedisLock(f"async_aliyun_to_cmdb_{account_id}_redis_lock_key"))
-            def index():
-                if resources:
-                    pop_list = list(set(sync_mapping.keys()).difference(set(resources)))
-                    for i in pop_list:
-                        sync_mapping.pop(i)
-                # 同步
-                with concurrent.futures.ThreadPoolExecutor(max_workers=len(sync_mapping.keys())) as executor:
-                    executor.map(
-                        sync, sync_mapping.values()
-                )
-            index()
+        # 如果用户给了资源列表，就只要用户的
+        @deco(RedisLock(f"async_aliyun_to_cmdb_{account_id}_redis_lock_key"))
+        def index():
+            if resources:
+                pop_list = list(set(sync_mapping.keys()).difference(set(resources)))
+                for i in pop_list:
+                    sync_mapping.pop(i)
+            # 同步
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(sync_mapping.keys())) as executor:
+                executor.map(
+                    sync, sync_mapping.values()
+            )
+        index()
 
 
 if __name__ == '__main__':
