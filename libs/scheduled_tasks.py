@@ -67,6 +67,9 @@ def bind_agents() -> Set[str]:
         agents = session.query(AgentModels).all()
         unique_servers = get_unique_servers()
         for agent in agents:
+            # 若agent已绑定，则跳过
+            if agent.asset_server_id:
+                continue
             try:
                 matched_server = find_matched_server(agent, unique_servers)
                 if not matched_server:
