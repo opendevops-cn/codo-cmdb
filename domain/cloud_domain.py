@@ -79,8 +79,13 @@ def all_domain_sync_index():
 
 def domain_main(cloud_name):
     with DBContext('r') as session:
-        config_info = session.query(CloudSettingModels).filter(CloudSettingModels.cloud_name == cloud_name).all()
+        config_info = session.query(CloudSettingModels).filter(CloudSettingModels.cloud_name == cloud_name,
+                                                               CloudSettingModels.is_enable == True).all()
         the_configs = queryset_to_list(config_info)
+
+    if not the_configs:
+        logging.warning(f'{cloud_name} 云配置未开启')
+        return
 
     for config in the_configs:
         name, account_id = config.get('name'), config.get('account_id')
@@ -356,3 +361,7 @@ def after_opt_log_insert(mapper, connection, target):
         logging.info(f"发送操作日志到Kafka成功: {message}")
     except Exception as e:
         logging.error(f"发送操作日志到Kafka失败: {e}")
+
+
+if __name__ == '__main__':
+    pass

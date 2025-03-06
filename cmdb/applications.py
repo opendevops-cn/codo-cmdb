@@ -23,7 +23,6 @@ from libs.sync_utils_set import (
 )
 from domain.cloud_domain import async_domain_info
 from libs.consul_registry import async_consul_info
-from cmp.tasks import async_order_status
 from libs.asset_change import init_cmdb_change_tasks
 from libs.scheduled_tasks import init_scheduled_tasks
 from cmp.handlers import urls as order_urls
@@ -47,8 +46,8 @@ class Application(myApplication, ABC):
         program_callback = PeriodicCallback(async_domain_info, 300000)  # 5分钟
         program_callback.start()
         # 资源订单状态
-        biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒
-        biz_callback.start()
+        # biz_callback = PeriodicCallback(async_order_status, 20000)  # 20秒
+        # biz_callback.start()
         # 同步虚拟子网云区域ID
         vswitch_callback = PeriodicCallback(
             async_vswitch_cloud_region_id, 360000
