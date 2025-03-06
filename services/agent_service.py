@@ -4,24 +4,24 @@
 # @Description: Description
 import ipaddress
 import json
-from enum import unique
 from typing import List, Dict, Union
 import logging
+from shortuuid import uuid
 
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
 from sqlalchemy import or_, event, and_
 from sqlalchemy.sql.elements import BooleanClauseList
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.sqlalchemy_pagination import paginate
-from websdk2.model_utils import CommonOptView
+from websdk2.model_utils import CommonOptView, insert_or_update
 from websdk2.client import AcsClient
 from websdk2.configs import configs
 
 from models import AssetServerModels
+from models.asset import AgentBindStatus
 from services.tree_asset_service import get_biz_ids_by_server_ip
-from services.cloud_region_service import get_servers_by_cloud_region_id
-from services.asset_server_service import get_unique_servers
 from services import CommonResponse
+
 from models.agent import AgentModels
 from settings import settings
 
@@ -38,7 +38,8 @@ class Agent(BaseModel):
     workspace: str
     biz_ids: List[str] = []
     asset_server_id: int = None
-    agent_type: str 
+    agent_type: str
+    status: int = 0
 
     @model_validator(mode="before")
     def val_must_not_null(cls, values):
@@ -211,13 +212,15 @@ def _get_agent_by_filter(search_filter: str = None) -> List[Union[bool, BooleanC
         "yes": [
             and_(
                 AgentModels.asset_server_id.isnot(None),
-                AgentModels.asset_server_id != ""
+                AgentModels.asset_server_id != "",
+                AgentModels.agent_bind_status.in_([AgentBindStatus.AUTO_BIND, AgentBindStatus.MANUAL_BIND])
             )
         ],
         "no": [
             or_(
                 AgentModels.asset_server_id.is_(None),
-                AgentModels.asset_server_id == ""
+                AgentModels.asset_server_id == "",
+                AgentModels.agent_bind_status == AgentBindStatus.NOT_BIND
             )
         ]
     }
@@ -270,8 +273,8 @@ def update_agent_for_api(data: dict) -> CommonResponse:
     return CommonResponse(code=0, msg="更新成功")
 
 
-def set_asset_server_id_for_api(data: dict) -> CommonResponse:
-    """设置agent关联的服务器
+def bind_server_for_api(data: dict) -> CommonResponse:
+    """agent 绑定主机
     Args:
         data (dict): agent信息
     Returns:
@@ -290,11 +293,50 @@ def set_asset_server_id_for_api(data: dict) -> CommonResponse:
             if not server:
                 return CommonResponse(code=-1, msg=f"服务器不存在：{model.asset_server_id}")
             agent_obj.asset_server_id = model.asset_server_id
+            agent_obj.agent_bind_status = AgentBindStatus.MANUAL_BIND
             server.agent_id = agent_obj.agent_id
+            server.agent_bind_status = AgentBindStatus.MANUAL_BIND
             session.commit()
     except Exception as e:
         return CommonResponse(code=-1, msg=f"设置agent关联的服务器失败：{str(e)}")
     return CommonResponse(code=0, msg="设置成功")
+
+
+def batch_add_server_by_agent_for_api(data: dict) -> CommonResponse:
+    """根据agent信息创建服务器
+    Args:
+        data: dict agent信息
+    Returns:
+        dict: 创建结果
+    """
+    id_list : List[int] = data.get('id_list')
+    if not id_list:
+        return CommonResponse(code=-1, msg="参数错误: id_list不能为空")
+    try:
+        with DBContext('w', None, True) as session:
+            agents = session.query(AgentModels).filter(AgentModels.id.in_(id_list))
+            if not agents:
+                return CommonResponse(code=-1, msg="agent不存在")
+            for agent_obj in agents:
+                instance_id = uuid(f"{agent_obj.ip}{agent_obj.hostname}")
+                server_obj = insert_or_update(AssetServerModels, f"instance_id='{instance_id}'",
+                                             instance_id=instance_id, cloud_name="register",
+                                             account_id='3bba81a',  # 随机uuid标记post写入
+                                             agent_id=agent_obj.agent_id.strip(),
+                                             inner_ip=agent_obj.ip,
+                                             name=agent_obj.hostname,
+                                             agent_bind_status=AgentBindStatus.MANUAL_BIND,
+                                             state="运行中",
+                                             ext_info={},
+                                             is_expired=False)
+                session.add(server_obj)
+                session.flush()
+                agent_obj.asset_server_id = server_obj.id
+                agent_obj.agent_bind_status = AgentBindStatus.MANUAL_BIND
+            session.commit()
+    except Exception as e:
+        return CommonResponse(code=-1, msg=f"创建主机失败：{str(e)}")
+    return CommonResponse(code=0, msg="创建主机成功")
 
 
 def delete_agent_for_api(data: dict) -> CommonResponse:

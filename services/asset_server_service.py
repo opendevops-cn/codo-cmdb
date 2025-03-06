@@ -6,16 +6,19 @@ Author  : shenshuo
 Date    : 2021/1/27 11:02
 Desc    : 解释一下吧
 """
-
+import json
 import logging
 from shortuuid import uuid
 from sqlalchemy import or_, func
 from typing import *
 from websdk2.db_context import DBContextV2 as DBContext
-from models.asset import AssetServerModels
+from models.asset import AssetServerModels, AgentBindStatus
 from models.tree import TreeAssetModels
+from models.agent import AgentModels
 from websdk2.sqlalchemy_pagination import paginate
 from websdk2.model_utils import CommonOptView, insert_or_update, queryset_to_list
+
+from services import CommonResponse
 
 # from websdk2.model_utils import insert_or_update
 
@@ -197,7 +200,6 @@ def add_server_batch(data: dict):
             return {"code": 1, "msg": "ext_info必须是json"}
 
         instance_id = server.get('instance_id')
-
         try:
             with DBContext('w', None, True) as session:
                 try:
@@ -209,6 +211,7 @@ def add_server_batch(data: dict):
                                                  region=server.get('region'), zone=server.get('zone'),
                                                  inner_ip=server.get('inner_ip'),
                                                  outer_ip=server.get('outer_ip'),
+                                                 agent_bind_status=server.get('agent_bind_status', 0),
                                                  ext_info=ext_info, is_expired=False  # 新机器标记正常))
                                                  ))
                 except Exception as err:
@@ -317,3 +320,29 @@ def get_unique_servers():
             .all()
         )
         return {server.inner_ip: server for server in servers}
+
+
+def bind_main_agent(data: dict) -> dict:
+    """
+    绑定主agent
+    : param data: {"agent_instance_id": "xxx", "server_id": "xxx"}
+    """
+    agent_instance_id = data.get("agent_instance_id", None)
+    server_id = data.get("server_id", None)
+
+    if not agent_instance_id or not server_id:
+        return {"code": 1, "msg": "agent_instance_id/server_id不能为空"}
+
+    with DBContext("w", None, True) as session:
+        agent_obj = session.query(AgentModels).filter(AgentModels.id == agent_instance_id).first()
+        if not agent_obj:
+            return {"code": 1, "msg": "agent不存在"}
+        session.query(AssetServerModels).filter(AssetServerModels.id == server_id).update(
+            {AssetServerModels.has_main_agent: True,
+             AssetServerModels.agent_id: agent_obj.agent_id,
+             AssetServerModels.agent_bind_status: AgentBindStatus.MANUAL_BIND}
+        )
+        session.query(AgentModels).filter(AgentModels.id == agent_instance_id).update(
+            {AgentModels.asset_server_id: server_id, AgentModels.agent_bind_status: AgentBindStatus.MANUAL_BIND}
+        )
+    return dict(code=0, msg='绑定成功')

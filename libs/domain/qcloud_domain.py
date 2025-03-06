@@ -60,7 +60,8 @@ class QCloud:
             "Value": kwargs.get('domain_value'),
             "Weight": kwargs.get('weight'),
             "TTL": int(kwargs.get('domain_ttl', 600)),
-            "MX": int(kwargs.get('domain_mx', 0))
+            "MX": int(kwargs.get('domain_mx', 0)),
+            "Remark": kwargs.get('remark')
         }
         req.from_json_string(json.dumps(params))
 
@@ -88,7 +89,8 @@ class QCloud:
             "Weight": kwargs.get('weight'),
             "TTL": int(kwargs.get('domain_ttl', 600)),
             "MX": int(kwargs.get('domain_mx', 0)),
-            "RecordId": int(kwargs.get('record_id'))
+            "RecordId": int(kwargs.get('record_id')),
+            "Remark": kwargs.get('remark')
         }
         # print(params)
         req = models.ModifyRecordRequest()

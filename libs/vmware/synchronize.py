@@ -70,30 +70,32 @@ def sync(data: Dict[str, Any]):
         continue
 
 
-# @deco(RedisLock("async_vmware_to_cmdb_redis_lock_key"))
 def main(account_id: Optional[str] = None, resources: List[str] = None):
     """
-    这些类型都是为了前端点击的，定时都是自动同步全账号，全类型
-    account_id：账号ID，CMDB自己的ID
-    resources: ['ecs','rds','...']
+    账户级别的任务锁，确保每个 account_id 只能有一个同步任务运行。
+    资产手动触发同步入口。
+    定时任务默认同步所有账号和所有资源类型。
+    :param account_id:  账号ID，对应 CMDB 的唯一标识
+    :param resources: 需要同步的资源类型，例如 ['ecs', 'rds', '...']
+    :return:
     """
-    # copy 后处理，不然会造成原本地址里面用的数据被删le
     sync_mapping = mapping.copy()
-    # 如果用户给了accountID，加入account_id ,感觉做法有点小蠢，不想给map传2个参数了 -。-
     if account_id is not None:
-        for _, v in sync_mapping.items():  v['account_id'] = account_id
+        for _, v in sync_mapping.items():
+            v['account_id'] = account_id
 
-        @deco(RedisLock(f"async_vmware_to_cmdb_{account_id}_redis_lock_key"))
-        def index():
-            # 如果用户给了资源列表，就只要用户的
-            if resources:
-                pop_list = list(set(sync_mapping.keys()).difference(set(resources)))
-                for i in pop_list:   sync_mapping.pop(i)
-            # 同步
-            with concurrent.futures.ThreadPoolExecutor(max_workers=len(sync_mapping.keys())) as executor:
-                executor.map(sync, sync_mapping.values())
+    # 定义账户级别的任务锁，确保同一账户的任务不会并发执行且支持多账户执行
+    @deco(RedisLock(f"async_vmvare_to_cmdb_{account_id}_redis_lock_key"
+                    if account_id else "async_vmvare_to_cmdb_redis_lock_key"), release=True)
+    def index():
+        filtered_sync_mapping = {k: v for k, v in sync_mapping.items() if k in resources} if resources else sync_mapping
+        if not filtered_sync_mapping:
+            logging.warning('未找到需要同步的资源类型')
+            return
+        with ThreadPoolExecutor(max_workers=len(filtered_sync_mapping)) as executor:
+            executor.map(sync, filtered_sync_mapping.values())
 
-        index()
+    index()
 
 
 if __name__ == '__main__':

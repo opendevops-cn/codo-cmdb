@@ -17,7 +17,7 @@ from libs import deco
 from libs.scheduler import scheduler
 from models import TreeAssetModels
 from models.agent import AgentModels
-from models.asset import AssetServerModels
+from models.asset import AssetServerModels, AgentBindStatus
 from services.asset_server_service import get_unique_servers
 from services.cloud_region_service import get_servers_by_cloud_region_id
 
@@ -80,6 +80,7 @@ def bind_agents() -> Set[str]:
 
                 # 更新agent的asset_server_id
                 agent.asset_server_id = matched_server.id
+                agent.agent_bind_status = AgentBindStatus.AUTO_BIND
                 # 更新server的agent_id 只更新增量数据, 忽略存量数据
                 if matched_server.agent_id == "0":
                     server = (
@@ -88,6 +89,7 @@ def bind_agents() -> Set[str]:
                         .first()
                     )
                     server.agent_id = agent.agent_id
+                    server.agent_bind_status = AgentBindStatus.AUTO_BIND
             except Exception as err:
                 logging.error(f"更新agent出错 {str(err)}")
         session.commit()
@@ -103,10 +105,10 @@ def find_matched_server(
     :param unique_servers: 唯一服务器字典
     :return: 匹配的服务器对象或None
     """
-    # 查找云区域关联的云主机
+    # 查找云区域关联的云主机, 且云主机没有设置主agent，已绑定主agent的云主机不再绑定
     servers = get_servers_by_cloud_region_id(agent.proxy_id)
     for server in servers:
-        if server.inner_ip == agent.ip and server.state == "运行中":
+        if server.inner_ip == agent.ip and server.state == "运行中" and not server.has_main_agent:
             return server
 
     # 若 servers 没匹配到，则在 unique_servers 里找

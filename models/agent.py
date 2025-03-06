@@ -9,6 +9,7 @@ from sqlalchemy import Column,String,Integer,JSON
 from sqlalchemy.ext.declarative import declarative_base
 
 from models.base import TimeBaseModel
+from models.asset import AgentBindStatus
 
 Base = declarative_base()
 
@@ -25,4 +26,4 @@ class AgentModels(TimeBaseModel):
     ext_info = Column("ext_info", JSON(), comment="扩展字段存JSON")
     asset_server_id = Column(Integer, comment='主机资产ID', index=True, default=0)
     biz_ids = Column('biz_ids', JSON(), comment='业务ID列表', default=[])
-    
+    agent_bind_status = Column('agent_bind_status', Integer, default=AgentBindStatus.NOT_BIND, comment='绑定状态')

@@ -13,6 +13,7 @@ from typing import *
 from shortuuid import uuid
 from enum import Enum
 
+from tornado.ioloop import IOLoop
 from concurrent.futures import ThreadPoolExecutor
 from tornado.concurrent import run_on_executor
 from apscheduler.schedulers.tornado import TornadoScheduler
@@ -177,6 +178,10 @@ class SyncLogHandler(BaseHandler, ABC):
 class CloudSyncHandler(BaseHandler, ABC):
     _thread_pool = ThreadPoolExecutor(3)
 
+    def __init__(self, *args, **kwargs):
+        super(CloudSyncHandler, self).__init__(*args, **kwargs)
+        self.cloud_service = CloudService()
+
     # 前端手动触发
     @run_on_executor(executor='_thread_pool')
     def asset_sync_main(self, cloud_name: Optional[str], account_id: Optional[str], resources: List[str]):
@@ -191,19 +196,7 @@ class CloudSyncHandler(BaseHandler, ABC):
         if not cloud_name:
             return self.write({'code': 1, 'msg': 'missing 1 required positional argument: cloud_name'})
 
-        mappings = {
-            "aws": aws_mapping,
-            "qcloud": qcloud_mapping,
-            "aliyun": aliyun_mapping,
-            "cds": cbs_mapping,
-            "vmware": vm_mapping,
-            "volc": vol_mapping,
-            "gcp": gcp_mapping,
-            "pve": pve_mapping
-        }
-        # 不同产品支持的类型
-        resources = mappings.get(cloud_name).keys()  # type dict_keys
-        resources = [i for i in resources]  # type list[str]
+        resources = self.cloud_service.get_resource_types(cloud_name)
         return self.write({"code": 0, "msg": "获取成功", "data": resources})
 
     async def post(self):
@@ -214,10 +207,12 @@ class CloudSyncHandler(BaseHandler, ABC):
         if not cloud_name or not resources:
             return self.write({"code": 1, "msg": "缺少账号/资源类型信息"})
 
-        if cloud_name not in ['aliyun', 'aws', 'qcloud', 'cds', 'vmware', 'volc', 'gcp', 'pve']:
+        if not self.cloud_service.get_sync_function(cloud_name):
             return self.write({"code": 1, "msg": "不支持的云厂商"})
 
-        await self.asset_sync_main(cloud_name, account_id, resources)
+        IOLoop.current().add_callback(self.asset_sync_main, cloud_name, account_id, resources)
+
+        # await self.asset_sync_main(cloud_name, account_id, resources)
 
         return self.write({"code": 0, "msg": "导入完成"})
 
