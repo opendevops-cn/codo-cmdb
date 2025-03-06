@@ -1171,10 +1171,11 @@ def sync_jms_orgs():
         logging.info("开始从堡垒机同步组织信息到配置平台")
         try:
             orgs = jms_org_api.get()
-            if orgs is None:
-                logging.error("从堡垒机同步组织信息到配置平台失败, 接口返回空")
+            if not orgs:
+                logging.warning("从堡垒机同步组织信息到配置平台失败, 接口返回空")
+                return
             redis_conn = cache_conn()
-            redis_conn.set("JMS_ORG_ITEMS", json.dumps(orgs), ex=3600)
+            redis_conn.set("JMS_ORG_ITEMS", json.dumps(orgs), ex=3600 * 24)
 
         except Exception as err:
             logging.error(f"从堡垒机同步组织信息到配置平台 {err}")

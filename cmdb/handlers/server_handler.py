@@ -14,7 +14,7 @@ from libs.base_handler import BaseHandler
 from websdk2.db_context import DBContext
 from models.asset import AssetUserFieldModels
 from services.asset_server_service import add_server_batch, patch_server_batch, add_server, delete_server, mark_server, \
-    get_server_list
+    get_server_list, bind_main_agent
 
 
 class AssetServerHandler(BaseHandler, ABC):
@@ -113,10 +113,19 @@ class AssetUserFieldHandler(BaseHandler, ABC):
         return self.write({"code": 0, "msg": "字段设置成功"})
 
 
+class ServerBindMainAgentHandler(BaseHandler, ABC):
+
+    def post(self):
+        data = json.loads(self.request.body.decode("utf-8"))
+        res = bind_main_agent(data)
+        return self.write(res)
+
 server_urls = [
     (r"/api/v2/cmdb/server/", AssetServerHandler, {"handle_name": "配置平台-云商-主机管理", "method": ["ALL"]}),
     (r"/api/v2/cmdb/server/batch/", AssetServerBatchHandler,
      {"handle_name": "配置平台-云商-主机批量管理", "method": ["ALL"]}),
     (r"/api/v2/cmdb/user_field/", AssetUserFieldHandler,
      {"handle_name": "配置平台-基础功能-用户字段配置", "method": ["ALL"]}),
+    (r"/api/v2/cmdb/server/main_agent/", ServerBindMainAgentHandler,
+     {"handle_name": "配置平台-云商-主机绑定主Agent", "method": ["POST"]}),
 ]

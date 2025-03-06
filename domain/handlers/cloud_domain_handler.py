@@ -93,6 +93,7 @@ class CloudRecordHandler(BaseHandler, ABC):
                              domain_mx=int(data.get('domain_mx', 0)),
                              weight=int(data.get('weight', 10)),
                              line=data.get('line'),
+                             remark=data.get('remark')
                              )
         try:
             domain = domain_factory(account_obj.cloud_name, domain_name=domain_name, domain_id=domain_obj.domain_id,
@@ -154,7 +155,8 @@ class CloudRecordHandler(BaseHandler, ABC):
                              domain_ttl=int(data.get('domain_ttl')),
                              domain_mx=int(data.get('domain_mx', 0) or 0),
                              weight=int(data.get('weight', 10) or 10),
-                             line=data.get('line'))
+                             line=data.get('line'),
+                             remark=data.get('remark'))
         log_data = dict(
             domain_name=domain_name,
             username=self.request_nickname,

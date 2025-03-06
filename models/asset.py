@@ -31,6 +31,12 @@ class SwitchStatus(Enum):
     REPAIRING = 3  # 维修中
     RETIRED = 4  # 下架
 
+class AgentBindStatus:
+    """Agent绑定状态"""
+    NOT_BIND = 0 # 未绑定
+    AUTO_BIND = 1 # 自动绑定
+    MANUAL_BIND = 2 # 手动绑定
+
 
 class AssetBaseModel(TimeBaseModel, Base):
     """资产模型基类"""
@@ -61,6 +67,8 @@ class AssetServerModels(AssetBaseModel):
     ownership = Column('ownership', String(120), default="内部", nullable=False, comment='归属')
     vpc_id = Column('vpc_id', String(120), comment='VPC ID')
     tags = Column('tags', JSON(), comment='标签')
+    agent_bind_status = Column('agent_bind_status', Integer, default=AgentBindStatus.NOT_BIND, comment='绑定状态')
+    has_main_agent = Column('has_main_agent', Boolean(), default=False, comment="是否有主Agent")
     # 联合键约束 2023年5月23日 添加关机支持
     # __table_args__ = (
     #     UniqueConstraint('region', 'inner_ip', 'state', 'is_expired', name='host_key'),

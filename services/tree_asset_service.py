@@ -9,8 +9,10 @@ import json
 import logging
 from typing import *
 from collections import namedtuple
+from functools import lru_cache
 
-from sqlalchemy import func, or_, event
+from sqlalchemy import func, or_, event, and_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from websdk2.model_utils import model_to_dict, queryset_to_list
 from websdk2.db_context import DBContextV2 as DBContext
@@ -103,7 +105,7 @@ def update_tree_asset_by_api(data: dict) -> dict:
         asset_names = get_asset_name_by_tree_asset_id(session, asset_type, select_ids)
     return {"code": 0, "msg": "修改成功", "audit_log_message": f"用户{modify_user}操作服务树{asset_type}资源{_action}, "
                                                                f"资源名称：{asset_names}"}
-    
+
 
 def get_tree_server_assets_by_api(**params) -> dict:
     if "biz_id" not in params and 'biz_cn' in params:
@@ -127,8 +129,8 @@ def get_tree_asset_by_api(**params) -> dict:
             params['biz_id'] = __biz_info[0]
 
     # if "biz_id" not in params:  return self.write({"code": -1, "msg": "请选择业务"})
-    filter_map = params.pop('filter_map') if "filter_map" in params else {}
-    results, count = get_tree_assets(params)
+    _ = params.pop('filter_map') if "filter_map" in params else {}
+    results, count = get_tree_assets_v2(params)
     return {"code": 0, "msg": "获取成功", "data": results, "count": count}
 
 
@@ -198,12 +200,12 @@ def del_tree_asset(data: dict) -> dict:
         _ids = get_asset_id_by_name(session, asset_type, names)
         # print(host_ids)
         assets = session.query(TreeAssetModels).filter(TreeAssetModels.biz_id == biz_id,
-                                                 TreeAssetModels.asset_type == asset_type,
-                                                 TreeAssetModels.env_name == env_name,
-                                                 TreeAssetModels.region_name == region_name,
-                                                 TreeAssetModels.module_name == module_name,
-                                                 TreeAssetModels.asset_id.in_(_ids)
-                                                 )
+                                                       TreeAssetModels.asset_type == asset_type,
+                                                       TreeAssetModels.env_name == env_name,
+                                                       TreeAssetModels.region_name == region_name,
+                                                       TreeAssetModels.module_name == module_name,
+                                                       TreeAssetModels.asset_id.in_(_ids)
+                                                       )
         for asset in assets:
             session.delete(asset)
         biz_obj = session.query(BizModels).filter(BizModels.biz_id == biz_id).first()
@@ -247,7 +249,8 @@ def delete_jms_asset(data: dict):
             return
 
         # 获取主机信息
-        servers = session.query(AssetServerModels.name, AssetServerModels.inner_ip).filter(AssetServerModels.name.in_(names))
+        servers = session.query(AssetServerModels.name, AssetServerModels.inner_ip).filter(
+            AssetServerModels.name.in_(names))
 
         for server in servers:
             # 构建资产名称
@@ -564,7 +567,7 @@ def get_tree_server_assets(params: Dict[str, Any]) -> Tuple[Union[list, dict], i
     page_size = int(params.pop('page_size', 10))
     page_number = int(params.pop('page_number', 1)) or 1
     search_val = params.pop('searchVal', '')
-    is_fuzzy = params.pop('is_fuzzy', False) # 标识是否模糊查询, 默认为False
+    is_fuzzy = params.pop('is_fuzzy', False)  # 标识是否模糊查询, 默认为False
     asset_type = params.get('asset_type', 'server')
     # 删除不必要的参数
     pop_list = ['nodeKey', 'selected', '__ob__', 'length']
@@ -574,115 +577,207 @@ def get_tree_server_assets(params: Dict[str, Any]) -> Tuple[Union[list, dict], i
     # 查询server表--根据资产ID查询资产信息
     data, count = [], 0
     with DBContext('r', None, None) as session:
-        tree_asset_ids = session.query(TreeAssetModels.asset_id).distinct(TreeAssetModels.asset_id).filter_by(**params).filter(TreeAssetModels.asset_type == asset_type)
+        tree_asset_ids = session.query(TreeAssetModels.asset_id).distinct(TreeAssetModels.asset_id).filter_by(
+            **params).filter(TreeAssetModels.asset_type == asset_type)
         tree_asset_ids = [tree_asset_id[0] for tree_asset_id in tree_asset_ids.all()]
         if is_fuzzy:
-            page = paginate(session.query(AssetServerModels).filter(AssetServerModels.id.in_(tree_asset_ids)).filter(AssetServerModels.inner_ip.like(f"%{search_val}%")),
+            page = paginate(session.query(AssetServerModels).filter(AssetServerModels.id.in_(tree_asset_ids)).filter(
+                AssetServerModels.inner_ip.like(f"%{search_val}%")),
                             **{'page_size': page_size, 'page_number': page_number})
         else:
-            page = paginate(session.query(AssetServerModels).filter(AssetServerModels.id.in_(tree_asset_ids)).filter(AssetServerModels.inner_ip == search_val),
-                           **{'page_size': page_size, 'page_number': page_number})
+            page = paginate(session.query(AssetServerModels).filter(AssetServerModels.id.in_(tree_asset_ids)).filter(
+                AssetServerModels.inner_ip == search_val),
+                            **{'page_size': page_size, 'page_number': page_number})
         count = page.total
         data = _models_to_list(page.items)
-    
+
     return data, count
 
 
-def get_specific_tree_asset_info(asset: Any, asset_type: str) -> dict:
-    """
-    获取特定的树节点下的资产信息
-    : param asset: 资产对象
-    : param asset_type: 资产类型
-    """
-    if asset_type.lower() == 'server':
-         return {
-            'inner_ip': asset.inner_ip, 'outer_ip': asset.outer_ip, 'state': asset.state,
-            'agent_status': asset.agent_status, 'agent_id': asset.agent_id,
-            'outer_biz_addr': asset.outer_biz_addr, 'is_product': asset.is_product,
+class TreeAssetService:
+    def __init__(self, session: Session):
+        self.session = session
+
+    @lru_cache(maxsize=128)
+    def get_asset_id_by_keyword(self, model: Any, search_val: str) -> List[int]:
+        """通过名称或IP搜索资产IDs
+
+        Args:
+            model: 资产模型类
+            search_val: 搜索关键字
+
+        Returns:
+            List[int]: 资产ID列表
+        """
+        try:
+            # 构建查询条件
+            query_conditions = [model.name.like(f"%{search_val}%")]
+
+            # 主机资产可以通过IP搜索
+
+            if model.__name__ == "AssetServerModels":
+                query_conditions.append(model.inner_ip.like(f"%{search_val}%"))
+
+            # 查询资产ID
+            asset_ids = (
+                self.session.query(model.id)
+                .filter(or_(*query_conditions))
+                .all()
+            )
+            return [asset_id[0] for asset_id in asset_ids]
+        except SQLAlchemyError as e:
+            logging.error(f"查询资产ID失败: {e}")
+            return []
+
+    def get_asset_details(self, model: Any, asset_ids: List[int]) -> Dict[int, Any]:
+        """获取资产详情"""
+        try:
+            if not asset_ids:
+                return {}
+
+            assets = (
+                self.session.query(model).filter(model.id.in_(asset_ids)).all()
+            )
+            return {i.id: i for i in assets}
+
+        except SQLAlchemyError as e:
+            logging.error(f"获取资产详情失败: {str(e)}")
+            return {}
+
+    @staticmethod
+    def build_asset_response(tree: TreeAssetModels, asset: Any, asset_type: str) -> Dict[str, Any]:
+        """构建资产响应
+
+        Args:
+            tree: 树形资产模型实例
+            asset: 资产实例
+            asset_type: 资产类型
+
+        Returns:
+            Dict[str, Any]: 资产信息字典
+        """
+        # 基础信息
+        base_info = {
+            "id": tree.id,
+            "biz_id": tree.biz_id,
+            "is_enable": tree.is_enable,
+            "env_name": tree.env_name,
+            "region_name": tree.region_name,
+            "module_name": tree.module_name,
+            "asset_type": tree.asset_type,
+            "asset_id": tree.asset_id,
+            "ext_info": tree.ext_info,
         }
-    elif asset_type.lower() == 'mysql':
-        return {
-            'state': asset.state, 'db_class': asset.db_class, 'db_engine': asset.db_engine,
-            'db_version': asset.db_version, 'db_address': asset.db_address,
-        }
-    elif asset_type.lower() == 'redis':
-        return {
-            'state': asset.state, 'instance_class': asset.instance_class,
-            'instance_arch': asset.instance_arch, 'instance_address': asset.instance_address,
-            'instance_type': asset.instance_type, 'instance_version': asset.instance_version,
-        }
-    elif asset_type.lower() == 'lb':
-        return {
-            'type': asset.type, 'dns_name': asset.dns_name, 'state': asset.state,
-            'lb_vip': asset.lb_vip, 'endpoint_type': asset.endpoint_type,
-        }
-    return {}
-        
-        
-def build_asset_result(tree: TreeAssetModels, asset: Any, asset_type: str) -> dict:
-    """根据 asset_type 构建返回结果"""
-    base_info = {
-        'cloud_name': asset.cloud_name, 'account_id': asset.account_id, 'instance_id': asset.instance_id,
-        'region': asset.region, 'zone': asset.zone, 'is_expired': asset.is_expired, 'name': asset.name,
-        'id': tree.id, 'biz_id': tree.biz_id, 'is_enable': tree.is_enable, 'env_name': tree.env_name,
-        'region_name': tree.region_name, 'module_name': tree.module_name, 'asset_type': tree.asset_type,
-        'asset_id': tree.asset_id, 'ext_info': tree.ext_info,
-    }
-    type_specific_info = get_specific_tree_asset_info(asset, asset_type)
-    return {**base_info, **type_specific_info}
+        try:
+            # 添加通用资产属性(如果存在)
+            for field in ["cloud_name", "account_id", "instance_id", "region", "zone", "is_expired", "name"]:
+                if hasattr(asset, field):
+                    base_info[field] = getattr(asset, field)
+
+            # 资产类型特定字段映射
+            type_field_mapping = {
+                "server": ["inner_ip", "outer_ip", "state","agent_status","agent_id","outer_biz_addr","is_product"],
+                "mysql": ["state", "db_class", "db_engine", "db_version", "db_address"],
+                "redis": ["state", "instance_class", "instance_arch", "instance_address", "instance_type",
+                          "instance_version"],
+                "lb": ["type", "dns_name", "state", "lb_vip", "endpoint_type"],
+            }
+
+            # 根据资产类型添加特定字段
+            asset_type = asset_type.lower()
+            if asset_type in type_field_mapping:
+                fields = type_field_mapping[asset_type]
+                for field in fields:
+                    if hasattr(asset, field):
+                        base_info[field] = getattr(asset, field)
+
+            return base_info
+
+        except AttributeError as e:
+            logging.error(f"构建资产响应失败: {str(e)}")
+            return base_info
+        except Exception as e:
+            logging.error(f"处理资产响应时发生错误: {str(e)}")
+            return base_info
+
+    def get_tree_assets_by_ids(
+            self,
+            params: dict,
+            asset_type: str,
+            asset_ids: List[int],
+            page: int,
+            size: int) -> Tuple[List[Any], int]:
+        """获取树形资产数据(优化查询)"""
+        try:
+            if not asset_ids:
+                return [], 0
+
+            base_query = (
+                self.session.query(TreeAssetModels)
+                .filter_by(**params)
+                .filter(
+                    and_(
+                        TreeAssetModels.asset_type == asset_type,
+                        TreeAssetModels.asset_id.in_(asset_ids),
+                    )
+                )
+            )
+
+            # 计算总数和分页数据
+            total = base_query.count()
+            data = (
+                base_query.order_by(TreeAssetModels.id)
+                .offset(page)
+                .limit(size)
+                .all()
+            )
+
+            return data, total
+
+        except SQLAlchemyError as e:
+            logging.error(f"查询树形资产失败: {str(e)}")
+            return [], 0
 
 
 def get_tree_assets_v2(params: Dict[str, Any]) -> Tuple[Union[list, dict], int]:
-    """
-    获取Tree节点下的详细资产信息或者节点属性信息
-    :param params:
-    :return:
-    """
-    # 分页和搜索参数
-    page_size = int(params.pop('page_size', 10))
-    page_number = int(params.pop('page_number', 1)) - 1
-    search_val = params.pop('search_val', '')
-    asset_type = params.get('asset_type', 'server')
-    unique = params.pop('unique', False) # 是否返回唯一的结果
-    # 如果 asset_type 是 attr 则直接返回属性查询的结果
-    if asset_type == 'attr':
+    """获取树形资产信息"""
+    # 参数处理
+    page_size = int(params.pop("page_size", 10))
+    page_number = int(params.pop("page_number", 1))
+    page_offset = (page_number - 1) * page_size
+    search_val = params.pop("search_val", "")
+    asset_type = params.pop("asset_type", "server")
+
+    # 移除不需要的参数
+    for key in ["nodeKey", "selected", "__ob__", "length"]:
+        params.pop(key, None)
+
+    # 属性查询处理
+    if asset_type == "attr":
         return get_tree_attr(params)
 
-    # 删除不必要的参数
-    pop_list = ['nodeKey', 'selected', '__ob__', 'length']
-    [params.pop(key, None) for key in pop_list]
+    with DBContext("r") as session:
+        service = TreeAssetService(session)
+        _the_models = mapping.get(asset_type.lower())
 
-    with DBContext('r', None, None) as session:
-        # 获取资源模型
-        _the_model = mapping.get(asset_type)
-        if not _the_model:
-            return [], 0  # 或者抛出异常
-        
-        # 按名称搜索相关的资源
-        query_ids = session.query(_the_model.id).filter(_the_model.name.like(f"%{search_val}%")).all()
-        query_ids = [query_id[0] for query_id in query_ids]
+        # 查询资产IDs
+        asset_ids = service.get_asset_id_by_keyword(_the_models, search_val)
 
-        # 查询tree关系和总数
-        tree_query = session.query(TreeAssetModels).filter_by(**params).filter(
-            TreeAssetModels.asset_type == asset_type,
-            TreeAssetModels.asset_id.in_(query_ids)
+        # 获取树形资产数据
+        tree_data, total = service.get_tree_assets_by_ids(
+            params, asset_type, asset_ids, page_offset, page_size
         )
-        tree_count = tree_query.count()
-        tree_data = tree_query.offset(page_number * page_size).limit(page_size).all()
 
-        # 获取资源映射
-        asset_ids = {tree.asset_id for tree in tree_data}
-        asset_data = session.query(_the_model).filter(_the_model.id.in_(asset_ids)).all()
-        asset_mapping = {asset.id: asset for asset in asset_data}
-
-        # 生成返回结果
-        result = [build_asset_result(tree, asset_mapping[tree.asset_id], asset_type) for tree in tree_data]
-        
-        if asset_type.lower() == 'server' and bool(unique):
-            result = []
-
-    return result, tree_count
-    
+        # 获取资产详情
+        asset_mapping = service.get_asset_details(_the_models, asset_ids)
+        # 构建响应
+        result = [
+           service.build_asset_response(
+               tree, asset_mapping[tree.asset_id], asset_type
+           )
+          for tree in tree_data
+        ]
+        return result, total
 
 
 def get_tree_assets(params: Dict[str, Any]) -> Tuple[list or dict, int]:
@@ -802,12 +897,11 @@ def get_biz_ids_by_server_ip(inner_ip: str, asset_type="server") -> List[int]:
     __model = mapping[asset_type]
     with DBContext('r') as session:
         query = session.query(TreeAssetModels.biz_id).outerjoin(__model, __model.id == TreeAssetModels.asset_id).filter(
-                __model.inner_ip == inner_ip,
-                TreeAssetModels.asset_type == asset_type,
-                TreeAssetModels.is_enable == 1)
+            __model.inner_ip == inner_ip,
+            TreeAssetModels.asset_type == asset_type,
+            TreeAssetModels.is_enable == 1)
         __info = query.all()
     return list(set([i.biz_id for i in __info]))
-
 
 
 @event.listens_for(Session, "before_flush")
@@ -824,7 +918,7 @@ def before_tree_asset_flush(session: Session, flush_context, instances) -> None:
     """
 
     def get_agent_and_biz_ids(
-        tree_asset_instance: TreeAssetModels, asset_type: str, session: Session
+            tree_asset_instance: TreeAssetModels, asset_type: str, session: Session
     ) -> Optional[Tuple[AgentModels, list]]:
         """
         根据 TreeAssetModels 实例获取关联的 AgentModels 和 biz_ids。
@@ -848,7 +942,8 @@ def before_tree_asset_flush(session: Session, flush_context, instances) -> None:
         biz_ids = json.loads(agent.biz_ids) if agent.biz_ids else []
         return agent, biz_ids
 
-    def update_biz_ids_for_new_instance(tree_asset_instance: TreeAssetModels, agent: AgentModels, biz_ids: list) -> None:
+    def update_biz_ids_for_new_instance(tree_asset_instance: TreeAssetModels, agent: AgentModels,
+                                        biz_ids: list) -> None:
         """
         更新新增实例的 biz_ids。
 
@@ -861,7 +956,8 @@ def before_tree_asset_flush(session: Session, flush_context, instances) -> None:
             biz_ids.append(tree_asset_instance.biz_id)
             agent.biz_ids = json.dumps(biz_ids, ensure_ascii=False)
 
-    def update_biz_ids_for_deleted_instance(tree_asset_instance: TreeAssetModels, agent: AgentModels, biz_ids: list) -> None:
+    def update_biz_ids_for_deleted_instance(tree_asset_instance: TreeAssetModels, agent: AgentModels,
+                                            biz_ids: list) -> None:
         """
         更新删除实例的 biz_ids。
 

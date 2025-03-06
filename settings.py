@@ -70,6 +70,9 @@ KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "")
 KAFKA_CLIENT_ID = os.getenv("KAFKA_CLIENT_ID", "")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "")
 
+# Sync GCP to CMDB
+GCP_SYNC = os.getenv("GCP_SYNC", "no")
+
 try:
     from local_settings import *
 except ImportError:
@@ -91,6 +94,7 @@ settings = dict(
     kafka_bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
     kafka_client_id=KAFKA_CLIENT_ID,
     kafka_topic=KAFKA_TOPIC,
+    gcp_sync=GCP_SYNC,
     app_name="cmdb",
     databases={
         const.DEFAULT_DB_KEY: {
