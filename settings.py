@@ -71,7 +71,7 @@ KAFKA_CLIENT_ID = os.getenv("KAFKA_CLIENT_ID", "")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "")
 
 # Sync GCP to CMDB
-GCP_SYNC = os.getenv("GCP_SYNC", False)
+GCP_SYNC = os.getenv("GCP_SYNC", "no")
 
 try:
     from local_settings import *
