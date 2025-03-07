@@ -329,6 +329,7 @@ def bind_main_agent(data: dict) -> dict:
     """
     agent_instance_id = data.get("agent_instance_id", None)
     server_id = data.get("server_id", None)
+    main_agent = data.get("main_agent")
 
     if not agent_instance_id or not server_id:
         return {"code": 1, "msg": "agent_instance_id/server_id不能为空"}
@@ -338,9 +339,10 @@ def bind_main_agent(data: dict) -> dict:
         if not agent_obj:
             return {"code": 1, "msg": "agent不存在"}
         session.query(AssetServerModels).filter(AssetServerModels.id == server_id).update(
-            {AssetServerModels.has_main_agent: True,
+            {AssetServerModels.has_main_agent: bool(main_agent),
              AssetServerModels.agent_id: agent_obj.agent_id,
-             AssetServerModels.agent_bind_status: AgentBindStatus.MANUAL_BIND}
+             AssetServerModels.agent_bind_status: AgentBindStatus.MANUAL_BIND,
+             }
         )
         session.query(AgentModels).filter(AgentModels.id == agent_instance_id).update(
             {AgentModels.asset_server_id: server_id, AgentModels.agent_bind_status: AgentBindStatus.MANUAL_BIND}
