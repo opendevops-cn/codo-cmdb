@@ -31,7 +31,7 @@ from cmdb.handlers.asset_switch_handler import switch_urls
 from cmdb.handlers.secret import secret_urls
 from cmdb.handlers.agent_handler import agent_urls
 from cmdb.handlers.asset_mongodb_handler import mongodb_urls
-from cmdb.handlers.asset_cluster_handler import cluster_urls
+from cmdb.handlers.asset_k8s_cluster_handler import cluster_urls
 
 urls = []
 urls.extend(biz_urls)

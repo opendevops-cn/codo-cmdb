@@ -75,7 +75,7 @@ env_urls = [
         {"handle_name": "配置平台-环境列表-IDIP连通性检测", "method": ["POST"]},
     ),
     (
-        r"/cbb_area/env/noauth/list",
+        r"/cbb_area/cbb_acc/env/list/",
         NoAuthEnvHandler,
         {"handle_name": "配置平台-免鉴权环境列表", "method": ["GET"]},
     ),
