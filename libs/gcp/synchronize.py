@@ -79,7 +79,6 @@ def main(account_id: Optional[str] = None, resources: List[str] = None):
     gcp_sync = configs.get("GCP_SYNC", "").lower()
     if not gcp_sync or gcp_sync != 'yes':
         return
-        return
 
     sync_mapping = mapping.copy()
     if account_id is not None:
