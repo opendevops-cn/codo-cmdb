@@ -22,7 +22,8 @@ from websdk2.configs import configs
 from settings import settings
 from models.cloud import SyncLogModels, CloudSettingModels
 from models.asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels, AssetVPCModels, \
-    AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetImagesModels, AssetNatModels
+    AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetImagesModels, AssetNatModels, AssetClusterModels, \
+    AssetMongoModels
 from models.event import CloudEventsModels
 from models import asset_mapping
 
@@ -609,6 +610,89 @@ def nat_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
     except Exception as error:
         ret_state, ret_msg = False, f"{cloud_name}-{account_id}-NAT网关task写入数据库失败,错误行:{row},详细信息:{error}"
     return ret_state, ret_msg
+
+
+def cluster_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
+    """
+     集群资源入库
+    :param cloud_name:
+    :param account_id:
+    :param rows:
+    :return:
+    """
+    # 定义返回
+    ret_state, ret_msg = True, f"{cloud_name}-{account_id}-集群task写入数据库完成"
+
+    try:
+        with DBContext("w", None, True, **settings) as session:
+            for row in rows:
+                if not row: continue
+                instance_id = row.get("instance_id")
+                try:
+                    session.add(insert_or_update(AssetClusterModels, f"instance_id='{instance_id}'",
+                                                 cloud_name=cloud_name, account_id=account_id,
+                                                 instance_id=instance_id,
+                                                 region=row.get('region'),
+                                                 name=row.get('name'),
+                                                 inner_ip=row.get('inner_ip'),
+                                                 outer_ip=row.get('outer_ip'),
+                                                 zone=row.get('zone'),
+                                                 description=row.get('description'),
+                                                 version=row.get('version'),
+                                                 vpc_id=row.get('vpc_id'),
+                                                 total_node=row.get('total_node'),
+                                                 total_running_node=row.get('total_running_node'),
+                                                 tags=row.get('tags'),
+                                                 state=row.get('state'),
+                                                 update_time=datetime.datetime.now(),
+                                                 ext_info=row.get('ext_info'),
+                                                 cluster_type=row.get('cluster_type'),
+                                                 ))
+                except Exception as err:
+                    logging.error(err)
+    except Exception as error:
+        ret_state, ret_msg = False, f"{cloud_name}-{account_id}-集群task写入数据库失败,错误行:{row},详细信息:{error}"
+    return ret_state, ret_msg
+
+
+def mongodb_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
+    """
+     MongoDB资源入库
+    :param cloud_name:
+    :param account_id:
+    :param rows:
+    :return:
+    """
+    # 定义返回
+    ret_state, ret_msg = True, f"{cloud_name}-{account_id}-MongoDB task写入数据库完成"
+
+    try:
+        with DBContext("w", None, True, **settings) as session:
+            for row in rows:
+                if not row: continue
+                instance_id = row.get("instance_id")
+                try:
+                    session.add(insert_or_update(AssetMongoModels, f"instance_id='{instance_id}'",
+                                                 cloud_name=cloud_name, account_id=account_id,
+                                                 instance_id=instance_id,
+                                                 region=row.get('region'),
+                                                 name=row.get('name'),
+                                                 db_class=row.get('db_class'),
+                                                 db_version=row.get('db_version'),
+                                                 db_address=row.get('db_address'),
+                                                 subnet_id=row.get('subnet_id'),
+                                                 vpc_id=row.get('vpc_id'),
+                                                 project_name=row.get('project_name'),
+                                                 state=row.get('state'),
+                                                 tags=row.get('tags'),
+                                                 zone=row.get('zone'),
+                                                 storage_type=row.get('storage_type')))
+                except Exception as err:
+                    logging.error(err)
+    except Exception as error:
+        ret_state, ret_msg = False, f"{cloud_name}-{account_id}-MongoDB task写入数据库失败,错误行:{row},详细信息:{error}"
+    return ret_state, ret_msg
+
 
 
 if __name__ == '__main__':

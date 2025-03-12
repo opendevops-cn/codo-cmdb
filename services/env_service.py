@@ -36,6 +36,7 @@ class EnvData(BaseModel):
     ext_info: Optional[str] = None
     env_tags: List[str] = []
     env_type: int
+    client_idip: str = None
 
     @model_validator(mode="before")
     def val_must_not_null(cls, values):
@@ -51,6 +52,8 @@ class EnvData(BaseModel):
             raise ValueError("env_type不能为空")
         if "biz_id" not in values or not values["biz_id"]:
             raise ValueError("biz_id不能为空")
+        if "client_idip" not in values or not values["client_idip"]:
+            raise ValueError("client_idip不能为空")
         return values
 
     @field_validator("env_type", mode="before")
@@ -129,6 +132,7 @@ def _get_env_by_val(value: str = None):
         EnvModels.env_type.like(f"%{value}%"),
         EnvModels.idip.like(f"%{value}%"),
         EnvModels.ext_info.like(f"%{value}%"),
+        EnvModels.client_idip.like(f"%{value}%"),
     )
 
 
@@ -139,22 +143,36 @@ def _get_env_by_biz_id(biz_id: str):
     return EnvModels.biz_id.in_(biz_ids)
 
 
-def get_env_list_for_api(**params) -> dict:
+def _get_env_list_common(**params) -> tuple:
+    """获取环境列表的公共逻辑
+    Args:
+        **params: 查询参数
+    Returns:
+        tuple: (items, total_count) 环境列表和总数
+    """
     value = (
         params.get("searchValue")
         if "searchValue" in params
         else params.get("searchVal")
     )
     filter_map = params.pop("filter_map") if "filter_map" in params else {}
+
+    # 设置默认参数
     if "page_size" not in params:
         params["page_size"] = 300  # 默认获取到全部数据
     if "order" not in params:
         params["order"] = "descend"
+
+    # 验证必要参数
     biz_id = params.get("biz_id")
     if not biz_id:
-        return dict(code=-1, msg="biz_id不能为空")
+        raise ValueError("biz_id不能为空")
+
+    # 处理环境号过滤
     if "env_no" in params and params.get("env_no"):
         filter_map["env_no"] = params.get("env_no")
+
+    # 查询数据
     with DBContext("r") as session:
         page = paginate(
             session.query(EnvModels)
@@ -162,12 +180,39 @@ def get_env_list_for_api(**params) -> dict:
             .filter_by(**filter_map),
             **params,
         )
+
+    # 排序处理
     items = sorted(
         page.items,
         key=lambda x: (x["env_type"], x["create_time"]),
         reverse=True,
     )
-    return dict(code=0, msg="获取成功", data=items, count=page.total)
+
+    return items, page.total
+
+
+def get_env_list_for_api(**params) -> dict:
+    """获取环境列表（包含所有字段）"""
+    try:
+        items, total = _get_env_list_common(**params)
+        return dict(code=0, msg="获取成功", data=items, count=total)
+    except ValueError as e:
+        return dict(code=-1, msg=str(e))
+    except Exception as e:
+        return dict(code=-1, msg=f"获取环境列表失败: {str(e)}")
+
+
+def get_env_list_for_api_v2(**params) -> dict:
+    """获取环境列表（不含app_secret字段）"""
+    try:
+        items, total = _get_env_list_common(**params)
+        # 移除app_secret字段
+        items = [{k: v for k, v in item.items() if k != "app_secret"} for item in items]
+        return dict(code=0, msg="获取成功", data=items, count=total)
+    except ValueError as e:
+        return dict(code=-1, msg=str(e))
+    except Exception as e:
+        return dict(code=-1, msg=f"获取环境列表失败: {str(e)}")
 
 
 def get_all_env_list_for_api(**params) -> dict:

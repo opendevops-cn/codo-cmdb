@@ -76,9 +76,9 @@ def main(account_id: Optional[str] = None, resources: List[str] = None):
     :return:
     """
     # 读取全局配置，判断是否启用 GCP 同步
-    gcp_sync = configs.get("GCP_SYNC").lower()
+    gcp_sync = configs.get("GCP_SYNC", "").lower()
     if not gcp_sync or gcp_sync != 'yes':
-        logging.warning('GCP同步未开启')
+        return
         return
 
     sync_mapping = mapping.copy()

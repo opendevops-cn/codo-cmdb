@@ -10,6 +10,8 @@ from libs.volc.volc_vpc import VolCVPC
 from libs.volc.volc_vswitch import VolCSubnet
 from libs.volc.volc_security_group import VolCSecurityGroup
 from libs.volc.volc_nat import VolNAT
+from libs.volc.volc_mongodb import VolcMongoDB
+from libs.volc.volc_vke import VolcVKE
 
 # 用来标记这是火山云的作业
 DEFAULT_CLOUD_NAME = 'volc'
@@ -47,5 +49,13 @@ mapping: Dict[str, dict] = {
     'NAT网关': {
         "type": "nat",
         "obj": VolNAT
-    }
+    },
+    'MongoDB': {
+        "type": "mongodb",
+        "obj": VolcMongoDB
+    },
+    '容器服务': {
+        "type": "vke",
+        "obj": VolcVKE
+    },
 }

@@ -288,3 +288,36 @@ class AssetNatModels(AssetBaseModel):
     description = Column('description', String(255), comment='描述信息')
     spec = Column('spec', String(50), comment='规格')
     network_interface_id = Column('network_interface_id', String(50), comment='网络接口ID')
+
+
+class AssetClusterModels(AssetBaseModel):
+    """集群"""
+    __tablename__ = 't_asset_cluster'
+    name = Column('name', String(120), nullable=False, comment='集群名称')
+    state = Column('state', String(50), comment='状态')
+    version = Column('version', String(50), comment='版本')
+    vpc_id = Column('vpc_id', String(50), comment='VPC ID')
+    inner_ip =  Column('inner_ip', String(50), comment='APIServer内网IP')
+    outer_ip =  Column('outer_ip', String(50), comment='APIServer内网IP外网IP')
+    description = Column('description', String(255), comment='描述信息')
+    cluster_type = Column('cluster_type', String(50), comment='集群类型')
+    total_node = Column('total_node', Integer, comment='节点总数')
+    total_running_node = Column('total_running_node', Integer, comment='运行节点数')
+    tags = Column('tags', JSON(), comment='标签')
+    cidr_block_v4 = Column('cidr_block_v4', JSON(), comment='服务网段')
+    ext_info = Column('ext_info', JSON(), comment='扩展字段存JSON')
+
+
+class AssetMongoModels(AssetBaseModel):
+    """Mongo"""
+    __tablename__ = 't_asset_mongo'
+    name = Column('name', String(120), nullable=False, comment='实例名称')
+    state = Column('state', String(50), index=True, comment='状态')
+    db_class = Column('db_class', String(120), comment='类型/规格')
+    db_version = Column('db_version', String(120), comment='MongoDB版本')
+    db_address = Column('db_address', JSON(), comment='连接地址')
+    project_name = Column('project_name', String(50), comment='项目名称')
+    vpc_id = Column('vpc_id', String(50), comment='VPC ID')
+    subnet_id = Column('subnet_id', String(50), comment='子网ID')
+    tags = Column('tags', JSON(), comment='标签')
+    storage_type = Column('storage_type', String(50), comment='存储类型')

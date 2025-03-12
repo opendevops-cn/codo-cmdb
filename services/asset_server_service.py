@@ -328,7 +328,8 @@ def bind_main_agent(data: dict) -> dict:
     : param data: {"agent_instance_id": "xxx", "server_id": "xxx"}
     """
     agent_instance_id = data.get("agent_instance_id", None)
-    server_id = data.get("server_id", None)
+    server_id = int(data.get("server_id", 0)) or 0
+    main_agent = data.get("main_agent")
 
     if not agent_instance_id or not server_id:
         return {"code": 1, "msg": "agent_instance_id/server_id不能为空"}
@@ -337,12 +338,30 @@ def bind_main_agent(data: dict) -> dict:
         agent_obj = session.query(AgentModels).filter(AgentModels.id == agent_instance_id).first()
         if not agent_obj:
             return {"code": 1, "msg": "agent不存在"}
+        # 先解绑原有主agent
+        _unbind_existing_main_agent(session, agent_obj.agent_id)
+
         session.query(AssetServerModels).filter(AssetServerModels.id == server_id).update(
-            {AssetServerModels.has_main_agent: True,
+            {AssetServerModels.has_main_agent: bool(main_agent),
              AssetServerModels.agent_id: agent_obj.agent_id,
-             AssetServerModels.agent_bind_status: AgentBindStatus.MANUAL_BIND}
+             AssetServerModels.agent_bind_status: AgentBindStatus.MANUAL_BIND,
+             }
         )
         session.query(AgentModels).filter(AgentModels.id == agent_instance_id).update(
             {AgentModels.asset_server_id: server_id, AgentModels.agent_bind_status: AgentBindStatus.MANUAL_BIND}
         )
     return dict(code=0, msg='绑定成功')
+
+def _unbind_existing_main_agent(session, agent_id: str):
+    """解绑服务器现有的主agent
+    Args:
+        session: 数据库会话
+        agent_id: agent_id
+    """
+    session.query(AssetServerModels).filter(
+        AssetServerModels.agent_id == agent_id
+    ).update({
+        AssetServerModels.has_main_agent: False,
+        AssetServerModels.agent_id: '0',
+        AssetServerModels.agent_bind_status: AgentBindStatus.NOT_BIND
+    })

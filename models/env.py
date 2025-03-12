@@ -19,6 +19,7 @@ class EnvModels(TimeBaseModel):
     env_tags = Column("env_tags", JSON, comment='环境标签', default=[])
     env_type = Column(SmallInteger, nullable=False, default=EnvType.Dev)
     idip = Column("idip", String(255), comment='IDIP地址')
+    client_idip = Column("client_idip", String(255), comment='客户端IDIP地址')
     app_id = Column("app_id", String(100), comment='应用ID')
     app_secret = Column("app_secret", String(500), comment='应用密钥')
     ext_info = Column('ext_info', String(1000), nullable=True, comment='扩展字段存String')
