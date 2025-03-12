@@ -8,7 +8,7 @@ import json
 from abc import ABC
 from libs.base_handler import BaseHandler
 from services.env_service import get_env_list_for_api, update_env_for_api, add_env_for_api, opt_obj as opt_obj_env, \
-    get_all_env_list_for_api, check_idip_connection
+    get_all_env_list_for_api, check_idip_connection, get_env_list_for_api_v2
 
 
 class EnvHandler(BaseHandler, ABC):
@@ -44,6 +44,13 @@ class EnvListHandler(BaseHandler, ABC):
             self.params.update(biz_id=self.request_tenantid)
         res = get_all_env_list_for_api(**self.params)
         return self.write(res)
+
+class NoAuthEnvHandler(BaseHandler, ABC):
+    def get(self):
+        if self.request_tenantid:
+            self.params.update(biz_id=self.request_tenantid)
+        res = get_env_list_for_api_v2(**self.params)
+        return self.write(res)
     
 class IdipConnectionCheckHandler(BaseHandler, ABC):
     def post(self):
@@ -66,5 +73,10 @@ env_urls = [
         r"/cbb_area/env/idip/check/",
         IdipConnectionCheckHandler,
         {"handle_name": "配置平台-环境列表-IDIP连通性检测", "method": ["POST"]},
+    ),
+    (
+        r"/cbb_area/env/noauth/list",
+        NoAuthEnvHandler,
+        {"handle_name": "配置平台-免鉴权环境列表", "method": ["GET"]},
     ),
 ]
