@@ -28,6 +28,8 @@ tencentcloud-sdk-python-cdb==3.0.1328
 tencentcloud-sdk-python-redis==3.0.1328
 tencentcloud-sdk-python-vpc==3.0.1328
 tencentcloud-sdk-python-clb==3.0.1328
+tencentcloud-sdk-python-mongodb==3.0.1328
+tencentcloud-sdk-python-tke==3.0.1328
 # 火山云
 volcengine-python-sdk==1.0.100
 # 谷歌云

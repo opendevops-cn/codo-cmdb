@@ -18,6 +18,8 @@ from libs.qcloud.qcloud_security_group import QCloudSecurityGroup
 from libs.qcloud.qcloud_events import QCloudEventClient
 from libs.qcloud.qcloud_img import QCloudCImg
 from libs.qcloud.qcloud_nat import QCloudNAT
+from libs.qcloud.qcloud_mongodb import QcloudMongoDB
+from libs.qcloud.qcloud_tke import QcloudTKE
 
 DEFAULT_CLOUD_NAME = 'qcloud'
 # 同步的资产对应关系
@@ -65,5 +67,13 @@ mapping: Dict[str, dict] = {
     'NAT网关': {
         "type": "nat",
         "obj": QCloudNAT
+    },
+    'MongoDB': {
+        "type": "mongodb",
+        "obj": QcloudMongoDB
+    },
+    '容器集群': {
+        "type": "tke",
+        "obj": QcloudTKE
     }
 }

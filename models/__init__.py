@@ -1,6 +1,6 @@
 from sqlalchemy import Enum
 from .asset import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels, AssetVPCModels, \
-    AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetNatModels
+    AssetVSwitchModels, AssetEIPModels, SecurityGroupModels, AssetNatModels, AssetClusterModels, AssetMongoModels
 from .tree import TreeModels, TreeAssetModels
 from .tag import TagModels
 from .domain import DomainRecords
@@ -67,7 +67,9 @@ des_model_type_mapping = {
 
 asset_mapping = {'server': AssetServerModels, 'mysql': AssetMySQLModels, 'redis': AssetRedisModels,
                  'lb': AssetLBModels, 'eip': AssetEIPModels, 'vpc': AssetVPCModels, 'vswitch': AssetVSwitchModels,
-                 'security_group': SecurityGroupModels, 'domain': DomainRecords, "nat": AssetNatModels}
+                 'security_group': SecurityGroupModels, 'domain': DomainRecords, "nat": AssetNatModels,
+                 'cluster': AssetClusterModels,"mongodb": AssetMongoModels
+                 }
 
 ORDER_STATUS_MAP = (
     ("0", "进行中"),

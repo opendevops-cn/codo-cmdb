@@ -30,6 +30,8 @@ from cmdb.handlers.nat_handler import nat_urls
 from cmdb.handlers.asset_switch_handler import switch_urls
 from cmdb.handlers.secret import secret_urls
 from cmdb.handlers.agent_handler import agent_urls
+from cmdb.handlers.asset_mongodb_handler import mongodb_urls
+from cmdb.handlers.asset_cluster_handler import cluster_urls
 
 urls = []
 urls.extend(biz_urls)
@@ -61,3 +63,5 @@ urls.extend(nat_urls)
 urls.extend(switch_urls)
 urls.extend(secret_urls)
 urls.extend(agent_urls)
+urls.extend(mongodb_urls)
+urls.extend(cluster_urls)
