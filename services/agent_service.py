@@ -39,7 +39,6 @@ class Agent(BaseModel):
     biz_ids: List[str] = []
     asset_server_id: int = None
     agent_type: str
-    status: int = 0
 
     @model_validator(mode="before")
     def val_must_not_null(cls, values):
