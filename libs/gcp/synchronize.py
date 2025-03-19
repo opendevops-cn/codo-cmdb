@@ -6,7 +6,7 @@ Author  : shenshuo
 Date    : 2023/11/22 11:02
 Desc    : 谷歌云资产同步入口
 """
-
+import os
 import logging
 import time
 from typing import *
@@ -66,6 +66,25 @@ def sync_regions(conf: Dict[str, str], obj: Callable, cloud_type: str) -> None:
     logging.info(f'同步结束, 信息：「{DEFAULT_CLOUD_NAME}」-「{cloud_type}」-「{region}」.')
 
 
+def get_gcp_sync_config() -> bool:
+    """获取GCP同步配置
+
+    优先从配置文件获取，其次从环境变量获取
+    默认为 False
+    """
+
+    def parse_bool_value(value: Optional[str]) -> bool:
+        if not value:
+            return False
+        return value.lower() in ('yes', 'true', '1', 'on')
+
+    # 依次检查配置来源
+    config_value = configs.get("GCP_SYNC", "")
+    env_value = os.getenv("GCP_SYNC", "")
+
+    # 优先使用配置文件值
+    return parse_bool_value(config_value) or parse_bool_value(env_value)
+
 def main(account_id: Optional[str] = None, resources: List[str] = None):
     """
     账户级别的任务锁，确保每个 account_id 只能有一个同步任务运行。
@@ -76,8 +95,8 @@ def main(account_id: Optional[str] = None, resources: List[str] = None):
     :return:
     """
     # 读取全局配置，判断是否启用 GCP 同步
-    gcp_sync = configs.get("GCP_SYNC", "").lower()
-    if not gcp_sync or gcp_sync != 'yes':
+    gcp_sync = get_gcp_sync_config()
+    if not gcp_sync:
         return
 
     sync_mapping = mapping.copy()
