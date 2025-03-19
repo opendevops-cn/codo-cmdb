@@ -2,12 +2,13 @@
 # @Author: Dongdong Liu
 # @Date: 2024/4/9
 # @Description: 谷歌云mysql
-import json
-from typing import *
+from typing import List, Dict, Any, Optional, Tuple
 import logging
+from dataclasses import dataclass
 
 from googleapiclient import discovery
 from google.oauth2 import service_account
+from google.cloud import compute_v1
 
 from models.models_utils import mark_expired, mysql_task
 
@@ -28,6 +29,14 @@ StateMapping = {
     "MAINTENANCE": "维护中",
     "FAILED": "错误"
 }
+
+@dataclass
+class DBAddress:
+    """数据库地址配置"""
+    type: str
+    ip: str
+    domain: str = ""
+    port: str = "3306"
 
 
 class GCPCDB:
@@ -55,6 +64,30 @@ class GCPCDB:
         resp = req.execute()
         return resp
 
+    def get_vpc_by_network(self, network: str):
+        """
+        获取vpc
+        """
+        client = compute_v1.NetworksClient(
+            credentials=self.__credentials)
+        request = compute_v1.GetNetworkRequest(network=network, project=self.project_id)
+        response = client.get(request=request)
+        return response
+
+    def get_vpc_id(self, data: Dict[str, Any]) -> str:
+        """
+        查询vpc_id
+        """
+        private_network = data['settings']['ipConfiguration']['privateNetwork']
+        try:
+            network_name = private_network.split('/')[-1]
+            vpc = self.get_vpc_by_network(network_name)
+            return str(vpc.id)
+        except Exception as e:
+            logging.error(f'GCP CDB 获取vpc失败 set_vpc_id: {self._account_id} -- {e}')
+            return ""
+
+
     def handle_data(self, data) -> Dict[str, Any]:
         """
         处理数据
@@ -72,8 +105,7 @@ class GCPCDB:
             res["db_version"] = '.'.join(
                 data['databaseVersion'].split('_')[1::])
             res['state'] = StateMapping.get(data['state'], '未知')
-            res["vpc_id"] = data['settings']['ipConfiguration'][
-                'privateNetwork']
+            res["vpc_id"] = self.get_vpc_id(data)
             res['zone'] = data['gceZone']
             res['network_type'] = "专有网络"
             db_address = self.__format_db_address(data['ipAddresses'])
@@ -87,32 +119,33 @@ class GCPCDB:
 
         return res
 
-    def __format_db_address(self, ip_addresses: List[Dict[str, Any]]) -> List:
-        """
+    @staticmethod
+    def __format_db_address(ip_addresses: List[Dict[str, Any]]) ->  List[Dict[str, str]]:
+        """格式化数据库地址
 
-        :param ip_addresses:
-        :return:
+        Args:
+            ip_addresses: IP地址列表
+                [
+                    {"type": "PRIMARY", "ipAddress": "1.1.1.1"},
+                    {"type": "PRIVATE", "ipAddress": "10.0.0.1"}
+                ]
+
+        Returns:
+            List[Dict[str, str]]: 格式化后的地址列表
         """
-        items = []
-        for ip_address in ip_addresses:
-            if ip_address.get("type") == "PRIMARY":
-                item = {
-                    "type": "public",
-                    "ip": ip_address.get('ipAddress'),
-                    "domain": "",
-                    "port": '3306'  # 默认为3306
-                }
-            elif ip_address.get("type") == "PRIVATE":
-                item = {
-                    "type": "private",
-                    "ip": ip_address.get('ipAddress'),
-                    "domain": "",
-                    "port": '3306'
-                }
-            else:
-                item = {}
-            items.append(item)
-        return items
+        # 地址类型映射
+        address_type_map = {
+            "PRIMARY": "public",
+            "PRIVATE": "private"
+        }
+        return [
+            DBAddress(
+                type=address_type_map.get(addr.get("type", ""), "unknown"),
+                ip=addr.get("ipAddress", "")
+            ).__dict__
+            for addr in ip_addresses
+            if addr.get("type") in address_type_map
+        ]
 
     def get_all_instances(self):
         cdbs = list()
