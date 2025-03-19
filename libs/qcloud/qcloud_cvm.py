@@ -67,10 +67,18 @@ class QCloudCVM:
                     break
                 cvm_list.extend(map(self.format_data, resp.InstanceSet))
                 offset += self._limit
+                if resp.TotalCount < self._limit:
+                    break
             return cvm_list
         except Exception as err:
             logging.error(f"腾讯云CVM  get all cvm {self._account_id} {err}")
             return []
+
+    @staticmethod
+    def get_os_type(os_name):
+        if not os_name:
+            return ''
+        return 'Windows' if 'windows' in os_name.lower() else 'Linux'
 
     def format_data(self, data) -> Dict[str, str]:
         """
@@ -101,6 +109,7 @@ class QCloudCVM:
             res['inner_ip'] = inner_ip
             res['outer_ip'] = outer_ip
 
+            res['os_type'] = self.get_os_type(data.OsName)
             res['os_name'] = data.OsName
             res['instance_create_time'] = data.CreatedTime
             res['instance_expired_time'] = data.ExpiredTime
