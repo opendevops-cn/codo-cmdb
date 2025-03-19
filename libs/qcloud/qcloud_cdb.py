@@ -65,6 +65,8 @@ class QCloudCDB:
                     break
                 cdb_list.extend(map(self.format_data, resp.Items))
                 offset += self._limit
+                if resp.TotalCount < self._limit:
+                    break
             return cdb_list
         except Exception as err:
             logging.error(f"腾讯云CDB  get all cdb {self._account_id} {err}")
@@ -105,14 +107,14 @@ class QCloudCDB:
                 {
                     "endpoint_type": "Primary",
                     "type": "private",
-                    "port": data.Vport,
+                    "port": str(data.Vport),
                     "ip": data.Vip,
                     "domain": "",
                 },
                 {
                     "endpoint_type": "Primary",
                     "type": "public",
-                    "port": data.WanPort,
+                    "port": str(data.WanPort),
                     "ip": "",
                     "domain": data.WanDomain,
                 },

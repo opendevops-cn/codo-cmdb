@@ -83,6 +83,27 @@ class GCPECS:
         response = client.get(request=request)
         return response
 
+    @staticmethod
+    def get_region_by_zone(zone: str):
+        """
+        获取region
+        """
+        return "-".join(zone.split("-")[:-1])
+
+    @staticmethod
+    def get_os_type(data):
+        """
+        获取操作系统类型
+        """
+        try:
+            os_type = data.disks[0].licenses[0].split('/')[-1]
+            return "Windows" if "windows" in os_type.lower() else "Linux"
+        except Exception as e:
+            logging.error(f"获取操作系统类型失败 {e}")
+            os_type = ''
+        return os_type
+
+
     def format_data(self, data) -> Dict[str, str]:
         """
         处理数据
@@ -134,12 +155,12 @@ class GCPECS:
                 logging.error(f"{network_interface.access_configs}  {e}")
 
             res['os_name'] = ""
-            res['os_type'] = ""
+            res['os_type'] = self.get_os_type(data)
             res['instance_create_time'] = data.creation_timestamp
             # res['instance_expired_time'] = data.expired_at
-            res['region'] = self._region
-
-            res['zone'] = data.zone.split('/')[-1]
+            zone = data.zone.split('/')[-1]
+            res['region'] = self.get_region_by_zone(zone)
+            res['zone'] = zone
             res['description'] = data.description
             # res['security_group_ids'] = data.SecurityGroupIds
 
