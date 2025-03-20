@@ -144,15 +144,12 @@ def filter_ingore_tree_alert_servers(servers: List[AssetServerModels]) -> List[A
     ingore_keywords = configs.get("ignore_tree_alert_keywords", [])
     if not ingore_keywords:
         return servers
-    if not isinstance(
-        ingore_keywords,
-        (
-            list,
-            tuple,
-        ),
-    ):
+    if not isinstance(ingore_keywords, str):
         return servers
-    return [server for server in servers if not any(keyword in server.name for keyword in ingore_keywords)]
+    ingore_keywords_list = ingore_keywords.split(",,,")
+    if not ingore_keywords_list:
+        return servers
+    return [server for server in servers if not any(keyword in server.name for keyword in ingore_keywords_list)]
 
 
 def get_unbound_servers(session):
@@ -237,9 +234,5 @@ def init_scheduled_tasks():
         minute=0,
         id="notify_unbound_agents_tasks",
     )
-    scheduler.add_job(
-        bind_agent_tasks, "cron", minute="*/3", id="bind_agents_tasks"
-    )
-    scheduler.add_job(
-        bind_server_tasks, "cron", hour=10, minute=0, id="bind_server_tasks"
-    )
+    scheduler.add_job(bind_agent_tasks, "cron", minute="*/3", id="bind_agents_tasks")
+    scheduler.add_job(bind_server_tasks, "cron", hour=10, minute=0, id="bind_server_tasks")
