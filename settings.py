@@ -73,6 +73,9 @@ KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "")
 # Sync GCP to CMDB
 GCP_SYNC = os.getenv("GCP_SYNC", "no")
 
+# 服务树告警忽略配置
+INGORE_TREE_ALERT_KEYWORDS = os.getenv("IGNORE_TREE_ALERT_ITEMS", [])
+
 try:
     from local_settings import *
 except ImportError:
@@ -93,6 +96,7 @@ settings = dict(
     switch_sn_oid=SWITCH_SN_OID,
     kafka_bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
     kafka_client_id=KAFKA_CLIENT_ID,
+    ignore_tree_alert_keywords=INGORE_TREE_ALERT_KEYWORDS,
     kafka_topic=KAFKA_TOPIC,
     gcp_sync=GCP_SYNC,
     app_name="cmdb",

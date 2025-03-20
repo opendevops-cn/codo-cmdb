@@ -79,9 +79,8 @@ def get_gcp_sync_config() -> bool:
         return value.lower() in ('yes', 'true', '1', 'on')
 
     # 依次检查配置来源
-    config_value = configs.get("GCP_SYNC", "")
-    env_value = os.getenv("GCP_SYNC", "")
-
+    config_value = configs.get("gcp_sync", "")
+    env_value = os.getenv("gcp_sync", "")
     # 优先使用配置文件值
     return parse_bool_value(config_value) or parse_bool_value(env_value)
 
