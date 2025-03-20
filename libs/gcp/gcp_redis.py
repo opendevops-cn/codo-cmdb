@@ -108,7 +108,7 @@ class GCPRedis:
                     "type": "private",
                     "ip": data.host,
                     "domain": "",
-                    "port": data.port
+                    "port": str(data.port)
                 },
                 {
                     "type": "public",
@@ -120,7 +120,7 @@ class GCPRedis:
         }
         try:
             vpc_instance = self.get_vpc_by_network(network=network)
-            res['vpc_id'] = vpc_instance.id
+            res['vpc_id'] = str(vpc_instance.id)
         except Exception as e:
             logging.error(
                 f'调用谷歌云Redis获取vpc异常. get_vpc_by_network: {self._account_id} -- {e}')

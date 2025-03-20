@@ -133,7 +133,7 @@ class QCloudRedis:
                     "type": "private",
                     "ip": data.WanIp,
                     "domain": "",
-                    "port": data.Port
+                    "port": str(data.Port)
                 },
                 {
                     "type": "public",
