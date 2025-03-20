@@ -85,6 +85,13 @@ class GCPRedis:
         result = self.client.get_instance(request=request)
         return result
 
+    @staticmethod
+    def get_region_by_zone(zone: str):
+        """
+        获取region
+        """
+        return "-".join(zone.split("-")[:-1]) if "-" in zone else zone
+
     def handle_data(self, data) -> Dict[str, Any]:
         res: Dict[str, Any] = dict()
         res['instance_id'] = data.display_name
@@ -92,7 +99,7 @@ class GCPRedis:
         res['vswitch_id'] = ''
         res['create_time'] = data.create_time.strftime("%Y-%m-%d %H:%M:%S")
         res['charge_type'] = ''
-        res['region'] = self._region
+        res['region'] = self.get_region_by_zone(data.location_id)
         res['zone'] = data.location_id
         res['qps'] = ''
         res['name'] = data.display_name
@@ -108,7 +115,7 @@ class GCPRedis:
                     "type": "private",
                     "ip": data.host,
                     "domain": "",
-                    "port": data.port
+                    "port": str(data.port)
                 },
                 {
                     "type": "public",
@@ -120,7 +127,7 @@ class GCPRedis:
         }
         try:
             vpc_instance = self.get_vpc_by_network(network=network)
-            res['vpc_id'] = vpc_instance.id
+            res['vpc_id'] = str(vpc_instance.id)
         except Exception as e:
             logging.error(
                 f'调用谷歌云Redis获取vpc异常. get_vpc_by_network: {self._account_id} -- {e}')

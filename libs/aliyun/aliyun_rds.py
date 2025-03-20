@@ -116,11 +116,11 @@ class AliyunRDSClient:
         }
         for _endpoint in endpoints:
             if _endpoint['IPType'] == 'Inner':
-                inner_address['port'] = _endpoint.get('Port')
+                inner_address['port'] = str(_endpoint.get('Port'))
                 inner_address['ip'] = _endpoint.get('IPAddress')
                 inner_address['domain'] = _endpoint.get('ConnectionString')
             else:
-                outer_address['port'] = _endpoint.get('Port')
+                outer_address['port'] = str(_endpoint.get('Port'))
                 outer_address['ip'] = _endpoint.get('IPAddress')
                 outer_address['domain'] = _endpoint.get('ConnectionString')
         db_address: Dict[str, List[Dict]] = {"items": []}
