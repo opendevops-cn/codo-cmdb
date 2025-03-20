@@ -85,6 +85,13 @@ class GCPRedis:
         result = self.client.get_instance(request=request)
         return result
 
+    @staticmethod
+    def get_region_by_zone(zone: str):
+        """
+        获取region
+        """
+        return "-".join(zone.split("-")[:-1]) if "-" in zone else zone
+
     def handle_data(self, data) -> Dict[str, Any]:
         res: Dict[str, Any] = dict()
         res['instance_id'] = data.display_name
@@ -92,7 +99,7 @@ class GCPRedis:
         res['vswitch_id'] = ''
         res['create_time'] = data.create_time.strftime("%Y-%m-%d %H:%M:%S")
         res['charge_type'] = ''
-        res['region'] = self._region
+        res['region'] = self.get_region_by_zone(data.location_id)
         res['zone'] = data.location_id
         res['qps'] = ''
         res['name'] = data.display_name

@@ -78,8 +78,12 @@ class GCPCDB:
         """
         查询vpc_id
         """
-        private_network = data['settings']['ipConfiguration']['privateNetwork']
         try:
+            private_network = data.get('settings', {}).get('ipConfiguration', {}).get('privateNetwork')
+            if not private_network:
+                return ""
+            if "/" not in private_network:
+                return ""
             network_name = private_network.split('/')[-1]
             vpc = self.get_vpc_by_network(network_name)
             return str(vpc.id)
@@ -99,20 +103,21 @@ class GCPCDB:
             res["instance_id"] = data['name']
             res["name"] = data['name']
             res["create_time"] = data['createTime']
-            res['region'] = data['region']
+            res['region'] = data.get('region', '')
             res['db_class'] = ""
             res['db_engine'] = "MySQL"
             res["db_version"] = '.'.join(
-                data['databaseVersion'].split('_')[1::])
-            res['state'] = StateMapping.get(data['state'], '未知')
+                data.get('databaseVersion', '').split('_')[1::])
+            res['state'] = StateMapping.get(data.get('state', 'unknown'), '未知')
             res["vpc_id"] = self.get_vpc_id(data)
-            res['zone'] = data['gceZone']
+            res['zone'] = data.get('gceZone', '')
             res['network_type'] = "专有网络"
-            db_address = self.__format_db_address(data['ipAddresses'])
+            db_address = self.__format_db_address(data.get('ipAddresses'))
             res['db_address'] = dict(items=db_address)
-            res['ext_info'] = {"connection_name": data['connectionName'],
-                               "data_disk_size_gb": data['settings'][
-                                   'dataDiskSizeGb']}
+            res['ext_info'] = {"connection_name": data.get('connectionName', ''),
+                               "data_disk_size_gb": data.get('settings', {}).get('dataDiskSizeGb', 0)
+                               }
+
         except Exception as e:
             logging.error(
                 f'谷歌云cdb handle data err: {self._account_id} -- {e}')
@@ -134,6 +139,8 @@ class GCPCDB:
             List[Dict[str, str]]: 格式化后的地址列表
         """
         # 地址类型映射
+        if not ip_addresses:
+            return []
         address_type_map = {
             "PRIMARY": "public",
             "PRIVATE": "private"
