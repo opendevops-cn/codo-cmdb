@@ -95,7 +95,8 @@ def mark_expired_by_sync(cloud_name: str, account_id: str, resource_type: str, i
                 resource_model.cloud_name == cloud_name,
                 resource_model.account_id == account_id,
                 resource_model.update_time <= seven_days_ago,
-                resource_model.is_expired == False
+                resource_model.is_expired == False,
+                resource_model.state == '未同步'
             ]
             if region:
                 expire_filter.append(resource_model.region == region)
