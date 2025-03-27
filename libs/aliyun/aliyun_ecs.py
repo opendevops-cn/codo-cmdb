@@ -12,7 +12,7 @@ import logging
 from typing import *
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkecs.request.v20140526.DescribeInstancesRequest import DescribeInstancesRequest
-from models.models_utils import server_task, mark_expired
+from models.models_utils import server_task, mark_expired, server_task_batch, mark_expired_by_sync
 
 
 def get_run_type(val: str) -> str:
@@ -170,9 +170,13 @@ class AliyunEcsClient:
 
         if not all_server_list: return False, "ECS列表为空"
         # 更新资源
-        ret_state, ret_msg = server_task(account_id=self._accountID, cloud_name=cloud_name, rows=all_server_list)
+        # ret_state, ret_msg = server_task(account_id=self._accountID, cloud_name=cloud_name, rows=all_server_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._accountID)
+        # mark_expired(resource_type=resource_type, account_id=self._accountID)
+        ret_state, ret_msg = server_task_batch(account_id=self._accountID, cloud_name=cloud_name, rows=all_server_list)
+        instance_ids = [row['instance_id'] for row in all_server_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._accountID, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

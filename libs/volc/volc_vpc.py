@@ -11,7 +11,7 @@ import volcenginesdkcore
 from volcenginesdkcore.rest import ApiException
 from volcenginesdkvpc import VPCApi, DescribeVpcsRequest, DescribeVpcAttributesRequest
 
-from models.models_utils import vpc_task, mark_expired
+from models.models_utils import vpc_task, mark_expired, mark_expired_by_sync
 
 VPCStatusMapping = {
     "Creating": "创建中",
@@ -143,7 +143,10 @@ class VolCVPC:
         ret_state, ret_msg = vpc_task(account_id=self._account_id, cloud_name=cloud_name, rows=vpcs)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [vpc['instance_id'] for vpc in vpcs]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

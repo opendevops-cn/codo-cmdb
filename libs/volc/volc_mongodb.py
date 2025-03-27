@@ -12,7 +12,7 @@ import volcenginesdkcore
 from volcenginesdkcore.rest import ApiException
 from volcenginesdkmongodb import MONGODBApi, DescribeDBInstancesRequest, DescribeDBEndpointRequest
 
-from models.models_utils import mongodb_task, mark_expired
+from models.models_utils import mongodb_task, mark_expired, mark_expired_by_sync
 
 
 def get_mongodb_status(val):
@@ -150,7 +150,10 @@ class VolcMongoDB:
                                           cloud_name=cloud_name,
                                           rows=all_mongodb)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [mongodb['instance_id'] for mongodb in all_mongodb]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
         return ret_state, ret_msg
 
 

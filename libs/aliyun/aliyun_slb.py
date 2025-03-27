@@ -13,7 +13,7 @@ from typing import *
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.auth.credentials import AccessKeyCredential
 from aliyunsdkslb.request.v20140515.DescribeLoadBalancersRequest import DescribeLoadBalancersRequest
-from models.models_utils import lb_task, mark_expired
+from models.models_utils import lb_task, mark_expired, mark_expired_by_sync
 
 
 def get_run_status(val):
@@ -138,7 +138,10 @@ class AliyunSLbClient:
         # 同步资源
         ret_state, ret_msg = lb_task(account_id=self._accountID, cloud_name=cloud_name, rows=all_slb_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._accountID)
+        # mark_expired(resource_type=resource_type, account_id=self._accountID)
+        instance_ids = [row['instance_id'] for row in all_slb_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._accountID, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

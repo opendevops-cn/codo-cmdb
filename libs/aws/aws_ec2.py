@@ -11,7 +11,7 @@ Docs    : https://boto3.amazonaws.com/v1/documentation/api/latest/reference/serv
 import logging
 import boto3
 from typing import *
-from models.models_utils import server_task, mark_expired
+from models.models_utils import server_task, mark_expired, mark_expired_by_sync, server_task_batch
 
 
 def get_run_type(val):
@@ -92,9 +92,12 @@ class AwsEc2Client:
         all_ec2_list: List[dict] = self.get_all_ec2()
         if not all_ec2_list: return False, "EC2列表为空"
         # 更新资源
-        ret_state, ret_msg = server_task(account_id=self._accountID, cloud_name=cloud_name, rows=all_ec2_list)
+        ret_state, ret_msg = server_task_batch(account_id=self._accountID, cloud_name=cloud_name, rows=all_ec2_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._accountID)
+        # mark_expired(resource_type=resource_type, account_id=self._accountID)
+        instance_ids = [row['instance_id'] for row in all_ec2_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._accountID, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

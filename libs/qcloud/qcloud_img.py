@@ -13,7 +13,7 @@ from typing import *
 import json
 from tencentcloud.common import credential
 from tencentcloud.cvm.v20170312 import cvm_client, models
-from models.models_utils import image_task, mark_expired
+from models.models_utils import image_task, mark_expired, mark_expired_by_sync
 
 
 def get_img_type(val):
@@ -99,6 +99,8 @@ class QCloudCImg:
         ret_state, ret_msg = image_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_img_list)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
-
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [img['instance_id'] for img in all_img_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
         return ret_state, ret_msg

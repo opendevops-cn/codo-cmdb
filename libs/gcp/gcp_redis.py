@@ -9,7 +9,7 @@ import logging
 from google.oauth2 import service_account
 from google.cloud import redis_v1, compute_v1
 
-from models.models_utils import redis_task, mark_expired
+from models.models_utils import redis_task, mark_expired, mark_expired_by_sync
 
 StateMapping = {
     "CREATING": "创建中",
@@ -148,7 +148,10 @@ class GCPRedis:
                                         cloud_name=cloud_name,
                                         rows=redis_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [redis['instance_id'] for redis in redis_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids)
 
         return ret_state, ret_msg
 

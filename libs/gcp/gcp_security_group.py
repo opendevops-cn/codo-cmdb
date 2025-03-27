@@ -8,7 +8,7 @@ import logging
 from google.oauth2 import service_account
 from google.cloud import compute_v1
 
-from models.models_utils import security_group_task, mark_expired
+from models.models_utils import security_group_task, mark_expired, mark_expired_by_sync
 
 
 class GCPSecurityGroup:
@@ -104,7 +104,10 @@ class GCPSecurityGroup:
                                                  rows=firewalls)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [firewall['instance_id'] for firewall in firewalls]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids)
 
         return ret_state, ret_msg
 

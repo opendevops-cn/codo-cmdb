@@ -6,14 +6,13 @@
 # @Version :   1.0
 # @Desc    :   Proxmox VE 虚拟机实例
 from typing import Optional, Dict, Any, Tuple, List
-from dataclasses import dataclass
 import logging
 from functools import wraps
 import urllib3
 
 import requests
 
-from models.models_utils import server_task, mark_expired
+from models.models_utils import server_task, mark_expired, mark_expired_by_sync, server_task_batch
 
 
 # 解决自签名 CA 警告
@@ -261,10 +260,12 @@ class PveVM(object):
         if not all_vm_list:
             return False, "主机列表为空"
         # 更新资源
-        ret_state, ret_msg = server_task(
-            account_id=self.account_id, cloud_name=cloud_name, rows=all_vm_list)
+        ret_state, ret_msg = server_task_batch(account_id=self.account_id, cloud_name=cloud_name, rows=all_vm_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self.account_id)
+        # mark_expired(resource_type=resource_type, account_id=self.account_id)
+        instance_ids = [vm['instance_id'] for vm in all_vm_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self.account_id, resource_type=resource_type,
+                             instance_ids=instance_ids)
         return ret_state, ret_msg
 
 

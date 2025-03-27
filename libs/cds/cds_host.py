@@ -8,7 +8,7 @@ Desc  : 首都在线主机
 
 from typing import *
 from . import CDSApi
-from models.models_utils import server_task, mark_expired
+from models.models_utils import server_task, mark_expired, mark_expired_by_sync, server_task_batch
 
 
 def get_run_type(val: str) -> str:
@@ -89,8 +89,10 @@ class CDSHostApi(CDSApi):
 
         if not all_server_list: return False, "ECS列表为空"
         # # 更新资源
-        ret_state, ret_msg = server_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_server_list)
+        ret_state, ret_msg = server_task_batch(account_id=self._account_id, cloud_name=cloud_name, rows=all_server_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
-        #
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [server['instance_id'] for server in all_server_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
         return ret_state, ret_msg

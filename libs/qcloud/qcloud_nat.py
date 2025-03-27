@@ -13,7 +13,7 @@ from typing import *
 from tencentcloud.common import credential
 from tencentcloud.vpc.v20170312 import vpc_client, models as vpc_models
 
-from models.models_utils import nat_task, mark_expired
+from models.models_utils import nat_task, mark_expired, mark_expired_by_sync
 
 def get_run_type(val):
     run_map = {
@@ -114,7 +114,10 @@ class QCloudNAT:
                                         cloud_name=cloud_name,
                                         rows=all_nat_gateway_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [nat['instance_id'] for nat in all_nat_gateway_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
     

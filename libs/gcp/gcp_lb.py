@@ -8,7 +8,7 @@ import logging
 from google.oauth2 import service_account
 from google.cloud import compute_v1
 
-from models.models_utils import lb_task, mark_expired
+from models.models_utils import lb_task, mark_expired, mark_expired_by_sync
 
 
 class GCPLB:
@@ -103,8 +103,10 @@ class GCPLB:
         ret_state, ret_msg = lb_task(account_id=self._account_id,
                                      cloud_name=cloud_name, rows=clbs)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
-
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [lb['instance_id'] for lb in clbs]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids)
         return ret_state, ret_msg
 
 

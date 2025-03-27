@@ -6,7 +6,7 @@ Date  : 2023/2/25
 Desc  : 首都在线MySQL
 """
 
-from models.models_utils import mysql_task, mark_expired
+from models.models_utils import mysql_task, mark_expired, mark_expired_by_sync
 from typing import *
 from . import CDSApi
 
@@ -95,6 +95,8 @@ class CDSMysqlApi(CDSApi):
         # # 更新资源
         ret_state, ret_msg = mysql_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_cdb_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
-        #
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [cdb['instance_id'] for cdb in all_cdb_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
         return ret_state, ret_msg

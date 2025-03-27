@@ -13,7 +13,7 @@ import logging
 from typing import *
 from tencentcloud.common import credential
 from tencentcloud.vpc.v20170312 import vpc_client, models
-from models.models_utils import vpc_task, mark_expired
+from models.models_utils import vpc_task, mark_expired, mark_expired_by_sync
 
 
 class QCloudCVPC:
@@ -72,7 +72,10 @@ class QCloudCVPC:
         ret_state, ret_msg = vpc_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_vpc_list)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [vpc['instance_id'] for vpc in all_vpc_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

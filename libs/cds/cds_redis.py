@@ -7,7 +7,7 @@ Date  : 2023/2/25
 Desc  : 首都在线redis同步
 """
 
-from models.models_utils import redis_task, mark_expired
+from models.models_utils import redis_task, mark_expired, mark_expired_by_sync
 import logging
 from typing import *
 from . import CDSApi
@@ -97,6 +97,8 @@ class CDSRedisApi(CDSApi):
         # # 更新资源
         ret_state, ret_msg = redis_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_redis_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
-        #
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [redis['instance_id'] for redis in all_redis_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
         return ret_state, ret_msg

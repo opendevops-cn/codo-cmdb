@@ -11,7 +11,7 @@ import logging
 from tencentcloud.common import credential
 from tencentcloud.tke.v20180525 import tke_client, models
 
-from models.models_utils import cluster_task, mark_expired
+from models.models_utils import cluster_task, mark_expired, mark_expired_by_sync
 
 
 class QcloudTKE:
@@ -269,7 +269,10 @@ class QcloudTKE:
             # 更新资源
             ret_state, ret_msg = cluster_task(account_id=self._account_id, cloud_name=cloud_name, rows=tke_list)
             # 标记过期
-            mark_expired(resource_type=resource_type, account_id=self._account_id)
+            # mark_expired(resource_type=resource_type, account_id=self._account_id)
+            instance_ids = [cluster['instance_id'] for cluster in tke_list]
+            mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                                 instance_ids=instance_ids, region=self._region)
             return ret_state, ret_msg
         except Exception as e:
             logging.error(f"同步腾讯云tke集群失败: {e}")

@@ -10,7 +10,7 @@ import volcenginesdkcore
 from volcenginesdkcore.rest import ApiException
 from volcenginesdkrdsmysqlv2 import RDSMYSQLV2Api, DescribeDBInstancesRequest
 
-from models.models_utils import mark_expired, mysql_task
+from models.models_utils import mark_expired, mysql_task, mark_expired_by_sync
 
 InstanceStatusMapping = {
     "Running": "运行中",
@@ -167,7 +167,10 @@ class VolCRDS:
         # 更新资源
         ret_state, ret_msg = mysql_task(account_id=self._account_id, cloud_name=cloud_name, rows=rds)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [rds['instance_id'] for rds in rds]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

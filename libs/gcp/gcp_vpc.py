@@ -11,7 +11,7 @@ from typing import *
 from google.oauth2 import service_account
 from google.cloud import compute_v1
 
-from models.models_utils import vpc_task, mark_expired
+from models.models_utils import vpc_task, mark_expired, mark_expired_by_sync
 
 
 class GCPVPC:
@@ -47,14 +47,14 @@ class GCPVPC:
             # request.page_token = ""
             page_result = self.client.list(request=request)
             for response in page_result:
-                vpcs.append(self.handle_data(response))
+                vpcs.append(self.process_data(response))
         except Exception as e:
             logging.error(
                 f"谷歌云虚拟网络调用异常 get_all_vpcs： {self._account_id} -- {e}")
         return vpcs
 
     @staticmethod
-    def handle_data(data) -> Dict[str, Any]:
+    def process_data(data) -> Dict[str, Any]:
         """
         处理数据
         """
@@ -86,7 +86,10 @@ class GCPVPC:
                                       cloud_name=cloud_name, rows=vpcs)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [vpc['instance_id'] for vpc in vpcs]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids)
 
         return ret_state, ret_msg
 

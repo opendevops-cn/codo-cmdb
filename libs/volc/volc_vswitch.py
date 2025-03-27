@@ -12,7 +12,7 @@ from volcenginesdkcore.rest import ApiException
 from volcenginesdkvpc import VPCApi, DescribeSubnetsRequest
 
 from libs.volc.volc_vpc import VolCVPC
-from models.models_utils import vswitch_task, mark_expired
+from models.models_utils import vswitch_task, mark_expired, mark_expired_by_sync
 
 
 
@@ -83,7 +83,10 @@ class VolCSubnet(VolCVPC):
         ret_state, ret_msg = vswitch_task(account_id=self._account_id, cloud_name=cloud_name, rows=subnets)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [vswitch['instance_id'] for vswitch in subnets]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids)
 
         return ret_state, ret_msg
 

@@ -9,7 +9,7 @@
 
 import json
 import logging
-from typing import *
+from typing import Optional, List, Dict, Any, Tuple
 
 import volcenginesdkcore
 import volcenginesdknatgateway
@@ -18,9 +18,8 @@ from volcenginesdkecs import ECSApi, DescribeInstancesRequest
 from volcenginesdknatgateway import DescribeNatGatewaysRequest, DescribeNatGatewayAttributesRequest, DescribeNatGatewaysResponse, \
     DescribeNatGatewayAttributesResponse
 
-from models.models_utils import nat_task, mark_expired
+from models.models_utils import nat_task, mark_expired, mark_expired_by_sync
 from libs.volc.volc_vpc import VolCVPC
-from typing import Optional, List, Dict
 
 
 def get_run_type(val):
@@ -28,7 +27,7 @@ def get_run_type(val):
         "Creating": "创建中",
         "Pending": "操作中",
         "Deleting": "删除中",
-        "Available": "可用"
+        "Available": "运行中"
     }
     return run_map.get(val, '未知')
 
@@ -175,7 +174,10 @@ class VolNAT:
                                       cloud_name=cloud_name,
                                       rows=all_nat_gateway_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [nat['instance_id'] for nat in all_nat_gateway_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

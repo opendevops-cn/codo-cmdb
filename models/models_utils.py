@@ -13,6 +13,7 @@ from typing import *
 
 import pymysql
 from sqlalchemy.sql import or_
+from sqlalchemy.orm.attributes import flag_modified
 from websdk2.db_context import DBContext
 from websdk2.model_utils import model_to_dict, insert_or_update
 from websdk2.client import AcsClient
@@ -47,6 +48,62 @@ def mark_expired(resource_type: Optional[str], account_id: Optional[str]):
         session.query(resource_model).filter(
             resource_model.account_id == account_id, resource_model.update_time <= seven_days_ago
         ).update({resource_model.is_expired: True})
+        
+        
+def mark_expired_by_sync(cloud_name: str, account_id: str, resource_type: str, instance_ids: list, region=None):
+    """根据同步结果标记过期状态
+    Args:
+        cloud_name: 云服务商名称
+        account_id: 账号ID
+        resource_type: 资源类型
+        instance_ids: 当前同步到的实例ID列表
+        region: 区域    
+    """
+    if resource_type not in asset_mapping.keys():
+        logging.error(f"标记过期，资源类型错误，类型={resource_type}")
+        return
+
+    try:
+        with DBContext('w', None, True, **settings) as session:
+            resource_model = asset_mapping.get(resource_type)
+            
+            # 基础过滤条件
+            base_filter = [
+                resource_model.cloud_name == cloud_name,
+                resource_model.account_id == account_id,
+                resource_model.is_expired == False,
+                ~resource_model.instance_id.in_(instance_ids)
+            ]
+            # 如果指定了region，添加region过滤条件
+            if region:
+                base_filter.append(resource_model.region == region)
+            
+            # 将不在当前同步列表中的资源标记为未同步
+            unsync_resources = session.query(resource_model).filter(*base_filter).all()
+            
+            for resource in unsync_resources:
+                resource.state = '未同步'
+                # 更新ext_info中的state字段
+                if hasattr(resource, 'ext_info') and resource.ext_info:
+                    if isinstance(resource.ext_info, dict):
+                        resource.ext_info['state'] = '未同步'
+                        flag_modified(resource, 'ext_info')
+            
+            # 将7天未同步的资源标记为过期
+            seven_days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
+            expire_filter = [
+                resource_model.cloud_name == cloud_name,
+                resource_model.account_id == account_id,
+                resource_model.update_time <= seven_days_ago,
+                resource_model.is_expired == False
+            ]
+            if region:
+                expire_filter.append(resource_model.region == region)
+            session.query(resource_model).filter(*expire_filter).update({resource_model.is_expired: True})
+
+            session.commit()
+    except Exception as e:
+        logging.error(f"标记过期状态失败: {e}")
 
 
 def get_cloud_config(cloud_name: Optional[str], account_id: Optional[str] = None) -> List[dict]:
@@ -204,6 +261,104 @@ def server_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str
     except Exception as err:
         ret_state, ret_msg = False, f"{cloud_name}-{account_id}-server task写入数据库失败:{err}"
         logging.error(ret_msg)
+    return ret_state, ret_msg
+
+
+def server_task_batch(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, str]:
+    """批量更新服务器信息
+    Args:
+        cloud_name: 云服务商名称
+        account_id: 账号ID
+        rows: 服务器信息列表
+    Returns:
+        Tuple[bool, str]: (是否成功, 消息)
+    """
+    ret_state, ret_msg = True, f"{cloud_name}-{account_id}-server task写入数据库完成"
+    
+    try:
+        all_agent_info = get_all_agent_info()
+        with DBContext('w', None, True, **settings) as db_session:
+            # 获取所有实例ID
+            instance_ids = [row['instance_id'] for row in rows]
+            
+            # 批量查询现有记录
+            existing_records = {
+                record.instance_id: record 
+                for record in db_session.query(AssetServerModels).filter(
+                    AssetServerModels.instance_id.in_(instance_ids)
+                ).all()
+            }
+            
+            # 准备批量更新和插入的数据
+            to_update = []
+            to_insert = []
+            
+            for info in rows:
+                instance_id = info['instance_id']
+                region = info.get('region')
+                inner_ip = info.get('inner_ip')
+                
+                if instance_id in existing_records:
+                    # 准备更新数据
+                    record = existing_records[instance_id]
+                    agent_info = all_agent_info.get(record.agent_id, {})
+                    
+                    update_data = {
+                        'id': record.id,  # 需要包含主键
+                        'cloud_name': cloud_name,
+                        'account_id': account_id,
+                        'name': info.get('name'),
+                        'region': region,
+                        'zone': info.get('zone'),
+                        'state': info.get('state'),
+                        'outer_ip': info.get('outer_ip'),
+                        'inner_ip': inner_ip,
+                        'vpc_id': info.get('vpc_id'),
+                        'is_expired': False,
+                        'ext_info': info
+                    }
+                    if agent_info:
+                        update_data['agent_info'] = agent_info
+                    
+                    to_update.append(update_data)
+                else:
+                    # 准备插入数据
+                    to_insert.append({
+                        'cloud_name': cloud_name,
+                        'account_id': account_id,
+                        'instance_id': instance_id,
+                        'state': info.get('state'),
+                        'name': info.get('name'),
+                        'region': region,
+                        'zone': info.get('zone'),
+                        'vpc_id': info.get('vpc_id'),
+                        'inner_ip': inner_ip,
+                        'outer_ip': info.get('outer_ip'),
+                        'agent_id': "0",
+                        'ext_info': info,
+                        'is_expired': False
+                    })
+            
+            # 批量更新
+            if to_update:
+                try:
+                    db_session.bulk_update_mappings(AssetServerModels, to_update)
+                except Exception as err:
+                    logging.error(f"批量更新失败: {err}")
+            
+            # 批量插入
+            if to_insert:
+                try:
+                    db_session.bulk_insert_mappings(AssetServerModels, to_insert)
+                except pymysql.err.IntegrityError as err:
+                    logging.error(f"批量插入失败: {err}")
+            
+            db_session.commit()
+            
+    except Exception as err:
+        ret_state, ret_msg = False, f"{cloud_name}-{account_id}-server task写入数据库失败:{err}"
+        logging.error(ret_msg)
+    
     return ret_state, ret_msg
 
 
@@ -686,6 +841,7 @@ def mongodb_task(cloud_name: str, account_id: str, rows: list) -> Tuple[bool, st
                                                  state=row.get('state'),
                                                  tags=row.get('tags'),
                                                  zone=row.get('zone'),
+                                                 update_time=datetime.datetime.now(),
                                                  storage_type=row.get('storage_type')))
                 except Exception as err:
                     logging.error(err)
