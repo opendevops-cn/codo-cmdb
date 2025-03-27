@@ -5,7 +5,7 @@ from sqlalchemy import or_
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.sqlalchemy_pagination import paginate
 from models.business import BizModels
-from models import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels, TreeAssetModels
+from models import AssetServerModels, AssetMySQLModels, AssetRedisModels, AssetLBModels, TreeAssetModels, AssetNatModels
 from models.domain import DomainRecords
 from websdk2.model_utils import CommonOptView
 
@@ -61,6 +61,14 @@ def _get_dns_value(value: str = None):
         DomainRecords.domain_rr.like(f'%{value}%'),
         DomainRecords.remark.like(f'%{value}%')
     )
+    
+def _get_nat_value(value: str = None):
+    if not value:
+        return True
+    return or_(
+        AssetNatModels.name.like(f'%{value}%'),
+        AssetNatModels.instance_id.like(f'%{value}%')
+    )
 
 
 def get_asset_list(**params) -> dict:
@@ -77,10 +85,11 @@ def get_asset_list(**params) -> dict:
         redis_data = paginate(session.query(AssetRedisModels).filter(_get_redis_value(value)), **params)
         lb_data = paginate(session.query(AssetLBModels).filter(_get_lb_value(value)), **params)
         dns_data = paginate(session.query(DomainRecords).filter(_get_dns_value(value)), **params)
+        nat_data = paginate(session.query(AssetNatModels).filter(_get_nat_value(value)), **params)
         tree_asset_data = get_tree_asset_data(session, value, params)
     return dict(msg='获取成功', code=0, server_data=server_data.items, mysql_data=mysql_data.items,
                 redis_data=redis_data.items, lb_data=lb_data.items, dns_data=dns_data.items,
-                tree_asset_data=tree_asset_data)
+                tree_asset_data=tree_asset_data, nat_data=nat_data.items)
 
 
 def get_tree_asset_data(session, value: str = None, params: dict = None) -> List[Dict[str, Any]]:
