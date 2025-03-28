@@ -11,7 +11,7 @@ import logging
 from typing import *
 from tencentcloud.common import credential
 from tencentcloud.cvm.v20170312 import cvm_client, models
-from models.models_utils import server_task, mark_expired
+from models.models_utils import server_task, mark_expired, mark_expired_by_sync,  server_task_batch
 
 
 def get_run_type(val):
@@ -183,9 +183,12 @@ class QCloudCVM:
         all_cvm_list: List[dict] = self.get_all_cvm()
         if not all_cvm_list: return False, "CVM列表为空"
         # 更新资源
-        ret_state, ret_msg = server_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_cvm_list)
+        ret_state, ret_msg = server_task_batch(account_id=self._account_id, cloud_name=cloud_name, rows=all_cvm_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [cvm['instance_id'] for cvm in all_cvm_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

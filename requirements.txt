@@ -21,6 +21,8 @@ aliyun_python_sdk_r_kvstore==2.1.2
 aliyun_python_sdk_polardb==1.8.6
 aliyun-python-sdk-alb==1.0.10
 aliyun_python_sdk_cdn==3.8.7
+aliyun-python-sdk-dds==3.7.21
+aliyun-python-sdk-cs==4.8.1
 
 tencentcloud-sdk-python-common==3.0.1328
 tencentcloud-sdk-python-cvm==3.0.1328

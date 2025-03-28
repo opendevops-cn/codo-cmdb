@@ -13,7 +13,7 @@ import json
 import logging
 from tencentcloud.common import credential
 from tencentcloud.vpc.v20170312 import vpc_client, models
-from models.models_utils import eip_task, mark_expired
+from models.models_utils import eip_task, mark_expired, mark_expired_by_sync
 
 
 def get_network_pay_type(val):
@@ -105,6 +105,9 @@ class QCloudEIP:
         ret_state, ret_msg = eip_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_eip_list)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [eip['instance_id'] for eip in all_eip_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg

@@ -12,7 +12,7 @@ import volcenginesdkcore
 from volcenginesdkcore.rest import ApiException
 from volcenginesdkvke import VKEApi, ListClustersRequest
 
-from models.models_utils import cluster_task, mark_expired
+from models.models_utils import cluster_task, mark_expired, mark_expired_by_sync
 
 
 def get_cluster_status(val):
@@ -116,7 +116,10 @@ class VolcVKE:
                                           cloud_name=cloud_name,
                                           rows=all_cluster_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [cluster['instance_id'] for cluster in all_cluster_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
         return ret_state, ret_msg
 
 

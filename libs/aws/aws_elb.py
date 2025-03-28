@@ -10,7 +10,7 @@ Desc    : AWS ELB
 import logging
 import boto3
 from typing import *
-from models.models_utils import lb_task, mark_expired
+from models.models_utils import lb_task, mark_expired, mark_expired_by_sync
 
 
 def get_lb_type(val: str):
@@ -96,8 +96,10 @@ class AwsLbClient:
         ret_state, ret_msg = lb_task(account_id=self._accountID, cloud_name=cloud_name, rows=all_elb_list)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._accountID)
-
+        # mark_expired(resource_type=resource_type, account_id=self._accountID)
+        instance_ids = [elb['instance_id'] for elb in all_elb_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._accountID, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
         return ret_state, ret_msg
 
 

@@ -11,7 +11,7 @@ from typing import *
 from google.oauth2 import service_account
 from google.cloud import compute_v1
 
-from models.models_utils import vswitch_task, mark_expired
+from models.models_utils import vswitch_task, mark_expired, mark_expired_by_sync
 
 
 class GCPSubnet:
@@ -43,7 +43,7 @@ class GCPSubnet:
                 subnetworks = response.subnetworks
                 if not subnetworks:
                     continue
-                subnets.extend([self.handle_data(data) for data in subnetworks])
+                subnets.extend([self.process_data(data) for data in subnetworks])
         except Exception as e:
             logging.error(
                 f"谷歌云虚拟子网调用异常 get_all_subnets： {self._account_id} -- {e}")
@@ -59,7 +59,7 @@ class GCPSubnet:
         response = client.get(request=request)
         return response
 
-    def handle_data(self, data) -> Dict[str, Any]:
+    def process_data(self, data) -> Dict[str, Any]:
         """
         处理数据
         """
@@ -104,7 +104,10 @@ class GCPSubnet:
                                           cloud_name=cloud_name, rows=subnets)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [subnet['instance_id'] for subnet in subnets]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids)
 
         return ret_state, ret_msg
 

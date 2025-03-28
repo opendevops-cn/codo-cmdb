@@ -8,7 +8,7 @@ Desc  : VMware
 """
 
 import logging
-from models.models_utils import server_task, mark_expired
+from models.models_utils import server_task, mark_expired, mark_expired_by_sync, server_task_batch
 from typing import *
 from pyVmomi import vim
 from pyVim import connect
@@ -105,8 +105,10 @@ class VMWareHostAPI(object):
         all_server_list: List[dict] = self.get_all_vm()
         if not all_server_list: return False, "主机列表为空"
         # # 更新资源
-        ret_state, ret_msg = server_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_server_list)
+        ret_state, ret_msg = server_task_batch(account_id=self._account_id, cloud_name=cloud_name, rows=all_server_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
-        #
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [server['instance_id'] for server in all_server_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids)
         return ret_state, ret_msg

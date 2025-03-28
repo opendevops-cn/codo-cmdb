@@ -10,7 +10,7 @@ import volcenginesdkcore
 from volcenginesdkcore.rest import ApiException
 from volcenginesdkredis import REDISApi, DescribeDBInstancesRequest, DescribeDBInstanceDetailRequest
 
-from models.models_utils import redis_task, mark_expired
+from models.models_utils import redis_task, mark_expired, mark_expired_by_sync
 
 
 # 文档 https://www.volcengine.com/docs/6293/71563
@@ -209,7 +209,10 @@ class VolCRedis:
         # 更新资源
         ret_state, ret_msg = redis_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_redis_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [redis['instance_id'] for redis in all_redis_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

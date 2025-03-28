@@ -11,7 +11,7 @@ from typing import List, Union
 from tencentcloud.common import credential
 from tencentcloud.mongodb.v20190725 import mongodb_client, models
 
-from models.models_utils import mongodb_task, mark_expired
+from models.models_utils import mongodb_task, mark_expired, mark_expired_by_sync
 
 
 class QcloudMongoDB:
@@ -202,7 +202,10 @@ class QcloudMongoDB:
                                           cloud_name=cloud_name,
                                           rows=all_mongodb_instance)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [mongodb['instance_id'] for mongodb in all_mongodb_instance]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
         return ret_state, ret_msg
 
 

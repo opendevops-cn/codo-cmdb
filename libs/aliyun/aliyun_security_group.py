@@ -14,7 +14,7 @@ from aliyunsdkcore.client import AcsClient
 from aliyunsdkecs.request.v20140526.DescribeSecurityGroupsRequest import DescribeSecurityGroupsRequest
 from aliyunsdkecs.request.v20140526.DescribeSecurityGroupAttributeRequest import DescribeSecurityGroupAttributeRequest
 from aliyunsdkecs.request.v20140526.DescribeSecurityGroupReferencesRequest import DescribeSecurityGroupReferencesRequest
-from models.models_utils import security_group_task, mark_expired
+from models.models_utils import security_group_task, mark_expired, mark_expired_by_sync
 
 
 class AliyunSecurityGroup:
@@ -164,6 +164,9 @@ class AliyunSecurityGroup:
         ret_state, ret_msg = security_group_task(account_id=self._account_id, cloud_name=cloud_name,
                                                  rows=all_security_group)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [row['instance_id'] for row in all_security_group]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg

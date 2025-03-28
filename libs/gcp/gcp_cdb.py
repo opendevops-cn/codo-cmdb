@@ -10,7 +10,7 @@ from googleapiclient import discovery
 from google.oauth2 import service_account
 from google.cloud import compute_v1
 
-from models.models_utils import mark_expired, mysql_task
+from models.models_utils import mark_expired, mysql_task, mark_expired_by_sync
 
 # https://cloud.google.com/sql/docs/mysql/admin-api/rest/v1beta4/instances#SqlInstanceType
 InstanceMapping = {
@@ -188,8 +188,10 @@ class GCPCDB:
         ret_state, ret_msg = mysql_task(account_id=self._account_id,
                                         cloud_name=cloud_name, rows=cdbs)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
-
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [cdb['instance_id'] for cdb in cdbs]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids)
         return ret_state, ret_msg
 
 

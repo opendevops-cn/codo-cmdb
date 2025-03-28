@@ -160,6 +160,7 @@ class AssetVPCModels(AssetBaseModel):
     vpc_router = Column('vpc_router', String(255), comment='路由表')
     vpc_switch = Column('vpc_switch', String(1000), comment='交换机')
     is_default = Column('is_default', Boolean(), default=False, comment='是否是默认')
+    state = Column('state', String(80), index=True, default='运行中', comment='实例状态')
 
 
 class AssetVSwitchModels(AssetBaseModel):
@@ -178,6 +179,7 @@ class AssetVSwitchModels(AssetBaseModel):
     description = Column('description', String(255), comment='交换机的描述信息')
     cloud_region_id = Column('cloud_region_id', String(50), comment='云区域ID，后置变更')
     is_default = Column('is_default', Boolean(), default=False, comment='是否是默认')
+    state = Column('state', String(80), index=True, default='运行中', comment='实例状态')
 
 
 class AssetSwitchModels(TimeBaseModel, Base):
@@ -208,6 +210,7 @@ class SecurityGroupModels(AssetBaseModel):
     security_info = Column('security_info', JSON(), comment='安全组规则存JSON')
     ref_info = Column('ref_info', JSON(), comment='安全组关联存JSON')
     description = Column('description', String(255), default='', comment='详情简介')
+    state = Column('state', String(80), index=True, default='运行中', comment='实例状态')
 
 
 class AssetBackupModels(TimeBaseModel):
@@ -222,55 +225,6 @@ class AssetBackupModels(TimeBaseModel):
     asset_type = Column('asset_type', String(32), default='', comment="资产类型")
     created_day = Column(Date, default=human_date(), comment="日期")
 
-# class SecurityGroupInfoModel(TimeBaseModel, Base):
-#     """安全组规则"""
-#     # TODO 感觉没必要创建表 思考中
-#     __tablename__ = 't_asset_security_group_info'
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-# security_group_id = Column('security_group_id', String(120), index=True, nullable=False, comment='安全组ID')
-#
-# dest_cidr_ip = Column('dest_cidr_ip', String(255), default='', comment='目标IP地址段')
-# dest_group_id = Column('dest_group_id', String(128), default='', comment='目标安全组')
-# dest_group_name = Column('dest_group_name', String(128), default='', comment='目的端安全组名称')
-# dest_group_owner_account = Column('dest_group_owner_account', String(128), default='',
-#                                   comment='目标安全组所属账户ID')
-# direction = Column('direction', String(128), default='', comment='授权方向')
-#
-# ip_protocol = Column('ip_protocol', String(128), default='', comment='IP协议')
-# ipv6_dest_cidr_ip = Column('ipv6_dest_cidr_ip', String(128), default='', comment='目的IPv6地址段')
-# ipv6_source_cidr_ip = Column('ipv6_source_cidr_ip', String(128), default='', comment='源IPv6地址段')
-#
-# nic_type = Column('nic_type', String(50), default='', comment='网络类型')
-# policy = Column('policy', String(50), default='', comment='授权策略')
-#
-# port_range = Column('port_range', String(150), default='', comment='端口范围')
-# priority = Column('priority', String(20), default='', comment='规则优先级')
-#
-# source_cidr_ip = Column('source_cidr_ip', String(50), default='', comment='源IP地址段')
-# source_group_id = Column('source_group_id', String(128), default='', comment='源安全组')
-#
-# source_group_name = Column('source_group_name', String(250), default='', comment='源端安全组名称')
-# source_port_range = Column('source_port_range', String(128), default='', comment='源端端口范围')
-# source_group_owner_account = Column('source_group_owner_account', String(128), default='',
-#                                     comment='源安全组所属云账户ID')
-# description = Column('description', String(250), default='', comment='描述信息')
-# creation_time = Column('creation_time', String(50), default='', comment='安全组创建时间')
-
-
-# class SecurityGroupRefModel(TimeBaseModel, Base):
-#     """安全组关联"""
-#     __tablename__ = 't_asset_security_group_ref'
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     security_group_id = Column('security_group_id', String(120), index=True, nullable=False, comment='安全组ID')
-#     ref_security_groups = Column('ref_security_groups', String(120), index=True, comment='关联的安全组')
-
-#
-# class CDNModel(AssetBaseModel):
-#     pass
-#
-#
-# class StorageModel(AssetBaseModel):
-#     pass
 
 class AssetNatModels(AssetBaseModel):
     """NAT网关"""

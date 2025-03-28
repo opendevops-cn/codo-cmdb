@@ -10,7 +10,7 @@ Desc   : 阿里云 PolarDB
 import json
 import logging
 from typing import *
-from models.models_utils import mysql_task, mark_expired
+from models.models_utils import mysql_task, mark_expired, mark_expired_by_sync
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkpolardb.request.v20170801.DescribeDBClustersRequest import DescribeDBClustersRequest
 from aliyunsdkpolardb.request.v20170801.DescribeDBClusterEndpointsRequest import DescribeDBClusterEndpointsRequest
@@ -171,7 +171,10 @@ class AliyunPolarDBClient:
         # 更新资源
         ret_state, ret_msg = mysql_task(account_id=self._accountID, cloud_name=cloud_name, rows=all_polardb_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._accountID)
+        # mark_expired(resource_type=resource_type, account_id=self._accountID)
+        instance_ids = [row['instance_id'] for row in all_polardb_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._accountID, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 

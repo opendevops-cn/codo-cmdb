@@ -9,11 +9,11 @@ Desc  : 获取阿里云ALB资产信息
 
 import json
 import logging
-from typing import *
+from typing import List, Tuple, Dict, Any, Optional
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.auth.credentials import AccessKeyCredential
 from aliyunsdkalb.request.v20200616.ListLoadBalancersRequest import ListLoadBalancersRequest
-from models.models_utils import lb_task, mark_expired
+from models.models_utils import lb_task, mark_expired, mark_expired_by_sync
 
 
 def get_run_status(val):
@@ -22,8 +22,8 @@ def get_run_status(val):
         "Active": "运行中",
         "Provisioning": "创建中",
         "Configuring": "变配中",
-        "CreateFailed": "创建失败"
-    }.get(val, '未知')
+        "CreateFailed": "创建失败",
+    }.get(val, "未知")
 
 
 def get_endpoint_type(val):
@@ -64,7 +64,7 @@ class AliyunALbClient:
         ret_state, ret_msg, ret_date = True, "获取Response成功", {}
         try:
             request = ListLoadBalancersRequest()
-            request.set_accept_format('json')
+            request.set_accept_format("json")
             request.set_MaxResults(self.MaxResults)
             request.set_NextToken(self.NextToken)
             response = self.__client.do_action_with_exception(request)
@@ -84,11 +84,12 @@ class AliyunALbClient:
             if not is_success or not response:
                 logging.error(msg)
                 break
-            if 'LoadBalancers' not in response:
+            if "LoadBalancers" not in response:
                 logging.error(msg)
                 break
             rows = response["LoadBalancers"]
-            if not rows: break
+            if not rows:
+                break
             for row in rows:
                 data = self.format_alb_data(row)
                 all_alb_list.append(data)
@@ -98,7 +99,7 @@ class AliyunALbClient:
             self.NextToken = response["NextToken"]
         return all_alb_list
 
-    def format_alb_data(self, row: dict, type: Optional[str] = 'alb') -> Dict[str, Any]:
+    def format_alb_data(self, row: dict, type: Optional[str] = "alb") -> Dict[str, Any]:
         """
         处理下需要入库的数据
         :param type:
@@ -108,36 +109,39 @@ class AliyunALbClient:
         # 定义返回
         res: Dict[str, Any] = dict()
         # print(row)
-        res['type'] = type  # slb or alb
-        res['name'] = row.get('LoadBalancerName')
-        res['instance_id'] = row.get('LoadBalancerId')
-        res['create_time'] = row.get('CreateTime')
-        res['region'] = self._region
-        res['zone'] = ''
-        res['status'] = get_run_status(row.get('LoadBalancerStatus'))
-        res['dns_name'] = row.get('DNSName')
-        res['endpoint_type'] = get_endpoint_type(row.get('AddressType'))
-        res['ext_info'] = {
+        res["type"] = type  # slb or alb
+        res["name"] = row.get("LoadBalancerName")
+        res["instance_id"] = row.get("LoadBalancerId")
+        res["create_time"] = row.get("CreateTime")
+        res["region"] = self._region
+        res["zone"] = ""
+        res["status"] = get_run_status(row.get("LoadBalancerStatus"))
+        res["dns_name"] = row.get("DNSName")
+        res["endpoint_type"] = get_endpoint_type(row.get("AddressType"))
+        res["ext_info"] = {
             "vpc_id": row.get("VpcId"),
-            "business_status": get_business_status(row.get("LoadBalancerBussinessStatus"))
+            "business_status": get_business_status(row.get("LoadBalancerBussinessStatus")),
         }
         return res
 
-    def sync_cmdb(self, cloud_name: Optional[str] = 'aliyun', resource_type: Optional[str] = 'lb') -> Tuple[
-        bool, str]:
+    def sync_cmdb(self, cloud_name: Optional[str] = "aliyun", resource_type: Optional[str] = "lb") -> Tuple[bool, str]:
         """
         同步CMDB
         """
         all_alb_list: List[Dict[str, Any]] = self.get_all_alb()
-        if not all_alb_list: return False, "ALB列表为空"
+        if not all_alb_list:
+            return False, "ALB列表为空"
         # 同步资源
         ret_state, ret_msg = lb_task(account_id=self._account_id, cloud_name=cloud_name, rows=all_alb_list)
 
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._account_id)
+        # mark_expired(resource_type=resource_type, account_id=self._account_id)
+        instance_ids = [row["instance_id"] for row in all_alb_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._account_id, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
 
         return ret_state, ret_msg
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass
