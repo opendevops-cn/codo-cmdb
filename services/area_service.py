@@ -179,6 +179,12 @@ class Area(BaseModel):
                 raise ValueError("区服网关地址最多50个字符")
         return v
 
+    @field_validator("game_gate_address", mode="before")
+    def validate_game_gate_address(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("游戏网关地址必须为list类型")
+        return v
+
     @field_validator("state", mode="before")
     def validate_state(cls, v):
         if v not in [0, 1, 2, 3]:
