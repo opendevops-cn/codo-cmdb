@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 120               # 每行最大字符数
+target-version = "py310"       # 目标 Python 版本，可选：py38, py39, py310, py311, py312
+show-fixes = true              # 显示修复建议
+unsafe-fixes = true            # 启用不安全自动修复（例如可能改变语义的修复）
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]        # 启用哪些规则：E（pycodestyle），F（pyflakes），I（isort）
+ignore = ["F401", "F841"]      # 忽略未使用的导入/变量等
+
+[tool.ruff.format]
+quote-style = "double"         # 引号风格：single / double
+docstring-code-format = true   # 格式化文档字符串中的代码块
+skip-magic-trailing-comma = false
