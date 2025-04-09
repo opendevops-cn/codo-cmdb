@@ -115,6 +115,7 @@ class Area(BaseModel):
     open_timestamp: int  # 开服时间(ms)
     visible: bool  # 玩家可见
     gate_address: List[str] = []  # 区服网关地址
+    game_gate_address: List[str] = []  # 游戏网关地址
 
     @model_validator(mode="before")
     def val_must_not_null(cls, values):
@@ -138,6 +139,8 @@ class Area(BaseModel):
             raise ValueError("玩家可见不能为空")
         if "gate_address" not in values:
             raise ValueError("区服网关地址不能为空")
+        if "game_gate_address" not in values:
+            raise ValueError("游戏网关地址不能为空")
         return values
 
     @field_validator('area')
@@ -176,6 +179,12 @@ class Area(BaseModel):
         for address in v:
             if len(address) > 50:
                 raise ValueError("区服网关地址最多50个字符")
+        return v
+
+    @field_validator("game_gate_address", mode="before")
+    def validate_game_gate_address(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("游戏网关地址必须为list类型")
         return v
 
     @field_validator("state", mode="before")
@@ -443,10 +452,14 @@ def update_area(**data):
         return dict(code=-1, msg='区服不存在', data=[])
     env_type = env["env_type"]
     gate_address = data.get('gate_address', [])
+    game_gate_address = data.get('game_gate_address', [])
     if env_type == EnvType.Prd:
         curr_gate_address = detail[0].get('gate_address', [])
         if set(gate_address) != set(curr_gate_address):
             return dict(code=-1, msg='生产环境不允许编辑区服网关地址，请联系运维修改', data=[])
+        curr_game_gate_address = detail[0].get('game_gate_address', [])
+        if set(game_gate_address) != set(curr_game_gate_address):
+            return dict(code=-1, msg='生产环境不允许编辑游戏网关地址，请联系运维修改', data=[])
         now = int(time.time() * 1000)
         open_timestamp = data.get('open_timestamp')
         curr_open_timestamp = detail[0].get('open_timestamp')
