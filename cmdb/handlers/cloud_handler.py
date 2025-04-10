@@ -12,6 +12,7 @@ from abc import ABC
 from typing import *
 from shortuuid import uuid
 from enum import Enum
+from importlib import import_module
 
 from tornado.ioloop import IOLoop
 from concurrent.futures import ThreadPoolExecutor
@@ -19,95 +20,114 @@ from tornado.concurrent import run_on_executor
 from apscheduler.schedulers.tornado import TornadoScheduler
 
 from libs.base_handler import BaseHandler
-from libs.aliyun.synchronize import mapping as aliyun_mapping
-from libs.aliyun.synchronize import main as aliyun_synchronize
-from libs.aws.synchronize import mapping as aws_mapping
-from libs.aws.synchronize import main as aws_synchronize
-from libs.qcloud.synchronize import mapping as qcloud_mapping
-from libs.qcloud.synchronize import main as qcloud_synchronize
-from libs.cds.synchronize import mapping as cbs_mapping
-from libs.cds.synchronize import main as cbs_synchronize
-from libs.vmware.synchronize import mapping as vm_mapping
-from libs.vmware.synchronize import main as vm_synchronize
-from libs.volc.synchronize import mapping as vol_mapping
-from libs.volc.synchronize import main as vol_synchronize
-from libs.gcp.synchronize import mapping as gcp_mapping
-from libs.gcp.synchronize import main as gcp_synchronize
-from libs.pve.synchronize import mapping as pve_mapping
-from libs.pve.synchronize import main as pve_synchronize
 from models.models_utils import get_all_cloud_interval
 from services.cloud_service import opt_obj, get_cloud_settings, get_cloud_sync_log, update_cloud_settings
 from libs.mycrypt import mc
 
-# 同步关系
-mapping = {"aws": aws_synchronize, "aliyun": aliyun_synchronize, "qcloud": qcloud_synchronize,
-           "cds": cbs_synchronize, "vmware": vm_synchronize, "volc": vol_synchronize, "gcp": gcp_synchronize,
-           "pve": pve_synchronize}
 # 定时器
 scheduler = TornadoScheduler(timezone="Asia/Shanghai")
+
+
+# 云厂商模块懒加载器
+class CloudModuleLoader:
+    """云厂商模块懒加载器，仅在需要时才导入相应模块，减少内存占用"""
+
+    def __init__(self):
+        # 模块缓存
+        self.modules_cache = {}
+        # 云厂商对应模块路径
+        self.provider_paths = {
+            "aws": "libs.aws.synchronize",
+            "aliyun": "libs.aliyun.synchronize",
+            "qcloud": "libs.qcloud.synchronize",
+            "cds": "libs.cds.synchronize",
+            "vmware": "libs.vmware.synchronize",
+            "volc": "libs.volc.synchronize",
+            "gcp": "libs.gcp.synchronize",
+            "pve": "libs.pve.synchronize"
+        }
+
+    def get_module(self, provider: str) -> Optional[Dict[str, Any]]:
+        """获取指定云厂商的模块，如果还未加载则动态导入"""
+        if provider not in self.provider_paths:
+            return None
+
+        if provider not in self.modules_cache:
+            try:
+                module_path = self.provider_paths[provider]
+                module = import_module(module_path)
+                self.modules_cache[provider] = {
+                    "mapping": getattr(module, "mapping"),
+                    "main": getattr(module, "main")
+                }
+            except (ImportError, AttributeError) as e:
+                print(f"导入{provider}模块时出错: {e}")
+                return None
+
+        return self.modules_cache.get(provider)
+
+    def get_sync_function(self, provider: str) -> Optional[Callable]:
+        """获取指定云厂商的同步函数"""
+        module = self.get_module(provider)
+        return module["main"] if module else None
+
+    def get_resource_mapping(self, provider: str) -> Dict:
+        """获取指定云厂商的资源映射"""
+        module = self.get_module(provider)
+        return module["mapping"] if module else {}
+
+
+cloud_loader = CloudModuleLoader()
 
 
 # 云厂商枚举
 class CloudProvider(Enum):
     AWS = "aws"
-    ALIYUN = "aliyun" 
+    ALIYUN = "aliyun"
     QCLOUD = "qcloud"
     CDS = "cds"
     VMWARE = "vmware"
     VOLC = "volc"
     GCP = "gcp"
     PVE = "pve"
-    
-    
+
+
 class CloudService:
     """云厂商服务类，用于同步云厂商资源
     """
-    def __init__(self):
-        # 同步关系
-        self.sync_mappings = {
-            CloudProvider.AWS.value: aws_synchronize,
-            CloudProvider.ALIYUN.value: aliyun_synchronize,
-            CloudProvider.QCLOUD.value: qcloud_synchronize,
-            CloudProvider.CDS.value: cbs_synchronize,
-            CloudProvider.VMWARE.value: vm_synchronize,
-            CloudProvider.VOLC.value: vol_synchronize,
-            CloudProvider.GCP.value: gcp_synchronize,
-            CloudProvider.PVE.value: pve_synchronize
-        }
-        # 资源类型映射
-        self.resource_mappings = {
-            CloudProvider.AWS.value: aws_mapping,
-            CloudProvider.ALIYUN.value: aliyun_mapping,
-            CloudProvider.QCLOUD.value: qcloud_mapping,
-            CloudProvider.CDS.value: cbs_mapping,
-            CloudProvider.VMWARE.value: vm_mapping,
-            CloudProvider.VOLC.value: vol_mapping,
-            CloudProvider.GCP.value: gcp_mapping,
-            CloudProvider.PVE.value: pve_mapping
-        }
-    
-    
     def get_sync_function(self, cloud_name: str) -> Optional[Callable]:
         """获取同步函数"""
-        return self.sync_mappings.get(cloud_name)
-        
+        return cloud_loader.get_sync_function(cloud_name)
+
     def get_resource_types(self, cloud_name: str) -> List[str]:
         """获取资源类型列表"""
-        mapping = self.resource_mappings.get(cloud_name, {})
+        mapping = cloud_loader.get_resource_mapping(cloud_name)
         return list(mapping.keys())
-    
+
+
+def get_job_func(cloud_name, account_id):
+    def job_func():
+        sync_func = cloud_loader.get_sync_function(cloud_name)
+        if sync_func:
+            try:
+                sync_func(account_id=account_id)
+            except Exception as e:
+                print(f"执行{cloud_name}同步任务出错: {e}")
+    return job_func
 
 # 资产自动同步任务
 # 2023年5月9日 必须添加到 mapping 才能提供同步功能
 def add_cloud_jobs():
     resp: List[Dict[str, Union[str, int]]] = get_all_cloud_interval()
     for item in resp:
-        func_name = mapping.get(item['cloud_name'])
-        if not func_name: continue
+        cloud_name = item.get('cloud_name')
+        account_id = item.get('account_id')
+        job_func = get_job_func(cloud_name, account_id)
+        if not job_func: continue
         scheduler.add_job(
-            func_name, 'interval', minutes=item.get('interval', 30),
+            job_func, 'interval', minutes=item.get('interval', 30),
             replace_existing=True, id=item.get('account_id'), name=str(item),
-            kwargs=dict(account_id=item['account_id'])
+            # kwargs=dict(account_id=item['account_id'])
         )  # 默认 30m
 
 
@@ -185,7 +205,7 @@ class CloudSyncHandler(BaseHandler, ABC):
     # 前端手动触发
     @run_on_executor(executor='_thread_pool')
     def asset_sync_main(self, cloud_name: Optional[str], account_id: Optional[str], resources: List[str]):
-        synchronize = mapping.get(cloud_name)
+        synchronize = cloud_loader.get_sync_function(cloud_name)
         synchronize(account_id=account_id, resources=resources)
 
     def get(self):
