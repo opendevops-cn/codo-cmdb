@@ -67,7 +67,7 @@ class Application(myApplication, ABC):
         urls.extend(order_urls)
         # self.settings = settings
         super(Application, self).__init__(urls, **settings)
-        self.sub_app = SubApp(**settings)
+        # self.sub_app = SubApp(**settings)
 
     def start_server(self):
         """
