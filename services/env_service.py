@@ -2,7 +2,7 @@
 # @Author: Dongdong Liu
 # @Date: 2024/9/23
 # @Description: 区服环境
-
+import json
 from collections import namedtuple
 from typing import List, Optional
 
@@ -150,11 +150,7 @@ def _get_env_list_common(**params) -> tuple:
     Returns:
         tuple: (items, total_count) 环境列表和总数
     """
-    value = (
-        params.get("searchValue")
-        if "searchValue" in params
-        else params.get("searchVal")
-    )
+    value = params.get("searchValue") if "searchValue" in params else params.get("searchVal")
     filter_map = params.pop("filter_map") if "filter_map" in params else {}
 
     # 设置默认参数
@@ -175,9 +171,7 @@ def _get_env_list_common(**params) -> tuple:
     # 查询数据
     with DBContext("r") as session:
         page = paginate(
-            session.query(EnvModels)
-            .filter(_get_env_by_val(value), _get_env_by_biz_id(biz_id))
-            .filter_by(**filter_map),
+            session.query(EnvModels).filter(_get_env_by_val(value), _get_env_by_biz_id(biz_id)).filter_by(**filter_map),
             **params,
         )
 
@@ -189,6 +183,57 @@ def _get_env_list_common(**params) -> tuple:
     )
 
     return items, page.total
+
+
+def get_env_list_without_prd(**params) -> dict:
+    """获取环境列表(在数据库查询阶段排除生产环境)"""
+    try:
+        value = params.get("searchValue") if "searchValue" in params else params.get("searchVal")
+        filter_map = params.pop("filter_map") if "filter_map" in params else {}
+
+        # 设置默认参数
+        if "page_size" not in params:
+            params["page_size"] = 300  # 默认获取到全部数据
+        if "order" not in params:
+            params["order"] = "descend"
+
+        # 验证必要参数
+        biz_id = params.get("biz_id")
+        if not biz_id:
+            raise ValueError("biz_id不能为空")
+
+        # 处理环境号过滤
+        if "env_no" in params and params.get("env_no"):
+            filter_map["env_no"] = params.get("env_no")
+
+        # 查询数据 - 显式排除生产环境
+        with DBContext("r") as session:
+            query = (
+                session.query(EnvModels)
+                .filter(
+                    _get_env_by_val(value),
+                    _get_env_by_biz_id(biz_id),
+                    EnvModels.env_type != EnvType.Prd,  # 排除生产环境
+                )
+                .filter_by(**filter_map)
+            )
+
+            page = paginate(query, **params)
+
+        # 排序处理
+        items = sorted(
+            page.items,
+            key=lambda x: (x["env_type"], x["create_time"]),
+            reverse=True,
+        )
+        # 移除app_secret字段
+        items = [{k: v for k, v in item.items() if k != "app_secret"} for item in items]
+
+        return dict(code=0, msg="获取成功", data=items, count=page.total)
+    except ValueError as e:
+        return dict(code=-1, msg=str(e))
+    except Exception as e:
+        return dict(code=-1, msg=f"获取环境列表失败: {str(e)}")
 
 
 def get_env_list_for_api(**params) -> dict:
@@ -255,9 +300,7 @@ def update_env_for_api(data: dict) -> dict:
             env_id = data.pop("id")
             if not env_id:
                 return dict(code=-1, msg="ID不能为空")
-            env_obj = (
-                session.query(EnvModels).filter(EnvModels.id == env_id).first()
-            )
+            env_obj = session.query(EnvModels).filter(EnvModels.id == env_id).first()
             if not env_obj:
                 return dict(code=-1, msg="环境不存在")
             if env_obj.app_secret != env_data.app_secret:
@@ -266,9 +309,7 @@ def update_env_for_api(data: dict) -> dict:
             # if session.query(EnvModels).filter(EnvModels.env_no == env_data.env_no, EnvModels.id != env_id).first():
             #     return dict(code=-1, msg='环境编号已存在')
             env_data.env_no = env_obj.env_no
-            session.query(EnvModels).filter(EnvModels.id == env_id).update(
-                env_data.model_dump()
-            )
+            session.query(EnvModels).filter(EnvModels.id == env_id).update(env_data.model_dump())
         return dict(code=0, msg="更新成功")
     except Exception as e:
         return dict(code=-1, msg=str(e))
@@ -286,11 +327,7 @@ def add_env_for_api(data: dict) -> dict:
     env_data.env_no = uuid()
     try:
         with DBContext("w", None, True) as session:
-            if (
-                session.query(EnvModels)
-                .filter(EnvModels.env_no == env_data.env_no)
-                .first()
-            ):
+            if session.query(EnvModels).filter(EnvModels.env_no == env_data.env_no).first():
                 return dict(code=-1, msg="环境编号已存在")
             session.add(EnvModels(**env_data.model_dump()))
         return dict(code=0, msg="创建成功")
@@ -301,12 +338,43 @@ def add_env_for_api(data: dict) -> dict:
 def get_env_by_id(env_id: int) -> dict:
     """根据ID获取数据"""
     with DBContext("r") as session:
-        env_obj = (
-            session.query(EnvModels).filter(EnvModels.id == env_id).first()
-        )
+        env_obj = session.query(EnvModels).filter(EnvModels.id == env_id).first()
         if not env_obj:
             return {}
         return model_to_dict(env_obj)
+
+
+def is_prd_env(env_id: int) -> bool:
+    """判断是否是生产环境"""
+    with DBContext("r") as session:
+        env_obj = session.query(EnvModels).filter(EnvModels.id == env_id).first()
+        if not env_obj:
+            return False
+        return env_obj.env_type == EnvType.Prd
+
+
+def env_checker(self) -> tuple[bool, str]:
+    try:
+        if self.request.body:
+            data = json.loads(self.request.body.decode("utf-8"))
+            env_id = data.get("env_id")
+        else:
+            env_id = self.request.arguments.get("env_id")
+    except json.JSONDecodeError:
+        return False, "请求参数错误"
+
+    if not env_id:
+        return False, "环境id不能为空"
+    try:
+        int(env_id)
+    except ValueError:
+        return False, "环境id类型错误"
+    try:
+        if is_prd_env(env_id):
+            return False, "生产环境禁止操作"
+        return True, "环境id合法"
+    except ValueError:
+        return False, "系统内部错误"
 
 
 def check_idip_connection(data: dict) -> dict:
