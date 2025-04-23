@@ -71,7 +71,8 @@ def mark_expired_by_sync(cloud_name: str, account_id: str, resource_type: str, i
             base_filter = [
                 resource_model.cloud_name == cloud_name,
                 resource_model.account_id == account_id,
-                resource_model.is_expired == False,
+                resource_model.is_expired.is_(False),
+                resource_model.state != '未同步',
                 ~resource_model.instance_id.in_(instance_ids)
             ]
             # 如果指定了region，添加region过滤条件
