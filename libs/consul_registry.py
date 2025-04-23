@@ -22,6 +22,7 @@ from websdk2.model_utils import model_to_dict
 from websdk2.cache_context import cache_conn
 from models.tree import TreeAssetModels
 from models import asset_mapping
+from libs.thread_pool import global_executors
 
 if configs.can_import: configs.import_dict(**settings)
 
@@ -42,7 +43,7 @@ def deco(cls, release=False):
 
 
 def sync_consul():
-    @deco(RedisLock("async_asset_to_consul_lock_key"))
+    @deco(RedisLock("async_asset_to_consul_lock_key"), release=True)
     def index():
         logging.info(f'同步数据到consul开始 ！！！')
         c = ConsulOpt()
@@ -300,7 +301,7 @@ def get_registry_domain_info():
 
 
 def async_consul_info():
-    executor = ThreadPoolExecutor(max_workers=1)
+    executor = global_executors.general_executor
     executor.submit(sync_consul)
 
 
