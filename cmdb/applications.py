@@ -26,7 +26,7 @@ from libs.consul_registry import async_consul_info
 from libs.asset_change import init_cmdb_change_tasks
 from libs.scheduled_tasks import init_scheduled_tasks
 from cmp.handlers import urls as order_urls
-from cmdb.subscription import RedisSubscriber as SubApp
+from libs.thread_pool import global_executors
 
 
 class Application(myApplication, ABC):
@@ -94,6 +94,7 @@ class Application(myApplication, ABC):
             self.io_loop.start()
         except (KeyboardInterrupt, SystemExit):
             scheduler.shutdown(wait=True)
+            global_executors.shutdown()
             self.io_loop.stop()
         except:
             import traceback
