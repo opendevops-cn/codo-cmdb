@@ -99,8 +99,8 @@ env_urls = [
         {"handle_name": "配置平台-免鉴权环境列表", "method": ["GET"]},
     ),
     (
-        r"/cbb_area/env/without_prd/list/",
+        r"/cbb_area/without_prd/env/list/",
         EnvListWithoutPrdHandler,
-        {"handle_name": "配置平台-环境列表-不包含生产环境", "method": ["GET"]},
+        {"handle_name": "配置平台-环境列表-非生产环境", "method": ["GET"]},
     ),
 ]
