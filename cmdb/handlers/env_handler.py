@@ -7,8 +7,16 @@
 import json
 from abc import ABC
 from libs.base_handler import BaseHandler
-from services.env_service import get_env_list_for_api, update_env_for_api, add_env_for_api, opt_obj as opt_obj_env, \
-    get_all_env_list_for_api, check_idip_connection, get_env_list_for_api_v2
+from services.env_service import (
+    get_env_list_for_api,
+    update_env_for_api,
+    add_env_for_api,
+    opt_obj as opt_obj_env,
+    get_all_env_list_for_api,
+    check_idip_connection,
+    get_env_list_for_api_v2,
+    get_env_list_without_prd,
+)
 
 
 class EnvHandler(BaseHandler, ABC):
@@ -45,18 +53,29 @@ class EnvListHandler(BaseHandler, ABC):
         res = get_all_env_list_for_api(**self.params)
         return self.write(res)
 
+
 class NoAuthEnvHandler(BaseHandler, ABC):
     def get(self):
         if self.request_tenantid:
             self.params.update(biz_id=self.request_tenantid)
         res = get_env_list_for_api_v2(**self.params)
         return self.write(res)
-    
+
+
 class IdipConnectionCheckHandler(BaseHandler, ABC):
     def post(self):
         data = json.loads(self.request.body.decode("utf-8"))
         res = check_idip_connection(data)
         return self.write(res)
+
+
+class EnvListWithoutPrdHandler(BaseHandler, ABC):
+    def get(self):
+        if self.request_tenantid:
+            self.params.update(biz_id=self.request_tenantid)
+        res = get_env_list_without_prd(**self.params)
+        return self.write(res)
+
 
 env_urls = [
     (
@@ -78,5 +97,10 @@ env_urls = [
         r"/cbb_area/na/env/list/",
         NoAuthEnvHandler,
         {"handle_name": "配置平台-免鉴权环境列表", "method": ["GET"]},
+    ),
+    (
+        r"/cbb_area/env/without_prd/list/",
+        EnvListWithoutPrdHandler,
+        {"handle_name": "配置平台-环境列表-不包含生产环境", "method": ["GET"]},
     ),
 ]
