@@ -28,7 +28,11 @@ class CBBAreaHandler(BaseHandler, ABC):
 
     @run_on_executor(executor="_thread_pool")
     def async_get_area_list(self):
-        self.params.update(biz_id=self.request_tenantid)
+        if not self.request_tenantid:
+            biz_id = self.params.get("biz_id")
+        else:
+            biz_id = self.request_tenantid
+        self.params.update(biz_id=biz_id)
         return get_area_list(**self.params)
 
     async def get(self):
@@ -38,7 +42,8 @@ class CBBAreaHandler(BaseHandler, ABC):
     @run_on_executor(executor="_thread_pool")
     def async_create_area(self):
         data = json.loads(self.request.body.decode("utf-8"))
-        data.update(biz_id=self.request_tenantid)
+        if self.request_tenantid:
+            data["biz_id"] = self.request_tenantid
         return create_area(**data)
 
     async def post(self):
@@ -48,7 +53,8 @@ class CBBAreaHandler(BaseHandler, ABC):
     @run_on_executor(executor="_thread_pool")
     def async_delete_area(self):
         data = json.loads(self.request.body.decode("utf-8"))
-        data.update(biz_id=self.request_tenantid)
+        if self.request_tenantid:
+            data.update(biz_id=self.request_tenantid)
         return delete_area(**data)
 
     async def delete(self):
@@ -58,7 +64,8 @@ class CBBAreaHandler(BaseHandler, ABC):
     @run_on_executor(executor="_thread_pool")
     def async_update_area(self):
         data = json.loads(self.request.body.decode("utf-8"))
-        data.update(biz_id=self.request_tenantid)
+        if self.request_tenantid:
+            data.update(biz_id=self.request_tenantid)
         return update_area(**data)
 
     async def put(self):
@@ -71,7 +78,12 @@ class CBBBigAreaDetailHandler(BaseHandler, ABC):
 
     @run_on_executor(executor="_thread_pool")
     def async_get_big_area_detail(self):
-        self.params.update(biz_id=self.request_tenantid)
+        if not self.request_tenantid:
+            biz_id = self.params.get("biz_id")
+        else:
+            biz_id = self.request_tenantid
+
+        self.params.update(biz_id=biz_id)
         return get_big_area_detail(**self.params)
 
     async def get(self):
@@ -84,7 +96,11 @@ class CBBBigAreaHandler(BaseHandler, ABC):
 
     @run_on_executor(executor="_thread_pool")
     def async_get_big_area_list(self):
-        self.params.update(biz_id=self.request_tenantid)
+        if not self.request_tenantid:
+            biz_id = self.params.get("biz_id")
+        else:
+            biz_id = self.request_tenantid
+        self.params.update(biz_id=biz_id)
         return get_big_area_list(**self.params)
 
     async def get(self):
@@ -94,7 +110,8 @@ class CBBBigAreaHandler(BaseHandler, ABC):
     @run_on_executor(executor="_thread_pool")
     def async_create_or_update_big_area(self):
         data = json.loads(self.request.body.decode("utf-8"))
-        data.update(biz_id=self.request_tenantid)
+        if self.request_tenantid:
+            data.update(biz_id=self.request_tenantid)
         return create_or_update_big_area(**data)
 
     async def post(self):
@@ -106,7 +123,11 @@ class CBBBigAreaHandler(BaseHandler, ABC):
         data = json.loads(self.request.body.decode("utf-8"))
         big_area = data.get("big_area")
         env_id = data.get("env_id")
-        return delete_big_area(big_area, env_id, self.request_tenantid)
+        if self.request_tenantid:
+            biz_id = self.request_tenantid
+        else:
+            biz_id = data.get("biz_id")
+        return delete_big_area(big_area, env_id, biz_id)
 
     async def delete(self):
         res = await self.async_delete_big_area()
