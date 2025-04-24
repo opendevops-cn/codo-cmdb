@@ -359,7 +359,7 @@ def env_checker(self) -> tuple[bool, str]:
             data = json.loads(self.request.body.decode("utf-8"))
             env_id = data.get("env_id")
         else:
-            env_id = self.request.arguments.get("env_id")
+            env_id = self.get_argument("env_id")
     except json.JSONDecodeError:
         return False, "请求参数错误"
 
