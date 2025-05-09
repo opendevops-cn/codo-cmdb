@@ -57,8 +57,8 @@ def sync(data: Dict[str, Any]):
             continue
 
 
-@deco(RedisLock("async_aws_to_cmdb_redis_lock_key"))
-def main(account_id: Optional[str] = None, resources: List[str] = None):
+# @deco(RedisLock("async_aws_to_cmdb_redis_lock_key"))
+def main(account_id: Optional[str] = None, resources: List[str] = None, executors=None):
     """
     这些类型都是为了前端点击的，定时都是自动同步全账号，全类型
     account_id：账号ID，CMDB自己的ID
@@ -70,16 +70,34 @@ def main(account_id: Optional[str] = None, resources: List[str] = None):
     if account_id is not None:
         for _, v in sync_mapping.items():
             v['account_id'] = account_id
-    # 如果用户给了资源列表，就只要用户的
-    if resources is not None:
-        pop_list = list(set(sync_mapping.keys()).difference(set(resources)))
-        for i in pop_list:
-            sync_mapping.pop(i)
-    # 同步
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(sync_mapping.keys())) as executor:
-        executor.map(
-            sync, sync_mapping.values()
-        )
+
+    # 定义账户级别的任务锁，确保同一账户的任务不会并发执行且支持多账户执行
+    @deco(RedisLock(f"async_aws_to_cmdb_{account_id}_redis_lock_key"
+                    if account_id else "async_aws_to_cmdb_redis_lock_key"), release=True)
+    def index():
+        filtered_sync_mapping = {k: v for k, v in sync_mapping.items() if k in resources} if resources else sync_mapping
+        if not filtered_sync_mapping:
+            logging.warning('未找到需要同步的资源类型')
+            return
+        # 使用传入的线程池或创建临时线程池
+        if executors:
+            # 使用传入的线程池
+            futures = []
+            for config in filtered_sync_mapping.values():
+                future = executors.submit(sync, config)
+                futures.append(future)
+
+            # 等待所有任务完成
+            for future in futures:
+                try:
+                    future.result()
+                except Exception as e:
+                    logging.error(f"资源同步任务失败: {e}")
+        else:
+            with ThreadPoolExecutor(max_workers=len(filtered_sync_mapping)) as executor:
+                executor.map(sync, filtered_sync_mapping.values())
+
+    index()
 
 
 if __name__ == '__main__':

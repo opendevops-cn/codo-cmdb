@@ -50,7 +50,7 @@ def bind_agent_tasks():
     如果能绑定则更新agent的asset_server_id，同时更新server的agent_id
     """
 
-    @deco(RedisLock("agent_binding_tasks_redis_lock_key"))
+    @deco(RedisLock("agent_binding_tasks_redis_lock_key"), release=True)
     def index():
         logging.info("开始agent绑定主机！！！")
         bind_agents()
@@ -118,7 +118,7 @@ def notify_unbound_agents_tasks(unbound_agents: Set[str] = None) -> None:
     :param unbound_agents: 未匹配的agent ID集合
     """
 
-    @deco(RedisLock("notify_unbound_agents_tasks_redis_lock_key"))
+    @deco(RedisLock("notify_unbound_agents_tasks_redis_lock_key", release=True))
     def index():
         unbound_agents = bind_agents()
         if unbound_agents:
@@ -182,7 +182,7 @@ def bind_server_tasks():
     :return:
     """
 
-    @deco(RedisLock("server_binding_tasks_redis_lock_key"))
+    @deco(RedisLock("server_binding_tasks_redis_lock_key"), release=True)
     def index():
         logging.info("开始检查server是否绑定服务树！！！")
         with DBContext("w", None, True) as session:
@@ -234,5 +234,5 @@ def init_scheduled_tasks():
         minute=0,
         id="notify_unbound_agents_tasks",
     )
-    scheduler.add_job(bind_agent_tasks, "cron", minute="*/3", id="bind_agents_tasks")
-    scheduler.add_job(bind_server_tasks, "cron", hour=10, minute=0, id="bind_server_tasks")
+    scheduler.add_job(bind_agent_tasks, "cron", minute="*/3", id="bind_agents_tasks", max_instances=1)
+    scheduler.add_job(bind_server_tasks, "cron", hour=10, minute=0, id="bind_server_tasks", max_instances=1)

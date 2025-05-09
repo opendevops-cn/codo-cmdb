@@ -36,6 +36,7 @@ from libs.api_gateway.jumpserver.asset_perms import jms_asset_permission_api
 from libs.api_gateway.jumpserver.org import jms_org_api
 from libs.api_gateway.jumpserver.user import jms_user_api
 from libs.api_gateway.jumpserver.user_group import jms_user_group_api
+from libs.thread_pool import global_executors
 
 from models.asset import AssetServerModels, AssetVSwitchModels
 from models.business import BizModels, PermissionGroupModels
@@ -77,7 +78,7 @@ def deco(cls, release=False, **kw):
 
 
 def biz_sync():
-    @deco(RedisLock("async_biz_to_cmdb_redis_lock_key"))
+    @deco(RedisLock("async_biz_to_cmdb_redis_lock_key"), release=True)
     def index():
         logging.info("开始从权限中心同步业务信息到配置平台")
         get_mg_biz = dict(
@@ -127,7 +128,7 @@ def biz_sync():
 
 
 def sync_agent_status():
-    @deco(RedisLock("async_agent_status_redis_lock_key"))
+    @deco(RedisLock("async_agent_status_redis_lock_key"),  release=True)
     def index():
         logging.info("开始同步agent状态到配置平台")
         # 实例化client
@@ -174,7 +175,7 @@ def sync_agent_status():
 
 
 def clean_sync_logs():
-    @deco(RedisLock("clean_sync_logs_redis_lock_key"))
+    @deco(RedisLock("clean_sync_logs_redis_lock_key"), release=True)
     def index():
         week_ago = datetime.datetime.now() - datetime.timedelta(days=7)
         logging.info(f"开始清理资源同步日志  {week_ago}之前 !!!")
@@ -190,12 +191,12 @@ def clean_sync_logs():
 
 
 def async_agent():
-    executor = ThreadPoolExecutor(max_workers=1)
+    executor = global_executors.general_executor
     executor.submit(sync_agent_status)
 
 
 def async_biz_info():
-    executor = ThreadPoolExecutor(max_workers=2)
+    executor = global_executors.general_executor
     executor.submit(biz_sync)
     executor.submit(clean_sync_logs)
 
@@ -1009,7 +1010,7 @@ def async_service_trees():
 def sync_vswitch_cloud_region_id():
     """同步vswitch的cloud_region_id"""
 
-    @deco(RedisLock("sync_vswitch_cloud_region_id_redis_lock_key"))
+    @deco(RedisLock("sync_vswitch_cloud_region_id_redis_lock_key"), release=True)
     def index():
         logging.info("开始同步虚拟子网云区域ID!!!")
         with DBContext("w", None, True) as session:
@@ -1089,7 +1090,7 @@ def sync_server_cloud_region_id():
 
 
 def async_vswitch_cloud_region_id():
-    executor = ThreadPoolExecutor(max_workers=1)
+    executor = global_executors.general_executor
     executor.submit(sync_vswitch_cloud_region_id)
 
 
@@ -1101,7 +1102,7 @@ def async_server_cloud_region_id():
 def sync_cmdb_to_jms_with_enterprise(perm_group_id=None, with_lock=True):
     """同步配置平台数据到JumpServer企业版和社区版"""
 
-    # @deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))
+    @deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"), release=True)
     def index(group_id=None):
         with DBContext("w", None, True) as session:
             try:
@@ -1146,7 +1147,7 @@ def sync_cmdb_to_jms_with_enterprise(perm_group_id=None, with_lock=True):
     try:
         logging.info("开始对同步配置平台数据到JumpServer企业版")
         if with_lock:
-            deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"))(
+            deco(RedisLock("sync_cmdb_to_jms_with_enterprise_redis_lock_key"), release=True)(
                 index
             )(perm_group_id)
         else:
@@ -1157,7 +1158,7 @@ def sync_cmdb_to_jms_with_enterprise(perm_group_id=None, with_lock=True):
 
 
 def async_cmdb_to_jms_with_enterprise(perm_group_id=None):
-    executor = ThreadPoolExecutor(max_workers=1)
+    executor = global_executors.general_executor
     executor.submit(sync_cmdb_to_jms_with_enterprise, perm_group_id, True)
 
 
@@ -1166,7 +1167,7 @@ def sync_jms_orgs():
     同步堡垒机组织信息到配置平台
     """
 
-    @deco(RedisLock("async_jms_orgs_to_cmdb_redis_lock_key"))
+    @deco(RedisLock("async_jms_orgs_to_cmdb_redis_lock_key"), release=True)
     def index():
         logging.info("开始从堡垒机同步组织信息到配置平台")
         try:
@@ -1187,7 +1188,7 @@ def sync_jms_orgs():
 
 
 def async_jms_orgs_to_cmdb():
-    executor = ThreadPoolExecutor(max_workers=1)
+    executor = global_executors.general_executor
     executor.submit(sync_jms_orgs)
 
 

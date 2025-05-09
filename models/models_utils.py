@@ -14,7 +14,7 @@ from typing import *
 import pymysql
 from sqlalchemy.sql import or_
 from sqlalchemy.orm.attributes import flag_modified
-from websdk2.db_context import DBContext
+from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import model_to_dict, insert_or_update
 from websdk2.client import AcsClient
 from websdk2.api_set import api_set
@@ -71,7 +71,8 @@ def mark_expired_by_sync(cloud_name: str, account_id: str, resource_type: str, i
             base_filter = [
                 resource_model.cloud_name == cloud_name,
                 resource_model.account_id == account_id,
-                resource_model.is_expired == False,
+                resource_model.is_expired.is_(False),
+                resource_model.state != '未同步',
                 ~resource_model.instance_id.in_(instance_ids)
             ]
             # 如果指定了region，添加region过滤条件

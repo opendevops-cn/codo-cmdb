@@ -27,6 +27,7 @@ from libs.domain.qcloud_domain import QCloud
 from libs.domain.godaddy_domain import GoDaddy
 from libs.domain.aliyun_domain import AliYun
 from libs.kafka_utils import KafkaProducer
+from libs.thread_pool import global_executors
 
 from settings import settings
 
@@ -66,7 +67,7 @@ def domain_factory(cloud, **kwargs):
 
 
 def all_domain_sync_index():
-    @deco(RedisLock("all_domain_sync_redis_lock_key"))
+    @deco(RedisLock("all_domain_sync_redis_lock_key"), release=True)
     def index():
         logging.info(f'开始同步域名信息')
         domain_main('aliyun')
@@ -339,7 +340,7 @@ def mark_expired(resource_model, domain_name: Optional[str], record_id: Optional
 
 
 def async_domain_info():
-    executor = ThreadPoolExecutor(max_workers=1)
+    executor = global_executors.general_executor
     executor.submit(all_domain_sync_index)
 
 

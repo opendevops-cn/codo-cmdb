@@ -33,10 +33,10 @@ class CloudDomainHandler(BaseHandler, ABC):
 
     def post(self, *args, **kwargs):
         data = json.loads(self.request.body.decode("utf-8"))
-        record_end_time = data.get('record_end_time')
+        record_end_time = data.get("record_end_time")
         end_time = datetime.datetime.strptime(record_end_time, "%Y-%m-%dT%H:%M:%S.%fZ") + datetime.timedelta(hours=8)
-        data['record_end_time'] = end_time
-        res = add_domain_name(**data)
+        data["record_end_time"] = end_time
+        res = add_domain_name(data)
         self.write(res)
 
     def put(self, *args, **kwargs):
@@ -51,7 +51,7 @@ class CloudDomainHandler(BaseHandler, ABC):
 
     def delete(self, *args, **kwargs):
         data = json.loads(self.request.body.decode("utf-8"))
-        data['user'] = self.request_fullname()
+        data["user"] = self.request_fullname()
         res = del_domain_name(data)
         self.write(res)
 

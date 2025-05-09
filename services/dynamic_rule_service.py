@@ -123,11 +123,9 @@ def refresh_asset(data: dict) -> dict:
         biz_id = __biz_info.biz_id
         if des_type == "业务":
             if len(des_data) == 1:
-                print('挂载业务')
-                if not __info: return dict(code=-4, msg="暂时不支持绑定业务")
+                return dict(code=-4, msg="暂时不支持绑定业务")
             elif len(des_data) == 2:
-                if not __info: return dict(code=-5, msg="暂时不支持绑定环境")
-                print('挂载环境')
+                return dict(code=-5, msg="暂时不支持绑定环境")
             elif len(des_data) == 3:
                 print('挂载集群')
                 filter_map = dict(region_name=des_data[2], env_name=des_data[1], biz_id=__biz_info.biz_id,

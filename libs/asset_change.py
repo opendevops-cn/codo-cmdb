@@ -263,7 +263,7 @@ class AssetChangeNotify:
         title = f"月报-{dict(RES_TYPE_MAP).get(self.asset_type, self.asset_type)}"
         return self.run(dest_date=date.strftime("%Y-%m-%d"), title=title)
 
-
+@deco(RedisLock("asset_cmdb_backup_redis_lock_key"))
 def cmdb_backup():
     """定时每天备份主机资源"""
     logging.info("===开始执行 定时每天备份资源")
