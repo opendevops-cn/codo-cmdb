@@ -25,16 +25,9 @@ from services.cloud_service import opt_obj, get_cloud_settings, get_cloud_sync_l
 from libs.mycrypt import mc
 from libs.thread_pool import global_executors
 
-# 定时器
-from apscheduler.executors.pool import ThreadPoolExecutor as APSThreadPoolExecutor
 
-# 配置调度器与Tornado兼容
-executors = {
-    "default": APSThreadPoolExecutor(5)  # 限制最多5个并发作业
-}
-job_defaults = {"coalesce": True, "max_instances": 1}
 
-scheduler = TornadoScheduler(executors=executors, job_defaults=job_defaults, timezone="Asia/Shanghai")
+scheduler = TornadoScheduler(timezone="Asia/Shanghai")
 
 
 # 云厂商模块懒加载器
