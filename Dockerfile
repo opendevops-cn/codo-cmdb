@@ -1,4 +1,4 @@
-FROM rockylinux:9.1
+FROM harbor.123u.com/public/rockylinux-python3:9.1-3.9.14
 
 LABEL MAINTAINER="shenshuo<191715030@qq.com>"
 # 设置编码
@@ -25,7 +25,7 @@ WORKDIR /data
 COPY . .
 
 # 5. 安装依赖
-RUN uv pip install --system -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple &> /dev/null && \
+RUN uv pip install --system -r requirements.txt &> /dev/null && \
     chmod -R a+x /data/run-py.sh
 
 EXPOSE 8000
