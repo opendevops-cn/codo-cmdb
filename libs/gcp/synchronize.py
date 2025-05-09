@@ -163,4 +163,4 @@ def main(account_id: Optional[str] = None, resources: List[str] = None, executor
 
 
 if __name__ == "__main__":
-    main()
+    pass
