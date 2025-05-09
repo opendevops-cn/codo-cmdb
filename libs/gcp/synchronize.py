@@ -49,8 +49,8 @@ def sync_regions(conf: Dict[str, str], obj: Callable, cloud_type: str) -> None:
 
 
     account_path = f"/tmp/{project_id}_account_file.json"
-    with open(account_path, "w", encoding="utf-8") as file:
-        file.write(account_file)  # 写入字符串
+    # with open(account_path, "w", encoding="utf-8") as file:
+    #     file.write(account_file)  # 写入字符串
     # 使用 with 自动清理临时文件
     try:
         with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as tmp_file:
@@ -124,9 +124,9 @@ def main(account_id: Optional[str] = None, resources: List[str] = None, executor
     :return:
     """
     # 读取全局配置，判断是否启用 GCP 同步
-    # gcp_sync = get_gcp_sync_config()
-    # if not gcp_sync:
-    #     return
+    gcp_sync = get_gcp_sync_config()
+    if not gcp_sync:
+        return
     sync_mapping = mapping.copy()
     if account_id is not None:
         for _, v in sync_mapping.items():
@@ -163,4 +163,4 @@ def main(account_id: Optional[str] = None, resources: List[str] = None, executor
 
 
 if __name__ == "__main__":
-    main()
+    pass
