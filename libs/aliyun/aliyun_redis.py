@@ -10,7 +10,7 @@ Desc   :  阿里云 Redis
 import json
 import logging
 from typing import *
-from models.models_utils import redis_task, mark_expired
+from models.models_utils import redis_task, mark_expired, mark_expired_by_sync
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkr_kvstore.request.v20150101.DescribeInstancesRequest import DescribeInstancesRequest
 from aliyunsdkr_kvstore.request.v20150101.DescribeDBInstanceNetInfoRequest import DescribeDBInstanceNetInfoRequest
@@ -176,8 +176,10 @@ class AliyunRedisClient:
         # 更新资源
         ret_state, ret_msg = redis_task(account_id=self._accountID, cloud_name=cloud_name, rows=all_redis_list)
         # 标记过期
-        mark_expired(resource_type=resource_type, account_id=self._accountID)
-
+        # mark_expired(resource_type=resource_type, account_id=self._accountID)
+        instance_ids = [nat['instance_id'] for nat in all_redis_list]
+        mark_expired_by_sync(cloud_name=cloud_name, account_id=self._accountID, resource_type=resource_type,
+                             instance_ids=instance_ids, region=self._region)
         return ret_state, ret_msg
 
 

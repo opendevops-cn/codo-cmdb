@@ -19,7 +19,7 @@ class GlobalThreadPoolManager:
             if cls._instance is None:
                 cls._instance = super(GlobalThreadPoolManager, cls).__new__(cls)
                 cls._instance._cloud_executor = ThreadPoolExecutor(max_workers=10)
-                cls._instance._general_executor = ThreadPoolExecutor(max_workers=10)
+                cls._instance._general_executor = ThreadPoolExecutor(max_workers=5)
             return cls._instance
 
     @property
@@ -32,10 +32,10 @@ class GlobalThreadPoolManager:
         """通用线程池"""
         return self._general_executor
 
-    def shutdown(self):
+    def shutdown(self, wait: bool = False):
         """关闭所有线程池"""
-        self._cloud_executor.shutdown()
-        self._general_executor.shutdown()
+        self._cloud_executor.shutdown(wait=wait)
+        self._general_executor.shutdown(wait=wait)
 
 
 # 创建全局线程池实例

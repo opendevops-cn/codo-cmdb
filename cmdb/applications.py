@@ -32,7 +32,7 @@ from libs.thread_pool import global_executors
 class Application(myApplication, ABC):
     def __init__(self, **settings):
         # 同步业务
-        biz_callback = PeriodicCallback(async_biz_info, 360000)  # 360000 6分钟
+        biz_callback = PeriodicCallback(async_biz_info, 180000)  # 180000 3分钟
         biz_callback.start()
         # 同步consul 信息
         consul_callback = PeriodicCallback(
@@ -94,7 +94,7 @@ class Application(myApplication, ABC):
             self.io_loop.start()
         except (KeyboardInterrupt, SystemExit):
             scheduler.shutdown(wait=True)
-            global_executors.shutdown()
+            global_executors.shutdown(wait=True)
             self.io_loop.stop()
         except:
             import traceback
