@@ -2,17 +2,21 @@
 # @Author: Dongdong Liu
 # @Date: 2024/9/19
 # @Description: CBB区服接口
+import base64
 import time
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
+from websdk2.db_context import DBContextV2 as DBContext
+from websdk2.model_utils import model_to_dict
 
 from libs.api_gateway.cbb.area import AreaAPI
 from libs.api_gateway.cbb.big_area import BigAreaAPI
 from libs.api_gateway.cbb.sign import Signer
 from libs.mycrypt import mc
 from models import EnvType
+from models.cbb_area import CBBBigAreaModels
 from services.env_service import get_env_by_id
 
 # todo 存入数据库
@@ -33,8 +37,10 @@ class BigArea(BaseModel):
     tags: List[str] = []  # 大区标签
     visible: bool = False  # 玩家是否可见
     utc_offset: int = 0  # UTC偏移
-    address: str = None  # 大区地址
-    protocol_converter_host: str = None  # gm回调地址
+    address: str = ""  # 大区地址
+    protocol_converter_host: str = ""  # gm回调地址
+    idip: str = ""  # idip
+    app_secret: str = ""  # app_secret
 
     @model_validator(mode="before")
     def val_must_not_null(cls, values):
@@ -299,8 +305,27 @@ def get_big_area_list(**params):
     big_areas_body = big_areas.get("body", {})
     big_area_list = big_areas_body.get("big_areas", [])
     big_area_count = big_areas_body.get("big_area_count", 0)
+
+    with DBContext("r") as session:
+        cbb_big_area_objs = (
+            session.query(CBBBigAreaModels)
+            .filter(
+                CBBBigAreaModels.biz_id == biz_id,
+                CBBBigAreaModels.env_id == env_id,
+            )
+            .all()
+        )
+        cbb_big_area_map = {cbb_big_area.big_area: model_to_dict(cbb_big_area) for cbb_big_area in cbb_big_area_objs}
     for big_area in big_area_list:
-        big_area.update({"env_id": env_id, "env_name": env.get("env_name"), "env_type": env.get("env_type")})
+        big_area.update(
+            {
+                "env_id": env_id,
+                "env_name": env.get("env_name"),
+                "env_type": env.get("env_type"),
+                "idip": cbb_big_area_map.get(big_area.get("big_area", {}), {}).get("idip"),
+                "app_secret": cbb_big_area_map.get(big_area.get("big_area", {}), {}).get("app_secret"),
+            }
+        )
     return dict(code=0, msg="获取成功", data=big_area_list, count=big_area_count)
 
 
@@ -326,9 +351,97 @@ def get_big_area_detail(**params):
     big_areas = big_area_api.get_big_area_detail(tag_filter=tag_filter, big_area=big_area)
     big_areas_body = big_areas.get("body", {})
     big_area_list = big_areas_body.get("big_areas", [])
+
+    with DBContext("r") as session:
+        cbb_big_area_objs = (
+            session.query(CBBBigAreaModels)
+            .filter(
+                CBBBigAreaModels.biz_id == biz_id,
+                CBBBigAreaModels.env_id == env_id,
+                CBBBigAreaModels.big_area == big_area,
+            )
+            .all()
+        )
+        cbb_big_area_map = {cbb_big_area.big_area: model_to_dict(cbb_big_area) for cbb_big_area in cbb_big_area_objs}
     for big_area in big_area_list:
-        big_area.update({"env_id": env_id, "env_name": env.get("env_name"), "env_type": env.get("env_type")})
+        big_area.update(
+            {
+                "env_id": env_id,
+                "env_name": env.get("env_name"),
+                "env_type": env.get("env_type"),
+                "idip": cbb_big_area_map.get(big_area.get("big_area", {}), {}).get("idip"),
+                "app_secret": cbb_big_area_map.get(big_area.get("big_area", {}), {}).get("app_secret"),
+            }
+        )
     return dict(code=0, msg="获取成功", data=big_area_list)
+
+
+@handle_api_exceptions
+def get_big_area_detail_for_gmt(**params):
+    """
+    获取大区详情[gmt需要查询idip地址和secret].
+    :param params.
+    :return: 大区详情.
+    """
+    tag_filter = params.pop("tag_filter", None)
+    big_area = params.pop("big_area", None)
+    env_id = params.pop("env_id", 0)
+    biz_id = params.pop("biz_id", "")
+    if not big_area:
+        return dict(code=-1, msg="大区id不能为空", data=[])
+    if not biz_id:
+        return dict(code=-1, msg="业务id不能为空", data=[])
+    game_appid = get_game_appid(biz_id)
+    env = get_env_details(env_id)
+    signer = Signer(secret=mc.my_decrypt(env["app_secret"]), app_id=env["app_id"])
+    big_area_api = BigAreaAPI(signer, env["idip"], game_appid)
+    big_areas = big_area_api.get_big_area_detail(tag_filter=tag_filter, big_area=big_area)
+    big_areas_body = big_areas.get("body", {})
+    big_area_list = big_areas_body.get("big_areas", [])
+    with DBContext("r") as session:
+        cbb_big_area_objs = (
+            session.query(CBBBigAreaModels)
+            .filter(
+                CBBBigAreaModels.biz_id == biz_id,
+                CBBBigAreaModels.env_id == env_id,
+                CBBBigAreaModels.big_area == big_area,
+            )
+            .all()
+        )
+        cbb_big_area_map = {cbb_big_area.big_area: model_to_dict(cbb_big_area) for cbb_big_area in cbb_big_area_objs}
+    for big_area in big_area_list:
+        app_secret = cbb_big_area_map.get(big_area.get("big_area", {}), {}).get("app_secret")
+        if app_secret:
+            app_secret = mc.my_decrypt(app_secret)
+        big_area.update(
+            {
+                "env_id": env_id,
+                "env_name": env.get("env_name"),
+                "env_type": env.get("env_type"),
+                "idip": cbb_big_area_map.get(big_area.get("big_area", {}), {}).get("idip"),
+                "app_secret": base64.b64encode(app_secret.encode("utf-8")).decode("utf-8"),
+            }
+        )
+    return dict(code=0, msg="获取成功", data=big_area_list)
+
+
+def create_or_update_big_area_for_db(session, **data):
+    if (
+            session.query(CBBBigAreaModels)
+                    .filter(
+                CBBBigAreaModels.biz_id == data.get("biz_id"),
+                CBBBigAreaModels.env_id == data.get("env_id"),
+                CBBBigAreaModels.big_area == data.get("big_area"),
+            )
+                    .first()
+    ):
+        session.query(CBBBigAreaModels).filter(
+            CBBBigAreaModels.biz_id == data.get("biz_id"),
+            CBBBigAreaModels.env_id == data.get("env_id"),
+            CBBBigAreaModels.big_area == data.get("big_area"),
+        ).update(data)
+    else:
+        session.add(CBBBigAreaModels(**data))
 
 
 @handle_api_exceptions
@@ -349,6 +462,25 @@ def create_or_update_big_area(**data):
     big_area_api = BigAreaAPI(signer, env["idip"], game_appid)
     big_area = BigArea(**data)
     result = big_area_api.create_or_update_big_area(**big_area.model_dump())
+    try:
+        with DBContext("w", None, True) as session:
+            current_obj = session.query(CBBBigAreaModels).filter(CBBBigAreaModels.big_area == big_area.big_area,
+                                                                 CBBBigAreaModels.env_id == env_id,
+                                                                 CBBBigAreaModels.biz_id == biz_id).first()
+            idip = data.pop("idip", "")
+            app_secret = data.pop("app_secret", "")
+            if app_secret and app_secret != current_obj.app_secret:
+                app_secret = mc.my_encrypt(app_secret)
+            create_or_update_big_area_for_db(
+                session,
+                env_id=env_id,
+                biz_id=biz_id,
+                big_area=data.get("big_area"),
+                app_secret=app_secret,
+                idip=idip,
+            )
+    except Exception as e:
+        return dict(code=-1, msg=str(e), data=[])
     return dict(code=0, msg="操作成功", data=result)
 
 
@@ -376,6 +508,7 @@ def delete_big_area(big_area: str, env_id: int, biz_id: str):
     area_list = get_area_list(big_area=big_area)
     if area_list.get("data", []):
         return dict(code=-1, msg="请先删除大区下的所有区服", data=[])
+    # TODO: 删除大区配置
     result = big_area_api.delete_big_area(big_area)
     return dict(code=0, msg="操作成功", data=result)
 
