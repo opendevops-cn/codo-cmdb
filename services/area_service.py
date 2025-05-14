@@ -469,7 +469,7 @@ def create_or_update_big_area(**data):
                                                                  CBBBigAreaModels.biz_id == biz_id).first()
             idip = data.pop("idip", "")
             app_secret = data.pop("app_secret", "")
-            if app_secret and app_secret != current_obj.app_secret:
+            if app_secret and current_obj and app_secret != current_obj.app_secret:
                 app_secret = mc.my_encrypt(app_secret)
             create_or_update_big_area_for_db(
                 session,
