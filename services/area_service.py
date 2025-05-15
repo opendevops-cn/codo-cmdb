@@ -6,8 +6,8 @@ import base64
 import time
 from functools import wraps
 from typing import Any, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from openpyxl.styles.builtins import total
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import model_to_dict
@@ -402,7 +402,9 @@ def get_big_area_list_for_gmt(**params):
         for cbb_big_area in cbb_big_area_objs:
             key = f"{cbb_big_area.big_area}:{cbb_big_area.env_id}"
             cbb_big_area_map[key] = model_to_dict(cbb_big_area)
-    for env in envs:
+
+    # 使用线程池并行获取大区列表
+    def fetch_big_areas(env):
         try:
             signer = Signer(secret=mc.my_decrypt(env["app_secret"]), app_id=env["app_id"])
             big_area_api = BigAreaAPI(signer, env["idip"], game_appid)
@@ -414,10 +416,16 @@ def get_big_area_list_for_gmt(**params):
             for area in big_area_list:
                 area["env_id"] = env["id"]
             big_area_count = big_areas_body.get("big_area_count", 0)
+            return big_area_list, big_area_count
+        except Exception as e:
+            return [], 0
+
+    with ThreadPoolExecutor(max_workers=min(10, len(envs))) as executor:
+        future_to_env = {executor.submit(fetch_big_areas, env): env for env in envs}
+        for future in as_completed(future_to_env):
+            big_area_list, big_area_count = future.result()
             total_big_area_list.extend(big_area_list)
             total_big_area_count += big_area_count
-        except Exception as e:
-            continue
 
     for big_area_item in total_big_area_list:
         big_area_id = big_area_item.get("big_area")
@@ -440,6 +448,7 @@ def get_big_area_list_for_gmt(**params):
                 filtered_list.append(item)
         total_big_area_list = filtered_list
         total_big_area_count = len(filtered_list)
+    total_big_area_list.sort(key=lambda x: x.get("name", "").lower())
     # 手动实现分页逻辑
     start_index = (page - 1) * limit
     end_index = start_index + limit
