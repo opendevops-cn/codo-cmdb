@@ -77,6 +77,14 @@ class EnvListWithoutPrdHandler(BaseHandler, ABC):
         return self.write(res)
 
 
+class EnvListForGMTHandler(BaseHandler, ABC):
+    def get(self):
+        if self.request_tenantid:
+            self.params.update(biz_id=self.request_tenantid)
+        res = get_env_list_for_api_v2(**self.params)
+        return self.write(res)
+
+
 env_urls = [
     (
         r"/cbb_area/env/",
@@ -102,5 +110,10 @@ env_urls = [
         r"/cbb_area/without_prd/env/list/",
         EnvListWithoutPrdHandler,
         {"handle_name": "配置平台-环境列表-非生产环境", "method": ["GET"]},
+    ),
+    (
+        r"/cbb_area/gmt/env/list/",
+        EnvListForGMTHandler,
+        {"handle_name": "配置平台-环境列表-GMT环境", "method": ["GET"]},
     ),
 ]

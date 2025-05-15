@@ -8,16 +8,17 @@ from concurrent.futures import ThreadPoolExecutor
 
 from tornado.concurrent import run_on_executor
 
-
 from libs.base_handler import BaseHandler
 from services.area_service import (
-    get_big_area_list,
-    get_area_list,
-    create_or_update_big_area,
     create_area,
-    delete_big_area,
+    create_or_update_big_area,
     delete_area,
+    delete_big_area,
+    get_area_list,
     get_big_area_detail,
+    get_big_area_detail_for_gmt,
+    get_big_area_list,
+    get_big_area_list_for_gmt,
     update_area,
 )
 from services.env_service import env_checker
@@ -171,11 +172,76 @@ class CBBBigAreaDetailWithoutPrdHandler(CBBBigAreaDetailHandler):
         return super().prepare()
 
 
+class CBBBigAreaForGMTHandler(CBBBigAreaHandler):
+    _thread_pool = ThreadPoolExecutor(3)
+
+    @run_on_executor(executor="_thread_pool")
+    def async_get_big_area_list(self):
+        if not self.request_tenantid:
+            biz_id = self.params.get("biz_id")
+        else:
+            biz_id = self.request_tenantid
+        self.params.update(biz_id=biz_id)
+        return get_big_area_list_for_gmt(**self.params)
+
+    async def get(self):
+        res = await self.async_get_big_area_list()
+        return self.write(res)
+
+
+class CBBBigAreaDetailForGMTHandler(BaseHandler, ABC):
+    _thread_pool = ThreadPoolExecutor(3)
+
+    @run_on_executor(executor="_thread_pool")
+    def async_get_big_area_detail(self):
+        if not self.request_tenantid:
+            biz_id = self.params.get("biz_id")
+        else:
+            biz_id = self.request_tenantid
+
+        self.params.update(biz_id=biz_id)
+        return get_big_area_detail_for_gmt(**self.params)
+
+    async def get(self):
+        res = await self.async_get_big_area_detail()
+        return self.write(res)
+
+
+class CBBAreaForGMTHandler(CBBAreaHandler): ...
+
+
 area_urls = [
     (r"/cbb_area/area/", CBBAreaHandler, {"handle_name": "配置平台-区服管理", "method": ["ALL"]}),
     (r"/cbb_area/big_area/", CBBBigAreaHandler, {"handle_name": "配置平台-大区管理", "method": ["ALL"]}),
     (r"/cbb_area/big_area/detail/", CBBBigAreaDetailHandler, {"handle_name": "配置平台-大区详情", "method": ["GET"]}),
-    (r"/cbb_area/without_prd/area/", CBBAreaWithoutPrdHandler, {"handle_name": "配置平台-区服管理-非生产环境", "method": ["ALL"]}),
-    (r"/cbb_area/without_prd/big_area/",CBBBigAreaWithoutPrdHandler, {"handle_name": "配置平台-大区管理-非生产环境", "method": ["ALL"]}),
-    (r"/cbb_area/without_prd/big_area/detail/",CBBBigAreaDetailWithoutPrdHandler, {"handle_name": "配置平台-大区详情-非生产环境", "method": ["GET"]}),
+    (
+        r"/cbb_area/without_prd/area/",
+        CBBAreaWithoutPrdHandler,
+        {"handle_name": "配置平台-区服管理-非生产环境", "method": ["ALL"]},
+    ),
+    (
+        r"/cbb_area/without_prd/big_area/",
+        CBBBigAreaWithoutPrdHandler,
+        {"handle_name": "配置平台-大区管理-非生产环境", "method": ["ALL"]},
+    ),
+    (
+        r"/cbb_area/without_prd/big_area/detail/",
+        CBBBigAreaDetailWithoutPrdHandler,
+        {"handle_name": "配置平台-大区详情-非生产环境", "method": ["GET"]},
+    ),
+    (
+        r"/cbb_area/gmt/big_area/",
+        CBBBigAreaForGMTHandler,
+        {"handle_name": "配置平台-大区管理-GMT专用", "method": ["ALL"]},
+    ),
+    (
+        r"/cbb_area/gmt/big_area/detail/",
+        CBBBigAreaDetailForGMTHandler,
+        {"handle_name": "配置平台-大区详情-GMT专用", "method": ["GET"]},
+    ),
+    (
+        r"/cbb_area/gmt/area/",
+        CBBAreaForGMTHandler,
+        {"handle_name": "配置平台-区服管理-GMT专用", "method": ["ALL"]},
+    ),
 ]

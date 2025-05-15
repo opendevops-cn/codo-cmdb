@@ -19,6 +19,7 @@ from settings import settings as app_settings
 from models.env import Base as EnvBase
 from models.secret import Base as SecretBase
 from models.agent import Base as AgentBase
+from models.cbb_area import Base as CbbAreaBase
 
 
 default_configs = app_settings[const.DB_CONFIG_ITEM][const.DEFAULT_DB_KEY]
@@ -48,6 +49,7 @@ def create():
     EnvBase.metadata.create_all(engine)
     SecretBase.metadata.create_all(engine)
     AgentBase.metadata.create_all(engine)
+    CbbAreaBase.metadata.create_all(engine)
     print('[Success] 表结构创建成功!')
 
 
