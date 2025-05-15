@@ -377,6 +377,55 @@ def get_big_area_detail(**params):
 
 
 @handle_api_exceptions
+def get_big_area_list_for_gmt(**params):
+    """
+    获取大区列表.
+    :param params.
+    :return: 大区列表.
+    """
+    tag_filter = params.pop("tag_filter", None)
+    big_area = params.pop("big_area", None)
+    env_id = params.pop("env_id", 0)
+    searchValue = params.pop("searchValue", None)
+    page = int(params.pop("page", 1)) or 1
+    limit = int(params.pop("limit", 10)) or 10
+    biz_id = params.pop("biz_id")
+    if not biz_id:
+        return dict(code=-1, msg="业务id不能为空", data=[])
+    game_appid = get_game_appid(biz_id)
+    env = get_env_details(env_id)
+    signer = Signer(secret=mc.my_decrypt(env["app_secret"]), app_id=env["app_id"])
+    big_area_api = BigAreaAPI(signer, env["idip"], game_appid)
+    big_areas = big_area_api.get_big_areas(
+        tag_filter=tag_filter, big_area=big_area, query_string=searchValue, page_no=page, page_size=limit
+    )
+    big_areas_body = big_areas.get("body", {})
+    big_area_list = big_areas_body.get("big_areas", [])
+    big_area_count = big_areas_body.get("big_area_count", 0)
+
+    with DBContext("r") as session:
+        cbb_big_area_objs = (
+            session.query(CBBBigAreaModels)
+            .filter(
+                CBBBigAreaModels.biz_id == biz_id,
+                CBBBigAreaModels.env_id == env_id,
+            )
+            .all()
+        )
+        cbb_big_area_map = {cbb_big_area.big_area: model_to_dict(cbb_big_area) for cbb_big_area in cbb_big_area_objs}
+    for big_area in big_area_list:
+        big_area.update(
+            {
+                "env_id": env_id,
+                "env_name": env.get("env_name"),
+                "env_type": env.get("env_type"),
+                "idip": cbb_big_area_map.get(big_area.get("big_area", {}), {}).get("idip"),
+            }
+        )
+    return dict(code=0, msg="获取成功", data=big_area_list, count=big_area_count)
+
+
+@handle_api_exceptions
 def get_big_area_detail_for_gmt(**params):
     """
     获取大区详情[gmt需要查询idip地址和secret].
@@ -427,13 +476,13 @@ def get_big_area_detail_for_gmt(**params):
 
 def create_or_update_big_area_for_db(session, **data):
     if (
-            session.query(CBBBigAreaModels)
-                    .filter(
-                CBBBigAreaModels.biz_id == data.get("biz_id"),
-                CBBBigAreaModels.env_id == data.get("env_id"),
-                CBBBigAreaModels.big_area == data.get("big_area"),
-            )
-                    .first()
+        session.query(CBBBigAreaModels)
+        .filter(
+            CBBBigAreaModels.biz_id == data.get("biz_id"),
+            CBBBigAreaModels.env_id == data.get("env_id"),
+            CBBBigAreaModels.big_area == data.get("big_area"),
+        )
+        .first()
     ):
         session.query(CBBBigAreaModels).filter(
             CBBBigAreaModels.biz_id == data.get("biz_id"),
@@ -464,22 +513,31 @@ def create_or_update_big_area(**data):
     result = big_area_api.create_or_update_big_area(**big_area.model_dump())
     try:
         with DBContext("w", None, True) as session:
-            current_obj = session.query(CBBBigAreaModels).filter(CBBBigAreaModels.big_area == big_area.big_area,
-                                                                 CBBBigAreaModels.env_id == env_id,
-                                                                 CBBBigAreaModels.biz_id == biz_id).first()
+            current_obj = (
+                session.query(CBBBigAreaModels)
+                .filter(
+                    CBBBigAreaModels.big_area == big_area.big_area,
+                    CBBBigAreaModels.env_id == env_id,
+                    CBBBigAreaModels.biz_id == biz_id,
+                )
+                .first()
+            )
             idip = data.pop("idip", "")
             app_secret = data.pop("app_secret", "")
-            if app_secret and current_obj and app_secret != current_obj.app_secret:
+
+            if app_secret and (not current_obj or app_secret != mc.my_decrypt(current_obj.app_secret)):
                 app_secret = mc.my_encrypt(app_secret)
+            print(app_secret)
             create_or_update_big_area_for_db(
                 session,
                 env_id=env_id,
                 biz_id=biz_id,
-                big_area=data.get("big_area"),
+                big_area=big_area.big_area,
                 app_secret=app_secret,
                 idip=idip,
             )
     except Exception as e:
+        print(e)
         return dict(code=-1, msg=str(e), data=[])
     return dict(code=0, msg="操作成功", data=result)
 

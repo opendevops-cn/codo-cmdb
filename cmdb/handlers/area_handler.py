@@ -18,6 +18,7 @@ from services.area_service import (
     get_big_area_detail,
     get_big_area_detail_for_gmt,
     get_big_area_list,
+    get_big_area_list_for_gmt,
     update_area,
 )
 from services.env_service import env_checker
@@ -171,7 +172,21 @@ class CBBBigAreaDetailWithoutPrdHandler(CBBBigAreaDetailHandler):
         return super().prepare()
 
 
-class CBBBigAreaForGMTHandler(CBBBigAreaHandler): ...
+class CBBBigAreaForGMTHandler(CBBBigAreaHandler):
+    _thread_pool = ThreadPoolExecutor(3)
+
+    @run_on_executor(executor="_thread_pool")
+    def async_get_big_area_list(self):
+        if not self.request_tenantid:
+            biz_id = self.params.get("biz_id")
+        else:
+            biz_id = self.request_tenantid
+        self.params.update(biz_id=biz_id)
+        return get_big_area_list_for_gmt(**self.params)
+
+    async def get(self):
+        res = await self.async_get_big_area_list()
+        return self.write(res)
 
 
 class CBBBigAreaDetailForGMTHandler(BaseHandler, ABC):
