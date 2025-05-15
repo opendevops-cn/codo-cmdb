@@ -7,6 +7,7 @@ import time
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
+from openpyxl.styles.builtins import total
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
 from websdk2.db_context import DBContextV2 as DBContext
 from websdk2.model_utils import model_to_dict
@@ -17,7 +18,7 @@ from libs.api_gateway.cbb.sign import Signer
 from libs.mycrypt import mc
 from models import EnvType
 from models.cbb_area import CBBBigAreaModels
-from services.env_service import get_env_by_id
+from services.env_service import get_env_by_id, get_all_env_list
 
 # todo 存入数据库
 GameBizMapping = {
@@ -385,44 +386,65 @@ def get_big_area_list_for_gmt(**params):
     """
     tag_filter = params.pop("tag_filter", None)
     big_area = params.pop("big_area", None)
-    env_id = params.pop("env_id", 0)
     searchValue = params.pop("searchValue", None)
     page = int(params.pop("page", 1)) or 1
-    limit = int(params.pop("limit", 10)) or 10
+    limit = int(params.pop("limit", 10000)) or 10000
     biz_id = params.pop("biz_id")
     if not biz_id:
         return dict(code=-1, msg="业务id不能为空", data=[])
     game_appid = get_game_appid(biz_id)
-    env = get_env_details(env_id)
-    signer = Signer(secret=mc.my_decrypt(env["app_secret"]), app_id=env["app_id"])
-    big_area_api = BigAreaAPI(signer, env["idip"], game_appid)
-    big_areas = big_area_api.get_big_areas(
-        tag_filter=tag_filter, big_area=big_area, query_string=searchValue, page_no=page, page_size=limit
-    )
-    big_areas_body = big_areas.get("body", {})
-    big_area_list = big_areas_body.get("big_areas", [])
-    big_area_count = big_areas_body.get("big_area_count", 0)
-
+    envs = get_all_env_list()
+    total_big_area_list = []
+    total_big_area_count = 0
+    cbb_big_area_map = {}
     with DBContext("r") as session:
-        cbb_big_area_objs = (
-            session.query(CBBBigAreaModels)
-            .filter(
-                CBBBigAreaModels.biz_id == biz_id,
-                CBBBigAreaModels.env_id == env_id,
+        cbb_big_area_objs = session.query(CBBBigAreaModels).filter(CBBBigAreaModels.biz_id == biz_id).all()
+        for cbb_big_area in cbb_big_area_objs:
+            key = f"{cbb_big_area.big_area}:{cbb_big_area.env_id}"
+            cbb_big_area_map[key] = model_to_dict(cbb_big_area)
+    for env in envs:
+        try:
+            signer = Signer(secret=mc.my_decrypt(env["app_secret"]), app_id=env["app_id"])
+            big_area_api = BigAreaAPI(signer, env["idip"], game_appid)
+            big_areas = big_area_api.get_big_areas(
+                tag_filter=tag_filter, big_area=big_area, page_no=page, page_size=limit
             )
-            .all()
-        )
-        cbb_big_area_map = {cbb_big_area.big_area: model_to_dict(cbb_big_area) for cbb_big_area in cbb_big_area_objs}
-    for big_area in big_area_list:
-        big_area.update(
-            {
-                "env_id": env_id,
-                "env_name": env.get("env_name"),
-                "env_type": env.get("env_type"),
-                "idip": cbb_big_area_map.get(big_area.get("big_area", {}), {}).get("idip"),
-            }
-        )
-    return dict(code=0, msg="获取成功", data=big_area_list, count=big_area_count)
+            big_areas_body = big_areas.get("body", {})
+            big_area_list = big_areas_body.get("big_areas", [])
+            for area in big_area_list:
+                area["env_id"] = env["id"]
+            big_area_count = big_areas_body.get("big_area_count", 0)
+            total_big_area_list.extend(big_area_list)
+            total_big_area_count += big_area_count
+        except Exception as e:
+            continue
+
+    for big_area_item in total_big_area_list:
+        big_area_id = big_area_item.get("big_area")
+        env_id = big_area_item.get("env_id", "")
+        if big_area_id and env_id:
+            key = f"{big_area_id}:{env_id}"
+            big_area_item.update(
+                {
+                    "idip": cbb_big_area_map.get(key, {}).get("idip"),
+                }
+            )
+    if searchValue is not None:
+        filtered_list = []
+        for item in total_big_area_list:
+            # 在名称和大区编号中搜索
+            if (
+                searchValue.lower() in item.get("name", "").lower()
+                or searchValue.lower() in item.get("big_area", "").lower()
+            ):
+                filtered_list.append(item)
+        total_big_area_list = filtered_list
+        total_big_area_count = len(filtered_list)
+    # 手动实现分页逻辑
+    start_index = (page - 1) * limit
+    end_index = start_index + limit
+    paginated_list = total_big_area_list[start_index:end_index] if start_index < len(total_big_area_list) else []
+    return dict(code=0, msg="获取成功", data=paginated_list, count=total_big_area_count)
 
 
 @handle_api_exceptions
@@ -468,7 +490,7 @@ def get_big_area_detail_for_gmt(**params):
                 "env_name": env.get("env_name"),
                 "env_type": env.get("env_type"),
                 "idip": cbb_big_area_map.get(big_area.get("big_area", {}), {}).get("idip"),
-                "app_secret": base64.b64encode(app_secret.encode("utf-8")).decode("utf-8"),
+                "app_secret": base64.b64encode(app_secret.encode("utf-8")).decode("utf-8") if app_secret else "",
             }
         )
     return dict(code=0, msg="获取成功", data=big_area_list)

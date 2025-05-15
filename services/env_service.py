@@ -344,6 +344,15 @@ def get_env_by_id(env_id: int) -> dict:
         return model_to_dict(env_obj)
 
 
+def get_all_env_list() -> list:
+    """获取所有环境列表"""
+    with DBContext("r") as session:
+        envs = session.query(EnvModels).all()
+        return [model_to_dict(env) for env in envs]
+    return []
+
+
+
 def is_prd_env(env_id: int) -> bool:
     """判断是否是生产环境"""
     with DBContext("r") as session:
